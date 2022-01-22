@@ -55,6 +55,10 @@ type DNSRecordStatus struct {
 //+kubebuilder:subresource:status
 
 // DNSRecord is the Schema for the dnsrecords API
+//+kubebuilder:printcolumn:name="Record Name",type="string",JSONPath=".spec.name"
+//+kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
+//+kubebuilder:printcolumn:name="Content",type="string",JSONPath=".spec.content"
+//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 type DNSRecord struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
