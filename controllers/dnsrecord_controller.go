@@ -21,6 +21,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"os"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
@@ -67,26 +68,95 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	// Get the zone id for the specific DNSRecord
 	zoneID, err := r.Cf.ZoneIDByName(os.Getenv("CLOUDFLARE_ZONE_NAME"))
 	// Check if the DNS record already exists
-	existingRecord, err := r.Cf.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Name: instance.Spec.Name})
+	existingRecords, err := r.Cf.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Name: instance.Spec.Name})
 	if err != nil {
 		log.Error(err, "Failed to get DNS record from cloudflare")
+		return ctrl.Result{}, err
 	}
-	if existingRecord != nil {
-		log.Info("DNS record already exists in cloudflare")
+	// Record doesn't exist, create it
+	if existingRecords == nil {
+		resp, err := r.Cf.CreateDNSRecord(ctx, zoneID, cloudflare.DNSRecord{
+			Name:    instance.Spec.Name,
+			Type:    instance.Spec.Type,
+			Content: instance.Spec.Content,
+			TTL:     instance.Spec.TTL,
+			Proxied: instance.Spec.Proxied,
+		})
+		if err != nil {
+			log.Error(err, "Failed to create DNS record in cloudflare")
+			instance.Status.Phase = "Failed"
+			instance.Status.Message = err.Error()
+			err = r.Status().Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "Failed to update DNS record status")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+		log.Info("DNS record created in cloudflare", "name", resp.Result.Name, "id", resp.Result.ID)
+		instance.Status.Phase = "Created"
+		instance.Status.RecordID = resp.Result.ID
+		instance.Status.Message = ""
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNS record status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
-	resp, err := r.Cf.CreateDNSRecord(ctx, zoneID, cloudflare.DNSRecord{
-		Name:    instance.Spec.Name,
-		Type:    instance.Spec.Type,
-		Content: instance.Spec.Content,
-		TTL:     instance.Spec.TTL,
-	})
-	if err != nil {
-		log.Error(err, "Failed to create DNS record in cloudflare")
-	}
-	log.Info("DNS record created in cloudflare", "name", resp.Result.Name, "id", resp.Result.ID)
-
+	// Extract record from slice
+	existingRecord := existingRecords[0]
 	// Ensure the DNS record is the same as the spec
+	if existingRecord.Name != instance.Spec.Name ||
+		existingRecord.Type != instance.Spec.Type ||
+		existingRecord.Content != instance.Spec.Content ||
+		existingRecord.TTL != instance.Spec.TTL ||
+		*existingRecord.Proxied != *instance.Spec.Proxied {
+		// Update the DNS record
+		err := r.Cf.UpdateDNSRecord(ctx, zoneID, existingRecord.ID, cloudflare.DNSRecord{
+			Name:    instance.Spec.Name,
+			Type:    instance.Spec.Type,
+			Content: instance.Spec.Content,
+			TTL:     instance.Spec.TTL,
+			Proxied: instance.Spec.Proxied,
+		})
+		if err != nil {
+			log.Error(err, "Failed to update DNS record in cloudflare")
+			instance.Status.Phase = "Failed"
+			instance.Status.Message = err.Error()
+			err = r.Status().Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "Failed to update DNS record status")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
+		}
+		if !reflect.DeepEqual(instance.Status, cfv1alpha1.DNSRecordStatus{Phase: "Created", RecordID: existingRecord.ID, Message: ""}) {
+			instance.Status.Phase = "Created"
+			instance.Status.RecordID = existingRecord.ID
+			instance.Status.Message = ""
+		}
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNS record status")
+			return ctrl.Result{}, err
+		}
+		log.Info("DNS record updated in cloudflare", "name", existingRecord.Name, "id", existingRecord.ID)
+		return ctrl.Result{}, nil
+	}
+	log.Info("DNS record is up to date", "name", existingRecord.Name, "id", existingRecord.ID)
+
+	if !reflect.DeepEqual(instance.Status, cfv1alpha1.DNSRecordStatus{Phase: "Created", RecordID: existingRecord.ID, Message: ""}) {
+		instance.Status.Phase = "Created"
+		instance.Status.RecordID = existingRecord.ID
+		instance.Status.Message = ""
+		err := r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNS record status")
+			return ctrl.Result{}, err
+		}
+	}
 
 	return ctrl.Result{}, nil
 }

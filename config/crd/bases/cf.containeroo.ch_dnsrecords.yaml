@@ -66,8 +66,14 @@ spec:
           status:
             description: DNSRecordStatus defines the observed state of DNSRecord
             properties:
+              message:
+                description: Message if the DNS record failed
+                type: string
               phase:
-                description: Phase of the DNS record (e.g. Pending, Created, etc.)
+                description: Phase of the DNS record
+                enum:
+                - Created
+                - Failed
                 type: string
               recordId:
                 description: Cloudflare DNS record ID
