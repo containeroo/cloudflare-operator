@@ -1,0 +1,6 @@
+apiVersion: cf.containeroo.ch/v1alpha1
+kind: DNSRecord
+metadata:
+  name: dnsrecord-sample
+spec:
+  # TODO(user): Add fields here
