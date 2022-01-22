@@ -25,17 +25,27 @@ import (
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
-	// Foo is an example field of DNSRecord. Edit dnsrecord_types.go to remove/update
-	Foo string `json:"foo,omitempty"`
+	//+kubebuilder:validation:Enum=A;CNAME
+	// Type of DNS record (A, CNAME)
+	Type string `json:"type"`
+	// Name of the DNS record (e.g. app.example.com)
+	Name string `json:"name"`
+	// Content of the DNS record (e.g. 144.231.20.1)
+	Content string `json:"content"`
+	// Proxied indicates whether the DNS record should be proxied
+	Proxied *bool `json:"proxied"`
+	//+kubebuilder:validation:Minimum=1
+	//+kubebuilder:validation:Maximum=86400
+	// TTL of the DNS record (e.g. 120, 1 for auto)
+	TTL int `json:"ttl"`
 }
 
 // DNSRecordStatus defines the observed state of DNSRecord
 type DNSRecordStatus struct {
-	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
+	// Phase of the DNS record (e.g. Pending, Created, etc.)
+	Phase string `json:"phase"`
+	// Cloudflare DNS record ID
+	RecordID string `json:"recordId"`
 }
 
 //+kubebuilder:object:root=true
