@@ -7,6 +7,7 @@ require (
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
 	github.com/cloudflare/cloudflare-go v0.30.0
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
+	github.com/go-logr/logr v0.4.0
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.15.0
