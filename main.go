@@ -18,6 +18,7 @@ package main
 
 import (
 	"flag"
+	"github.com/cloudflare/cloudflare-go"
 	"os"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
@@ -78,9 +79,15 @@ func main() {
 		os.Exit(1)
 	}
 
+	cf, err := cloudflare.NewWithAPIToken(os.Getenv("CLOUDFLARE_API_TOKEN"))
+	if err != nil {
+		setupLog.Error(err, "unable to create cloudflare client")
+	}
+
 	if err = (&controllers.DNSRecordReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
+		Cf:     cf,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)

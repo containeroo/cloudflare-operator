@@ -19,12 +19,13 @@ package controllers
 import (
 	"context"
 	"k8s.io/apimachinery/pkg/api/errors"
-
 	"k8s.io/apimachinery/pkg/runtime"
+	"os"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
+	"github.com/cloudflare/cloudflare-go"
 	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
 )
 
@@ -32,6 +33,7 @@ import (
 type DNSRecordReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+	Cf     *cloudflare.API
 }
 
 //+kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
@@ -62,7 +64,27 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	// Get the zone id for the specific DNSRecord
+	zoneID, err := r.Cf.ZoneIDByName(os.Getenv("CLOUDFLARE_ZONE_NAME"))
 	// Check if the DNS record already exists
+	existingRecord, err := r.Cf.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Name: instance.Spec.Name})
+	if err != nil {
+		log.Error(err, "Failed to get DNS record from cloudflare")
+	}
+	if existingRecord != nil {
+		log.Info("DNS record already exists in cloudflare")
+	}
+
+	resp, err := r.Cf.CreateDNSRecord(ctx, zoneID, cloudflare.DNSRecord{
+		Name:    instance.Spec.Name,
+		Type:    instance.Spec.Type,
+		Content: instance.Spec.Content,
+		TTL:     instance.Spec.TTL,
+	})
+	if err != nil {
+		log.Error(err, "Failed to create DNS record in cloudflare")
+	}
+	log.Info("DNS record created in cloudflare", "name", resp.Result.Name, "id", resp.Result.ID)
 
 	// Ensure the DNS record is the same as the spec
 

@@ -3,6 +3,7 @@ module github.com/containeroo/cloudflare-operator
 go 1.16
 
 require (
+	github.com/cloudflare/cloudflare-go v0.30.0
 	github.com/onsi/ginkgo v1.16.4
 	github.com/onsi/gomega v1.15.0
 	k8s.io/apimachinery v0.22.1
