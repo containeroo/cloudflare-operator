@@ -71,11 +71,12 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Loop through all spec.rules and check if a dns record already exists for the ingress
+rules:
 	for _, rule := range instance.Spec.Rules {
 		for _, dnsRecord := range dnsRecords.Items {
 			if dnsRecord.Spec.Name == rule.Host {
-				log.Info("DNSRecord already exists for ingress", "name", dnsRecord.Spec.Name)
-				return ctrl.Result{}, nil
+				log.Info("DNS record already exists for ingress", "name", dnsRecord.Spec.Name)
+				continue rules
 			}
 		}
 
