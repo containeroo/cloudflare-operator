@@ -1,0 +1,89 @@
+
+---
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  annotations:
+    controller-gen.kubebuilder.io/version: v0.7.0
+  creationTimestamp: null
+  name: dnsrecords.cf.containeroo.ch
+spec:
+  group: cf.containeroo.ch
+  names:
+    kind: DNSRecord
+    listKind: DNSRecordList
+    plural: dnsrecords
+    singular: dnsrecord
+  scope: Namespaced
+  versions:
+  - name: v1alpha1
+    schema:
+      openAPIV3Schema:
+        description: DNSRecord is the Schema for the dnsrecords API
+        properties:
+          apiVersion:
+            description: 'APIVersion defines the versioned schema of this representation
+              of an object. Servers should convert recognized schemas to the latest
+              internal value, and may reject unrecognized values. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#resources'
+            type: string
+          kind:
+            description: 'Kind is a string value representing the REST resource this
+              object represents. Servers may infer this from the endpoint the client
+              submits requests to. Cannot be updated. In CamelCase. More info: https://git.k8s.io/community/contributors/devel/sig-architecture/api-conventions.md#types-kinds'
+            type: string
+          metadata:
+            type: object
+          spec:
+            description: DNSRecordSpec defines the desired state of DNSRecord
+            properties:
+              content:
+                description: Content of the DNS record (e.g. 144.231.20.1)
+                type: string
+              name:
+                description: Name of the DNS record (e.g. app.example.com)
+                type: string
+              proxied:
+                description: Proxied indicates whether the DNS record should be proxied
+                type: boolean
+              ttl:
+                description: TTL of the DNS record (e.g. 120, 1 for auto)
+                maximum: 86400
+                minimum: 1
+                type: integer
+              type:
+                description: Type of DNS record (A, CNAME)
+                enum:
+                - A
+                - CNAME
+                type: string
+            required:
+            - content
+            - name
+            - proxied
+            - ttl
+            - type
+            type: object
+          status:
+            description: DNSRecordStatus defines the observed state of DNSRecord
+            properties:
+              phase:
+                description: Phase of the DNS record (e.g. Pending, Created, etc.)
+                type: string
+              recordId:
+                description: Cloudflare DNS record ID
+                type: string
+            required:
+            - phase
+            - recordId
+            type: object
+        type: object
+    served: true
+    storage: true
+    subresources:
+      status: {}
+status:
+  acceptedNames:
+    kind: ""
+    plural: ""
+  conditions: []
+  storedVersions: []
