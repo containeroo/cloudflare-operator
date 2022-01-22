@@ -34,9 +34,7 @@ type IngressReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/finalizers,verbs=update
+//+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -58,7 +56,11 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// TODO: Check if the Ingress has a skip annotation and if so, return early
+	// Check if the Ingress has a skip annotation and if so, return early
+	if instance.Annotations["cf.containeroo.ch/skip"] == "true" {
+		log.Info("Ingress has skip annotation, skipping reconciliation", "ingress", instance.Name)
+		return ctrl.Result{}, nil
+	}
 
 	// Fetch all DNSRecord instances in the same namespace
 	dnsRecords := &cfv1alpha1.DNSRecordList{}
@@ -68,7 +70,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// loop through all spec.rules and check if a dns record already exists for the ingress
+	// Loop through all spec.rules and check if a dns record already exists for the ingress
 	for _, rule := range instance.Spec.Rules {
 		for _, dnsRecord := range dnsRecords.Items {
 			if dnsRecord.Spec.Name == rule.Host {
@@ -82,6 +84,20 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			ObjectMeta: v1.ObjectMeta{
 				Name:      strings.ReplaceAll(rule.Host, ".", "-"),
 				Namespace: instance.Namespace,
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "cloudflare-operator",
+					"app.kubernetes.io/created-by": "cloudflare-operator",
+				},
+				OwnerReferences: []v1.OwnerReference{
+					{
+						APIVersion:         "networking.k8s.io/v1",
+						Kind:               "Ingress",
+						Name:               instance.Name,
+						UID:                instance.UID,
+						Controller:         &trueVar,
+						BlockOwnerDeletion: &trueVar,
+					},
+				},
 			},
 			Spec: cfv1alpha1.DNSRecordSpec{
 				// TODO: Get the DNSRecordSpec from annotations on the Ingress or use sane defaults

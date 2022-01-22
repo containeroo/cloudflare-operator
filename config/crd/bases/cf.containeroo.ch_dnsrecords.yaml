@@ -59,7 +59,7 @@ spec:
                 description: Proxied indicates whether the DNS record should be proxied
                 type: boolean
               ttl:
-                description: TTL of the DNS record (e.g. 120, 1 for auto)
+                description: TTL of the DNS record (e.g. 300, 1 for automatic)
                 maximum: 86400
                 minimum: 1
                 type: integer

@@ -25,8 +25,8 @@ import (
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	//+kubebuilder:validation:Enum=A;CNAME
 	// Type of DNS record (A, CNAME)
+	//+kubebuilder:validation:Enum=A;CNAME
 	Type string `json:"type"`
 	// Name of the DNS record (e.g. app.example.com)
 	Name string `json:"name"`
@@ -34,9 +34,9 @@ type DNSRecordSpec struct {
 	Content string `json:"content"`
 	// Proxied indicates whether the DNS record should be proxied
 	Proxied *bool `json:"proxied"`
+	// TTL of the DNS record (e.g. 300, 1 for automatic)
 	//+kubebuilder:validation:Minimum=1
 	//+kubebuilder:validation:Maximum=86400
-	// TTL of the DNS record (e.g. 120, 1 for auto)
 	TTL int `json:"ttl"`
 }
 
