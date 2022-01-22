@@ -18,8 +18,9 @@ package main
 
 import (
 	"flag"
-	"github.com/cloudflare/cloudflare-go"
 	"os"
+
+	"github.com/cloudflare/cloudflare-go"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -90,6 +91,13 @@ func main() {
 		Cf:     cf,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
+		os.Exit(1)
+	}
+	if err = (&controllers.IngressReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
 		os.Exit(1)
 	}
 	//+kubebuilder:scaffold:builder

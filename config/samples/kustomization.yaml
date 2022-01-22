@@ -1,4 +1,5 @@
 ## Append samples you want in your CSV to this file as resources ##
 resources:
 - cf_v1alpha1_dnsrecord.yaml
+- networking_v1_ingress.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

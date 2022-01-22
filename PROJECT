@@ -16,4 +16,10 @@ resources:
   kind: DNSRecord
   path: github.com/containeroo/cloudflare-operator/api/v1alpha1
   version: v1alpha1
+- controller: true
+  domain: k8s.io
+  group: networking
+  kind: Ingress
+  path: k8s.io/api/networking/v1
+  version: v1
 version: "3"
