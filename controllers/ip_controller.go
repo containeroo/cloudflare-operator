@@ -21,6 +21,7 @@ import (
 	"github.com/go-logr/logr"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"math/rand"
 	"net"
 	"net/http"
@@ -70,8 +71,21 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	if instance.Spec.Type == "dynamic" {
+		if instance.Spec.Interval == nil {
+			instance.Spec.Interval = &metav1.Duration{Duration: time.Minute * 5}
+			err := r.Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "Failed to update IP resource")
+				return ctrl.Result{}, err
+			}
+		}
 		if instance.Spec.DynamicIpSources == nil {
-			instance.Spec.DynamicIpSources = append(instance.Spec.DynamicIpSources, "http://checkip.amazonaws.com")
+			instance.Spec.DynamicIpSources = append(instance.Spec.DynamicIpSources, "https://ifconfig.me/ip", "https://ipecho.net/plain", "https://myip.is/ip/", "https://checkip.amazonaws.com", "https://api.ipify.org")
+			err := r.Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "Failed to update IP resource")
+				return ctrl.Result{}, err
+			}
 		}
 		currentIP := getCurrentIP(instance.Spec.DynamicIpSources, log)
 		if currentIP == "" {
@@ -87,8 +101,6 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	// check if last observed IP is different from current IP
-	// if so, update the IP resource
 	if instance.Spec.Address != instance.Status.LastObservedIP {
 		log.Info("IP has changed. Updating IP resource")
 		instance.Status.LastObservedIP = instance.Spec.Address
@@ -99,8 +111,6 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	// fetch all dns records with this ip as ref
-	// update the dns records with the new ip
 	dnsRecords := &cfv1alpha1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {

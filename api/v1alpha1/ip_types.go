@@ -29,11 +29,12 @@ type IPSpec struct {
 	Address string `json:"address"`
 	//+kubebuilder:validation:Enum=static;dynamic
 	//+kubebuilder:default=static
-	Type string `json:"type"`
-	//+kubebuilder:default="5m"
-	Interval metav1.Duration `json:"interval"`
 	//+optional
-	DynamicIpSources []string `json:"dynamicIpSources"`
+	Type string `json:"type"`
+	//+optional
+	Interval *metav1.Duration `json:"interval,omitempty"`
+	//+optional
+	DynamicIpSources []string `json:"dynamicIpSources,omitempty"`
 }
 
 // IPStatus defines the observed state of IP

@@ -78,7 +78,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	// if instance.Spec.ipRef.name is not empty, fetch the referenced IP object
+	// Check if there is an IP reference in the DNSRecord
 	if instance.Spec.IpRef.Name != "" {
 		ip := &cfv1alpha1.IP{}
 		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IpRef.Name}, ip)
@@ -87,6 +87,11 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 		instance.Spec.Content = ip.Spec.Address
+		err = r.Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNSRecord resource")
+			return ctrl.Result{}, err
+		}
 	}
 
 	// Record doesn't exist, create it

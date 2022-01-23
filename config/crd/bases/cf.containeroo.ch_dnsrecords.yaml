@@ -133,9 +133,6 @@ spec:
                 type: string
             required:
             - name
-            - proxied
-            - ttl
-            - type
             type: object
           status:
             description: DNSRecordStatus defines the observed state of DNSRecord

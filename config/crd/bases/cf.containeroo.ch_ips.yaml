@@ -50,7 +50,6 @@ spec:
                   type: string
                 type: array
               interval:
-                default: 5m
                 type: string
               type:
                 default: static
@@ -58,9 +57,6 @@ spec:
                 - static
                 - dynamic
                 type: string
-            required:
-            - interval
-            - type
             type: object
           status:
             description: IPStatus defines the observed state of IP
