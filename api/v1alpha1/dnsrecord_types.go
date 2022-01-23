@@ -17,6 +17,7 @@ limitations under the License.
 package v1alpha1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -25,18 +26,24 @@ import (
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	// Type of DNS record (A, CNAME)
-	//+kubebuilder:validation:Enum=A;CNAME
-	Type string `json:"type"`
 	// Name of the DNS record (e.g. app.example.com)
 	Name string `json:"name"`
 	// Content of the DNS record (e.g. 144.231.20.1)
+	//+optional
 	Content string `json:"content"`
+	//+optional
+	IpRef v1.ObjectReference `json:"ipRef"`
+	// Type of DNS record (A, CNAME)
+	//+kubebuilder:validation:Enum=A;CNAME
+	//+kubebuilder:default=A
+	Type string `json:"type"`
 	// Proxied indicates whether the DNS record should be proxied
+	//+kubebuilder:default=true
 	Proxied *bool `json:"proxied"`
 	// TTL of the DNS record (e.g. 300, 1 for automatic)
 	//+kubebuilder:validation:Minimum=1
 	//+kubebuilder:validation:Maximum=86400
+	//+kubebuilder:default=1
 	TTL int `json:"ttl"`
 }
 

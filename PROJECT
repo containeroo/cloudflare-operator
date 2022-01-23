@@ -22,4 +22,12 @@ resources:
   kind: Ingress
   path: k8s.io/api/networking/v1
   version: v1
+- api:
+    crdVersion: v1
+  controller: true
+  domain: containeroo.ch
+  group: cf
+  kind: IP
+  path: github.com/containeroo/cloudflare-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

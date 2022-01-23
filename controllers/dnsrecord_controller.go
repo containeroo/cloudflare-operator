@@ -77,6 +77,18 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Error(err, "Failed to get DNS record from cloudflare")
 		return ctrl.Result{}, err
 	}
+
+	// if instance.Spec.ipRef.name is not empty, fetch the referenced IP object
+	if instance.Spec.IpRef.Name != "" {
+		ip := &cfv1alpha1.IP{}
+		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IpRef.Name}, ip)
+		if err != nil {
+			log.Error(err, "Failed to get IP resource")
+			return ctrl.Result{}, err
+		}
+		instance.Spec.Content = ip.Spec.Address
+	}
+
 	// Record doesn't exist, create it
 	if existingRecords == nil {
 		resp, err := r.Cf.CreateDNSRecord(ctx, zoneID, cloudflare.DNSRecord{

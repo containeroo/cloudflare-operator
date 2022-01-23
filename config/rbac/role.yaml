@@ -33,6 +33,32 @@ rules:
   - patch
   - update
 - apiGroups:
+  - cf.containeroo.ch
+  resources:
+  - ips
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cf.containeroo.ch
+  resources:
+  - ips/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cf.containeroo.ch
+  resources:
+  - ips/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
   - networking.k8s.io
   resources:
   - ingresses

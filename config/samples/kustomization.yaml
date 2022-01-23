@@ -2,4 +2,5 @@
 resources:
 - cf_v1alpha1_dnsrecord.yaml
 - networking_v1_ingress.yaml
+- cf_v1alpha1_ip.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

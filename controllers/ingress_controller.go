@@ -104,7 +104,6 @@ rules:
 				// TODO: Get the DNSRecordSpec from annotations on the Ingress or use sane defaults
 				Name:    rule.Host,
 				Type:    "A",
-				Content: "1.1.1.1", // TODO: get the current public IP (maybe from another CRD?)
 				Proxied: &trueVar,
 				TTL:     1,
 			},
