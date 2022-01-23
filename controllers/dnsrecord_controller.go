@@ -78,6 +78,17 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	if instance.Spec.Content == "" && instance.Spec.IpRef.Name == "" {
+		log.Error(err, "DNSRecord content is empty. Either content or ipRef must be set")
+		instance.Status.Phase = "Failed"
+		instance.Status.Message = "DNSRecord content is empty. Either content or ipRef must be set"
+		if err := r.Status().Update(ctx, instance); err != nil {
+			log.Error(err, "Failed to update DNSRecord status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+
 	// Check if there is an IP reference in the DNSRecord
 	if instance.Spec.IpRef.Name != "" {
 		ip := &cfv1alpha1.IP{}
