@@ -109,11 +109,14 @@ rules:
 				TTL:     1,
 			},
 		}
-		err = r.Create(ctx, dnsRecord)
-		if err != nil {
-			log.Error(err, "unable to create DNSRecord")
-			return ctrl.Result{}, err
-		}
+
+		// TODO: Actually create the DNSRecord
+		log.Info("Creating DNSRecord", "name", dnsRecord.Name)
+		// err = r.Create(ctx, dnsRecord)
+		// if err != nil {
+		// 	log.Error(err, "unable to create DNSRecord")
+		// 	return ctrl.Result{}, err
+		// }
 	}
 
 	// TODO: Update DNSRecord spec to match Ingress annotations (what about changing defaults?)
