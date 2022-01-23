@@ -25,13 +25,15 @@ import (
 
 // IPSpec defines the desired state of IP
 type IPSpec struct {
+	//+optional
 	Address string `json:"address"`
 	//+kubebuilder:validation:Enum=static;dynamic
 	//+kubebuilder:default=static
 	Type string `json:"type"`
 	//+kubebuilder:default="5m"
-	Interval         metav1.Duration `json:"interval"`
-	DynamicIpSources []string        `json:"dynamicIpSources"`
+	Interval metav1.Duration `json:"interval"`
+	//+optional
+	DynamicIpSources []string `json:"dynamicIpSources"`
 }
 
 // IPStatus defines the observed state of IP
@@ -44,6 +46,8 @@ type IPStatus struct {
 //+kubebuilder:resource:scope=Cluster
 
 // IP is the Schema for the ips API
+//+kubebuilder:printcolumn:name="Address",type="string",JSONPath=".spec.address"
+//+kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 type IP struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -70,6 +70,9 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	if instance.Spec.Type == "dynamic" {
+		if instance.Spec.DynamicIpSources == nil {
+			instance.Spec.DynamicIpSources = append(instance.Spec.DynamicIpSources, "http://checkip.amazonaws.com")
+		}
 		currentIP := getCurrentIP(instance.Spec.DynamicIpSources, log)
 		if currentIP == "" {
 			log.Info("No IP found")
@@ -77,6 +80,11 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 
 		instance.Spec.Address = currentIP
+		err = r.Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update IP resource")
+			return ctrl.Result{}, err
+		}
 	}
 
 	// check if last observed IP is different from current IP
@@ -84,19 +92,25 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	if instance.Spec.Address != instance.Status.LastObservedIP {
 		log.Info("IP has changed. Updating IP resource")
 		instance.Status.LastObservedIP = instance.Spec.Address
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update IP resource")
+			return ctrl.Result{}, err
+		}
 	}
 
 	// fetch all dns records with this ip as ref
 	// update the dns records with the new ip
 	dnsRecords := &cfv1alpha1.DNSRecordList{}
-	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace), client.MatchingFields{
-		"spec.ipRef.name": instance.Name,
-	})
+	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
 		log.Error(err, "Failed to list DNS records")
 	}
 
 	for _, dnsRecord := range dnsRecords.Items {
+		if dnsRecord.Spec.IpRef.Name != instance.ObjectMeta.Name {
+			continue
+		}
 		if dnsRecord.Spec.Content == instance.Spec.Address {
 			continue
 		}

@@ -16,7 +16,14 @@ spec:
     singular: ip
   scope: Cluster
   versions:
-  - name: v1alpha1
+  - additionalPrinterColumns:
+    - jsonPath: .spec.address
+      name: Address
+      type: string
+    - jsonPath: .spec.type
+      name: Type
+      type: string
+    name: v1alpha1
     schema:
       openAPIV3Schema:
         description: IP is the Schema for the ips API
@@ -52,8 +59,6 @@ spec:
                 - dynamic
                 type: string
             required:
-            - address
-            - dynamicIpSources
             - interval
             - type
             type: object
