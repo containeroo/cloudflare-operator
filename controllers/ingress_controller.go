@@ -119,6 +119,7 @@ rules:
 	}
 
 	// TODO: Update DNSRecord spec to match Ingress annotations (what about changing defaults?)
+	// TODO: Create a finalizer to remove the DNSRecord when the Ingress is deleted
 
 	return ctrl.Result{}, nil
 }
