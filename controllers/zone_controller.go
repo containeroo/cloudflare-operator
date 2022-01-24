@@ -64,7 +64,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		log.Error(err, "Failed to get Zone resource")
 		return ctrl.Result{}, err
 	}
-	
+
 	if r.Cf.APIKey == "" {
 		log.Info("Cloudflare account not ready. Retrying in 5 seconds")
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
@@ -91,6 +91,8 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 	}
+
+	// TODO: Implement logic if default settings have changed
 
 	return ctrl.Result{}, nil
 }

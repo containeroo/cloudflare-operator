@@ -73,6 +73,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Loop through all spec.rules and check if a dns record already exists for the ingress
 rules:
 	for _, rule := range instance.Spec.Rules {
+		// TODO: Get the DNSRecordSpec from annotations on the Ingress if specified
 		for _, dnsRecord := range dnsRecords.Items {
 			if dnsRecord.Spec.Name == rule.Host {
 				log.Info("DNS record already exists for ingress", "name", dnsRecord.Spec.Name)
@@ -105,7 +106,6 @@ rules:
 				},
 			},
 			Spec: cfv1alpha1.DNSRecordSpec{
-				// TODO: Get the DNSRecordSpec from annotations on the Ingress or use sane defaults
 				Name:              rule.Host,
 				DNSRecordSettings: dnsRecordSettings,
 				Type:              "A",
@@ -121,7 +121,7 @@ rules:
 		// }
 	}
 
-	// TODO: Update DNSRecord spec to match Ingress annotations (what about changing defaults?)
+	// TODO: Update DNSRecord spec to match Ingress annotations
 	// TODO: Create a finalizer to remove the DNSRecord when the Ingress is deleted
 
 	return ctrl.Result{}, nil

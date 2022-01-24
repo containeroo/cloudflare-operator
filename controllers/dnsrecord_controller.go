@@ -94,6 +94,8 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	dnsRecordZoneId := dnsRecordZone.Spec.ID
 
+	// TODO: Populate default settings inherited from the Zone
+
 	if r.Cf.APIKey == "" {
 		log.Info("Cloudflare account not ready. Retrying in 5 seconds")
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, err

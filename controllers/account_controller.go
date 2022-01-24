@@ -153,12 +153,9 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					},
 				},
 				Spec: cfv1alpha1.ZoneSpec{
-					Name: zone.Name,
-					ID:   zone.ID,
-					DefaultSettings: cfv1alpha1.DNSRecordSettings{
-						Proxied: &trueVar,
-						TTL:     1,
-					},
+					Name:            zone.Name,
+					ID:              zone.ID,
+					DefaultSettings: instance.Spec.DefaultSettings,
 				},
 				Status: cfv1alpha1.ZoneStatus{
 					Phase: "Pending",
@@ -192,6 +189,12 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}
 		}
 	}
+
+	// TODO: Cleanup Zones absent in Cloudflare
+
+	// TODO: Cleanup DNSRecords absent in Cloudflare
+
+	// TODO: Implement logic if default settings have changed
 
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }
