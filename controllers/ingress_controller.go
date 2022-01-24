@@ -19,12 +19,16 @@ package controllers
 import (
 	"context"
 	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
+	"github.com/go-logr/logr"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
+	"strconv"
 	"strings"
 )
 
@@ -33,6 +37,8 @@ type IngressReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
+
+const ingressFinalizer = "ingress.cf.containeroo.ch/finalizer"
 
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
 
@@ -70,18 +76,72 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	trueVar := true
+
+	// Create a dnsRecordSpec based on annotations
+	dnsRecordSpec := cfv1alpha1.DNSRecordSpec{}
+
+	if content, ok := instance.Annotations["cf.containeroo.ch/content"]; ok {
+		dnsRecordSpec.Content = content
+	}
+
+	if ipRef, ok := instance.Annotations["cf.containeroo.ch/ip-ref"]; ok {
+		dnsRecordSpec.IpRef.Name = ipRef
+	}
+
+	if dnsRecordSpec.Content == "" && dnsRecordSpec.IpRef.Name == "" {
+		log.Info("Ingress has no content or ip-ref annotation, skipping reconciliation", "ingress", instance.Name)
+		return ctrl.Result{}, nil
+	}
+
+	if proxied, ok := instance.Annotations["cf.containeroo.ch/proxied"]; ok {
+		switch proxied {
+		case "true":
+			dnsRecordSpec.Proxied = &trueVar
+		case "false":
+			falseVar := false
+			dnsRecordSpec.Proxied = &falseVar
+		}
+	}
+	if dnsRecordSpec.Proxied == nil {
+		dnsRecordSpec.Proxied = &trueVar
+	}
+
+	if ttl, ok := instance.Annotations["cf.containeroo.ch/ttl"]; ok {
+		ttlInt, _ := strconv.Atoi(ttl)
+		if *dnsRecordSpec.Proxied == true && ttlInt != 1 {
+			log.Info("DNSRecord is proxied and ttl is not 1. Setting ttl to 1")
+			instance.Annotations["cf.containeroo.ch/ttl"] = "1"
+			err = r.Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "unable to update Ingress")
+				return ctrl.Result{}, err
+			}
+		}
+		dnsRecordSpec.TTL = ttlInt
+	}
+	if dnsRecordSpec.TTL == 0 {
+		dnsRecordSpec.TTL = 1
+	}
+
+	if type_, ok := instance.Annotations["cf.containeroo.ch/type"]; ok {
+		dnsRecordSpec.Type = type_
+	}
+	if dnsRecordSpec.Type == "" {
+		dnsRecordSpec.Type = "A"
+	}
+
 	// Loop through all spec.rules and check if a dns record already exists for the ingress
 rules:
 	for _, rule := range instance.Spec.Rules {
-		// TODO: Get the DNSRecordSpec from annotations on the Ingress if specified
 		for _, dnsRecord := range dnsRecords.Items {
 			if dnsRecord.Spec.Name == rule.Host {
-				log.Info("DNS record already exists for ingress", "name", dnsRecord.Spec.Name)
 				continue rules
 			}
 		}
 
-		trueVar := true
+		dnsRecordSpec.Name = rule.Host
+
 		dnsRecord := &cfv1alpha1.DNSRecord{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      strings.ReplaceAll(rule.Host, ".", "-"),
@@ -101,24 +161,62 @@ rules:
 					},
 				},
 			},
-			Spec: cfv1alpha1.DNSRecordSpec{
-				Name: rule.Host,
-				Type: "A",
-				// TODO: Populate all the other fields from the Spec
-			},
+			Spec: dnsRecordSpec,
 		}
 
-		// TODO: Actually create the DNSRecord
 		log.Info("Creating DNSRecord", "name", dnsRecord.Name)
-		// err = r.Create(ctx, dnsRecord)
-		// if err != nil {
-		// 	log.Error(err, "unable to create DNSRecord")
-		// 	return ctrl.Result{}, err
-		// }
+		err = r.Create(ctx, dnsRecord)
+		if err != nil {
+			log.Error(err, "unable to create DNSRecord")
+			return ctrl.Result{}, err
+		}
 	}
 
-	// TODO: Update DNSRecord spec to match Ingress annotations
-	// TODO: Create a finalizer to remove the DNSRecord when the Ingress is deleted
+	// Update DNSRecord if dnsRecordSpec has changed
+	for _, rule := range instance.Spec.Rules {
+		for _, dnsRecord := range dnsRecords.Items {
+			if dnsRecord.Spec.Name != rule.Host {
+				continue
+			}
+			dnsRecordSpec.Name = rule.Host
+			if reflect.DeepEqual(dnsRecord.Spec, dnsRecordSpec) {
+				continue
+			}
+			// Update the DNSRecord with the new dnsRecordSpec
+			log.Info("Updating DNSRecord", "name", dnsRecord.Name)
+			dnsRecord.Spec = dnsRecordSpec
+			err = r.Update(ctx, &dnsRecord)
+			if err != nil {
+				log.Error(err, "unable to update DNSRecord")
+				return ctrl.Result{}, err
+			}
+		}
+	}
+
+	isIngressMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
+	if isIngressMarkedToBeDeleted {
+		if controllerutil.ContainsFinalizer(instance, ingressFinalizer) {
+			if err := r.finalizeIngress(ctx, log, dnsRecords, instance); err != nil {
+				return ctrl.Result{}, err
+			}
+		}
+
+		controllerutil.RemoveFinalizer(instance, ingressFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	if !controllerutil.ContainsFinalizer(instance, ingressFinalizer) {
+		controllerutil.AddFinalizer(instance, ingressFinalizer)
+		err = r.Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Ingress finalizer")
+			return ctrl.Result{}, err
+		}
+	}
 
 	return ctrl.Result{}, nil
 }
@@ -128,4 +226,18 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
 		Complete(r)
+}
+
+func (r *IngressReconciler) finalizeIngress(ctx context.Context, log logr.Logger, d *cfv1alpha1.DNSRecordList, i *networkingv1.Ingress) error {
+	for _, dnsRecord := range d.Items {
+		if dnsRecord.Spec.Name == i.Name {
+			log.Info("Deleting DNSRecord", "name", dnsRecord.Name)
+			err := r.Delete(ctx, &dnsRecord)
+			if err != nil {
+				log.Error(err, "unable to delete DNSRecord")
+				return err
+			}
+		}
+	}
+	return nil
 }

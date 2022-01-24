@@ -168,6 +168,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
+	statusChanged := false
 	for _, zone := range zones {
 		found := false
 		for _, z := range instance.Status.Zones {
@@ -177,21 +178,24 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}
 		}
 		if !found {
+			statusChanged = true
 			instance.Status.Zones = append(instance.Status.Zones, cfv1alpha1.AccountStatusZones{
 				ID:   zone.ID,
 				Name: zone.Name,
 			})
-			err := r.Status().Update(ctx, instance)
-			if err != nil {
-				log.Error(err, "Failed to update Account status")
-				return ctrl.Result{}, err
-			}
+		}
+	}
+	if statusChanged {
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Account status")
+			return ctrl.Result{}, err
 		}
 	}
 
 	// TODO: Cleanup Zones absent in Cloudflare
 
-	// TODO: Cleanup DNSRecords absent in Cloudflare
+	// TODO: Cleanup dns records in Cloudflare where no DNSRecord is present
 
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }
