@@ -82,10 +82,6 @@ rules:
 		}
 
 		trueVar := true
-		dnsRecordSettings := cfv1alpha1.DNSRecordSettings{
-			Proxied: &trueVar,
-			TTL:     1,
-		}
 		dnsRecord := &cfv1alpha1.DNSRecord{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      strings.ReplaceAll(rule.Host, ".", "-"),
@@ -106,9 +102,9 @@ rules:
 				},
 			},
 			Spec: cfv1alpha1.DNSRecordSpec{
-				Name:              rule.Host,
-				DNSRecordSettings: dnsRecordSettings,
-				Type:              "A",
+				Name: rule.Host,
+				Type: "A",
+				// TODO: Populate all the other fields from the Spec
 			},
 		}
 

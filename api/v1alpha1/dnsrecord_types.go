@@ -33,13 +33,21 @@ type DNSRecordSpec struct {
 	Content string `json:"content"`
 	//+optional
 	IpRef v1.ObjectReference `json:"ipRef,omitempty"`
-	//+optional
-	DNSRecordSettings `json:",inline"`
 	// Type of DNS record (A, CNAME)
 	//+kubebuilder:validation:Enum=A;CNAME
 	//+kubebuilder:default=A
 	//+optional
 	Type string `json:"type"`
+	// Proxied indicates whether the DNS record should be proxied
+	//+kubebuilder:default=true
+	//+optional
+	Proxied *bool `json:"proxied"`
+	// TTL of the DNS record (e.g. 300, 1 for automatic)
+	//+kubebuilder:validation:Minimum=1
+	//+kubebuilder:validation:Maximum=86400
+	//+kubebuilder:default=1
+	//+optional
+	TTL int `json:"ttl"`
 }
 
 // DNSRecordStatus defines the observed state of DNSRecord

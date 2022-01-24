@@ -39,8 +39,6 @@ type AccountSpec struct {
 	//+kubebuilder:default="5m"
 	//+optional
 	Interval metav1.Duration `json:"interval,omitempty"`
-	//+optional
-	DefaultSettings DNSRecordSettings `json:"defaultSettings"`
 }
 
 type AccountStatusZones struct {

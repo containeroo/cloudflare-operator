@@ -87,14 +87,17 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
+	if dnsRecordZone.Name == "" {
+		log.Error(err, "Failed to find zone for DNSRecord")
+		return ctrl.Result{}, err
+	}
+
 	if dnsRecordZone.Status.Phase != "Active" {
 		log.Info("Zone is not active. Retrying in 5 seconds.")
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
 	dnsRecordZoneId := dnsRecordZone.Spec.ID
-
-	// TODO: Populate default settings inherited from the Zone
 
 	if r.Cf.APIKey == "" {
 		log.Info("Cloudflare account not ready. Retrying in 5 seconds")

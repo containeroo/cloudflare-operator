@@ -46,22 +46,6 @@ spec:
           spec:
             description: ZoneSpec defines the desired state of Zone
             properties:
-              default_settings:
-                description: DNSRecordSettings is a struct that contains the default
-                  settings for a DNS record
-                properties:
-                  proxied:
-                    default: true
-                    description: Proxied indicates whether the DNS record should be
-                      proxied
-                    type: boolean
-                  ttl:
-                    default: 1
-                    description: TTL of the DNS record (e.g. 300, 1 for automatic)
-                    maximum: 86400
-                    minimum: 1
-                    type: integer
-                type: object
               id:
                 description: ID of the zone
                 type: string

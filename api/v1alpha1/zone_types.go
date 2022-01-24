@@ -29,8 +29,6 @@ type ZoneSpec struct {
 	Name string `json:"name"`
 	// ID of the zone
 	ID string `json:"id"`
-	//+optional
-	DefaultSettings DNSRecordSettings `json:"default_settings"`
 }
 
 // ZoneStatus defines the observed state of Zone

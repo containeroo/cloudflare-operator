@@ -92,8 +92,6 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	// TODO: Implement logic if default settings have changed
-
 	return ctrl.Result{}, nil
 }
 

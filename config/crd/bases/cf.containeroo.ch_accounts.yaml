@@ -43,22 +43,6 @@ spec:
           spec:
             description: AccountSpec defines the desired state of Account
             properties:
-              defaultSettings:
-                description: DNSRecordSettings is a struct that contains the default
-                  settings for a DNS record
-                properties:
-                  proxied:
-                    default: true
-                    description: Proxied indicates whether the DNS record should be
-                      proxied
-                    type: boolean
-                  ttl:
-                    default: 1
-                    description: TTL of the DNS record (e.g. 300, 1 for automatic)
-                    maximum: 86400
-                    minimum: 1
-                    type: integer
-                type: object
               email:
                 description: Email of the Cloudflare account
                 type: string
