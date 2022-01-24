@@ -30,6 +30,7 @@ import (
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 	"strings"
+	"time"
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -129,6 +130,14 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	if dnsRecordSpec.Type == "" {
 		dnsRecordSpec.Type = "A"
+	}
+
+	if interval, ok := instance.Annotations["cf.containeroo.ch/interval"]; ok {
+		intervalDuration, _ := time.ParseDuration(interval)
+		dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
+	}
+	if dnsRecordSpec.Interval.Duration == 0 {
+		dnsRecordSpec.Interval.Duration = time.Minute * 5
 	}
 
 	// Loop through all spec.rules and check if a dns record already exists for the ingress
