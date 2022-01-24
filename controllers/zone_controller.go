@@ -20,6 +20,7 @@ import (
 	"context"
 	"github.com/cloudflare/cloudflare-go"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"strings"
 	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -92,7 +93,58 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	return ctrl.Result{}, nil
+	// Fetch all DNSRecord objects
+	dnsRecords := &cfv1alpha1.DNSRecordList{}
+	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
+	if err != nil {
+		log.Error(err, "Failed to list DNSRecord resources")
+		return ctrl.Result{}, err
+	}
+
+	// Fetch all DNS records from Cloudflare
+	cfDnsRecords, err := r.Cf.DNSRecords(ctx, instance.Spec.ID, cloudflare.DNSRecord{})
+	if err != nil {
+		instance.Status.Phase = "Failed"
+		instance.Status.Message = err.Error()
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Zone status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+
+	// Delete any DNS records in Cloudflare without a DNSRecord object
+	for _, cfDnsRecord := range cfDnsRecords {
+		if !strings.HasSuffix(cfDnsRecord.Name, instance.Spec.Name) {
+			continue
+		}
+		if cfDnsRecord.Type != "A" && cfDnsRecord.Type != "CNAME" {
+			continue
+		}
+
+		found := false
+		for _, dnsRecord := range dnsRecords.Items {
+			if dnsRecord.Spec.Name == cfDnsRecord.Name {
+				found = true
+				break
+			}
+		}
+		if !found {
+			err = r.Cf.DeleteDNSRecord(ctx, instance.Spec.ID, cfDnsRecord.ID)
+			if err != nil {
+				instance.Status.Phase = "Failed"
+				instance.Status.Message = err.Error()
+				err = r.Status().Update(ctx, instance)
+				if err != nil {
+					log.Error(err, "Failed to update Zone status")
+				}
+			}
+			log.Info("Deleted DNS record on Cloudflare " + cfDnsRecord.Name)
+		}
+	}
+
+	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

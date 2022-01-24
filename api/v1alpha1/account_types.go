@@ -38,7 +38,7 @@ type AccountSpec struct {
 	// Interval to check account status
 	//+kubebuilder:default="5m"
 	//+optional
-	Interval metav1.Duration `json:"interval,omitempty"`
+	Interval metav1.Duration `json:"interval"`
 }
 
 type AccountStatusZones struct {

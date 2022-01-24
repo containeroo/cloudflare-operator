@@ -29,6 +29,10 @@ type ZoneSpec struct {
 	Name string `json:"name"`
 	// ID of the zone
 	ID string `json:"id"`
+	// Interval to check zone status
+	//+kubebuilder:default="5m"
+	//+optional
+	Interval metav1.Duration `json:"interval"`
 }
 
 // ZoneStatus defines the observed state of Zone

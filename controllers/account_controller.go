@@ -193,9 +193,24 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	// TODO: Cleanup Zones absent in Cloudflare
-
-	// TODO: Cleanup dns records in Cloudflare where no DNSRecord is present
+	// Check if there are any zones that are not present in Cloudflare
+	for _, z := range zonesList.Items {
+		found := false
+		for _, zone := range zones {
+			if z.Spec.ID == zone.ID {
+				found = true
+				break
+			}
+		}
+		if !found {
+			log.Info("Zone not found. Deleting", "Zone.Name", z.Name)
+			err = r.Delete(ctx, &z)
+			if err != nil {
+				log.Error(err, "Failed to delete Zone resource", "Zone.Name", z.Name)
+				return ctrl.Result{}, err
+			}
+		}
+	}
 
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }

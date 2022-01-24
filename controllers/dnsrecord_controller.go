@@ -257,7 +257,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 	}
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

@@ -49,6 +49,10 @@ spec:
               id:
                 description: ID of the zone
                 type: string
+              interval:
+                default: 5m
+                description: Interval to check zone status
+                type: string
               name:
                 description: Name of the zone
                 type: string

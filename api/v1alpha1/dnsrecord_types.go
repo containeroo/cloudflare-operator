@@ -48,6 +48,10 @@ type DNSRecordSpec struct {
 	//+kubebuilder:default=1
 	//+optional
 	TTL int `json:"ttl"`
+	// Interval to check DNSRecord
+	//+kubebuilder:default="5m"
+	//+optional
+	Interval metav1.Duration `json:"interval"`
 }
 
 // DNSRecordStatus defines the observed state of DNSRecord

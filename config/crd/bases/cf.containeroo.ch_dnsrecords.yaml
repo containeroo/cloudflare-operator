@@ -52,6 +52,10 @@ spec:
               content:
                 description: Content of the DNS record (e.g. 144.231.20.1)
                 type: string
+              interval:
+                default: 5m
+                description: Interval to check DNSRecord
+                type: string
               ipRef:
                 description: 'ObjectReference contains enough information to let you
                   inspect or modify the referred object. --- New uses of this type
