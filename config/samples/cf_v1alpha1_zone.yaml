@@ -3,4 +3,7 @@ kind: Zone
 metadata:
   name: zone-sample
 spec:
-  # TODO(user): Add fields here
+  # this object will be automatically created by the operator based on the
+  # zones available in the Cloudflare account
+  id: abcdef123456
+  name: example.com

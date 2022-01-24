@@ -3,4 +3,12 @@ kind: DNSRecord
 metadata:
   name: dnsrecord-sample
 spec:
-  # TODO(user): Add fields here
+  name: example.com
+  content: 1.1.1.1
+  type: A  # or CNAME
+  # optionally, you can also reference an IP object
+  # ipRef:
+  #   name: ip-sample
+  proxied: true  # or false
+  ttl: 1  # for auto or between 120 and 86400
+  interval: 5m
