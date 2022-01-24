@@ -1,0 +1,6 @@
+apiVersion: cf.containeroo.ch/v1alpha1
+kind: Zone
+metadata:
+  name: zone-sample
+spec:
+  # TODO(user): Add fields here

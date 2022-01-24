@@ -3,4 +3,6 @@ resources:
 - cf_v1alpha1_dnsrecord.yaml
 - networking_v1_ingress.yaml
 - cf_v1alpha1_ip.yaml
+- cf_v1alpha1_account.yaml
+- cf_v1alpha1_zone.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

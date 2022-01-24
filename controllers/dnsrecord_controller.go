@@ -21,12 +21,13 @@ import (
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"os"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
+	"strings"
+	"time"
 
 	"github.com/cloudflare/cloudflare-go"
 	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
@@ -69,17 +70,43 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	// Get the zone id for the specific DNSRecord
-	zoneID, err := r.Cf.ZoneIDByName(os.Getenv("CLOUDFLARE_ZONE_NAME"))
+	// Get all Zone objects
+	zones := &cfv1alpha1.ZoneList{}
+	err = r.List(ctx, zones)
+	if err != nil {
+		log.Error(err, "Failed to list Zone resources")
+		return ctrl.Result{}, err
+	}
+
+	// Get the zone for the DNSRecord
+	var dnsRecordZone cfv1alpha1.Zone
+	for _, zone := range zones.Items {
+		if strings.HasSuffix(instance.Spec.Name, zone.Spec.Name) {
+			dnsRecordZone = zone
+			break
+		}
+	}
+
+	if dnsRecordZone.Status.Phase != "Active" {
+		log.Info("Zone is not active. Retrying in 5 seconds.")
+		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
+	}
+
+	dnsRecordZoneId := dnsRecordZone.Spec.ID
+
+	if r.Cf.APIKey == "" {
+		log.Info("Cloudflare account not ready. Retrying in 5 seconds")
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
+	}
+
 	// Check if the DNS record already exists
-	existingRecords, err := r.Cf.DNSRecords(ctx, zoneID, cloudflare.DNSRecord{Name: instance.Spec.Name})
+	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{Name: instance.Spec.Name})
 	if err != nil {
 		log.Error(err, "Failed to get DNS record from cloudflare")
 		return ctrl.Result{}, err
 	}
 
 	if instance.Spec.Content == "" && instance.Spec.IpRef.Name == "" {
-		log.Error(err, "DNSRecord content is empty. Either content or ipRef must be set")
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = "DNSRecord content is empty. Either content or ipRef must be set"
 		if err := r.Status().Update(ctx, instance); err != nil {
@@ -107,7 +134,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Record doesn't exist, create it
 	if existingRecords == nil {
-		resp, err := r.Cf.CreateDNSRecord(ctx, zoneID, cloudflare.DNSRecord{
+		resp, err := r.Cf.CreateDNSRecord(ctx, dnsRecordZoneId, cloudflare.DNSRecord{
 			Name:    instance.Spec.Name,
 			Type:    instance.Spec.Type,
 			Content: instance.Spec.Content,
@@ -146,7 +173,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		existingRecord.TTL != instance.Spec.TTL ||
 		*existingRecord.Proxied != *instance.Spec.Proxied {
 		// Update the DNS record
-		err := r.Cf.UpdateDNSRecord(ctx, zoneID, existingRecord.ID, cloudflare.DNSRecord{
+		err := r.Cf.UpdateDNSRecord(ctx, dnsRecordZoneId, existingRecord.ID, cloudflare.DNSRecord{
 			Name:    instance.Spec.Name,
 			Type:    instance.Spec.Type,
 			Content: instance.Spec.Content,
@@ -193,7 +220,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	isDNSRecordMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
 	if isDNSRecordMarkedToBeDeleted {
 		if controllerutil.ContainsFinalizer(instance, dnsRecordFinalizer) {
-			if err := r.finalizeDNSRecord(ctx, zoneID, log, instance); err != nil {
+			if err := r.finalizeDNSRecord(ctx, dnsRecordZoneId, log, instance); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
@@ -225,8 +252,8 @@ func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // finalizeDNSRecord deletes the DNS record from cloudflare
-func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, zoneID string, log logr.Logger, d *cfv1alpha1.DNSRecord) error {
-	err := r.Cf.DeleteDNSRecord(ctx, zoneID, d.Status.RecordID)
+func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1alpha1.DNSRecord) error {
+	err := r.Cf.DeleteDNSRecord(ctx, dnsRecordZoneId, d.Status.RecordID)
 	if err != nil {
 		log.Error(err, "Failed to delete DNS record in cloudflare")
 		return err

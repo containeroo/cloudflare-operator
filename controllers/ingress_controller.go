@@ -20,7 +20,7 @@ import (
 	"context"
 	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -81,15 +81,19 @@ rules:
 		}
 
 		trueVar := true
+		dnsRecordSettings := cfv1alpha1.DNSRecordSettings{
+			Proxied: &trueVar,
+			TTL:     1,
+		}
 		dnsRecord := &cfv1alpha1.DNSRecord{
-			ObjectMeta: v1.ObjectMeta{
+			ObjectMeta: metav1.ObjectMeta{
 				Name:      strings.ReplaceAll(rule.Host, ".", "-"),
 				Namespace: instance.Namespace,
 				Labels: map[string]string{
 					"app.kubernetes.io/managed-by": "cloudflare-operator",
 					"app.kubernetes.io/created-by": "cloudflare-operator",
 				},
-				OwnerReferences: []v1.OwnerReference{
+				OwnerReferences: []metav1.OwnerReference{
 					{
 						APIVersion:         "networking.k8s.io/v1",
 						Kind:               "Ingress",
@@ -102,10 +106,9 @@ rules:
 			},
 			Spec: cfv1alpha1.DNSRecordSpec{
 				// TODO: Get the DNSRecordSpec from annotations on the Ingress or use sane defaults
-				Name:    rule.Host,
-				Type:    "A",
-				Proxied: &trueVar,
-				TTL:     1,
+				Name:              rule.Host,
+				DNSRecordSettings: dnsRecordSettings,
+				Type:              "A",
 			},
 		}
 

@@ -30,4 +30,20 @@ resources:
   kind: IP
   path: github.com/containeroo/cloudflare-operator/api/v1alpha1
   version: v1alpha1
+- api:
+    crdVersion: v1
+  controller: true
+  domain: containeroo.ch
+  group: cf
+  kind: Account
+  path: github.com/containeroo/cloudflare-operator/api/v1alpha1
+  version: v1alpha1
+- api:
+    crdVersion: v1
+  controller: true
+  domain: containeroo.ch
+  group: cf
+  kind: Zone
+  path: github.com/containeroo/cloudflare-operator/api/v1alpha1
+  version: v1alpha1
 version: "3"

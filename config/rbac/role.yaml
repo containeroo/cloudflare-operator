@@ -9,6 +9,32 @@ rules:
 - apiGroups:
   - cf.containeroo.ch
   resources:
+  - accounts
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cf.containeroo.ch
+  resources:
+  - accounts/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cf.containeroo.ch
+  resources:
+  - accounts/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - cf.containeroo.ch
+  resources:
   - dnsrecords
   verbs:
   - create
@@ -58,6 +84,39 @@ rules:
   - get
   - patch
   - update
+- apiGroups:
+  - cf.containeroo.ch
+  resources:
+  - zones
+  verbs:
+  - create
+  - delete
+  - get
+  - list
+  - patch
+  - update
+  - watch
+- apiGroups:
+  - cf.containeroo.ch
+  resources:
+  - zones/finalizers
+  verbs:
+  - update
+- apiGroups:
+  - cf.containeroo.ch
+  resources:
+  - zones/status
+  verbs:
+  - get
+  - patch
+  - update
+- apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
 - apiGroups:
   - networking.k8s.io
   resources:
