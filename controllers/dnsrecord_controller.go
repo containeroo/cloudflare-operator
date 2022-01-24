@@ -117,7 +117,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// Check if there is an IP reference in the DNSRecord
-	if instance.Spec.IpRef.Name != "" {
+	if instance.Spec.Type == "A" && instance.Spec.IpRef.Name != "" {
 		ip := &cfv1alpha1.IP{}
 		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IpRef.Name}, ip)
 		if err != nil {
