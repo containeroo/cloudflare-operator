@@ -41,7 +41,8 @@ type IPSpec struct {
 type IPStatus struct {
 	// Phase of the IP
 	//+kubebuilder:validation:Enum=Ready;Failed
-	Phase string `json:"phase"`
+	//+optional
+	Phase string `json:"phase,omitempty"`
 	// Message if the IP failed to update
 	Message        string `json:"message,omitempty"`
 	LastObservedIP string `json:"lastObservedIP"`

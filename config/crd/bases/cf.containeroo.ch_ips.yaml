@@ -74,7 +74,6 @@ spec:
                 type: string
             required:
             - lastObservedIP
-            - phase
             type: object
         type: object
     served: true
