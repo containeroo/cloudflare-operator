@@ -40,7 +40,7 @@ type DNSRecordReconciler struct {
 	Cf     *cloudflare.API
 }
 
-const dnsRecordFinalizer = "dnsrecord.cf.containeroo.ch/finalizer"
+const dnsRecordFinalizer = "finalizers.cf.containeroo.ch"
 
 //+kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords/status,verbs=get;update;patch

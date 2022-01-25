@@ -39,7 +39,7 @@ type IngressReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-const ingressFinalizer = "ingress.cf.containeroo.ch/finalizer"
+const ingressFinalizer = "finalizers.cf.containeroo.ch"
 
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
 
