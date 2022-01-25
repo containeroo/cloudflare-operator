@@ -153,8 +153,9 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					},
 				},
 				Spec: cfv1alpha1.ZoneSpec{
-					Name: zone.Name,
-					ID:   zone.ID,
+					Name:     zone.Name,
+					ID:       zone.ID,
+					Interval: instance.Spec.Interval,
 				},
 				Status: cfv1alpha1.ZoneStatus{
 					Phase: "Pending",

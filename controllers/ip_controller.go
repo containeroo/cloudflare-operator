@@ -90,7 +90,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		currentIP := getCurrentIP(instance.Spec.DynamicIpSources, log)
 		if currentIP == "" {
 			log.Info("No IP found")
-			return ctrl.Result{}, nil
+			return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 		}
 
 		instance.Spec.Address = currentIP
