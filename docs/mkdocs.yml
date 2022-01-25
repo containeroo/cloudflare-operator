@@ -1,0 +1,65 @@
+site_name: Cloudflare Operator
+site_url: https://github.com/containeroo/cloudflare-operator
+
+repo_name: 'github'
+repo_url: https://github.com/containeroo/cloudflare-operator
+
+site_dir: site
+
+docs_dir: 'content'
+
+theme:
+  name: material
+  custom_dir: 'theme'
+  include_sidebar: true
+  features:
+    - navigation.instant
+  favicon: assets/img/containeroo.png
+  logo: assets/img/containeroo.png
+  palette:
+    primary: cyan
+    accent: cyan
+
+extra_css:
+  - assets/styles/root.css
+  - assets/styles/header.css
+  - assets/styles/menu.css
+  - assets/styles/content.css
+
+extra_javascript:
+  - assets/js/extra.js
+
+markdown_extensions:
+  - markdown.extensions.admonition
+  - markdown.extensions.codehilite:
+      guess_lang: false
+  - toc:
+      permalink: true
+  - pymdownx.details
+  - pymdownx.inlinehilite
+  - pymdownx.smartsymbols
+  - pymdownx.superfences
+  - pymdownx.tabbed
+  - pymdownx.tasklist
+
+plugins:
+  - search:
+      lang: en
+  - git-revision-date-localized:
+      type: timeago
+  - minify:
+      minify_html: true
+      minify_js: true
+      htmlmin_opts:
+          remove_comments: true
+
+nav:
+  - 'Home': index.md
+  - 'Core concept': core_concept.md
+  - 'Getting started': getting_started.md
+  - 'Installation':
+    - 'Helm': installation/helm.md
+    - 'Manifests': installation/manifests.md
+  - 'Operation': operation.md
+  - 'API Reference': api_reference.md
+  - 'Roadmap': roadmap.md
