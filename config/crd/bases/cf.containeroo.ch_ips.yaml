@@ -63,8 +63,18 @@ spec:
             properties:
               lastObservedIP:
                 type: string
+              message:
+                description: Message if the IP failed to update
+                type: string
+              phase:
+                description: Phase of the IP
+                enum:
+                - Ready
+                - Failed
+                type: string
             required:
             - lastObservedIP
+            - phase
             type: object
         type: object
     served: true

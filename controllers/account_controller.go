@@ -104,8 +104,8 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 	}
 
-	if instance.Status.Phase != "Ready" || instance.Status.Message != "" {
-		instance.Status.Phase = "Ready"
+	if instance.Status.Phase != "Active" || instance.Status.Message != "" {
+		instance.Status.Phase = "Active"
 		instance.Status.Message = ""
 		err = r.Status().Update(ctx, instance)
 		if err != nil {

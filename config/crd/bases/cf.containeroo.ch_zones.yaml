@@ -64,8 +64,10 @@ spec:
             description: ZoneStatus defines the observed state of Zone
             properties:
               message:
+                description: Message if the Zone failed
                 type: string
               phase:
+                description: Phase of the Zone
                 enum:
                 - Active
                 - Pending
