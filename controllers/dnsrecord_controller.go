@@ -175,7 +175,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "Failed to update DNS record status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 	}
 
 	// Extract record from slice
@@ -216,7 +216,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			return ctrl.Result{}, err
 		}
 		log.Info("DNS record updated in cloudflare", "name", existingRecord.Name, "id", existingRecord.ID)
-		return ctrl.Result{}, nil
+		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 	}
 	log.Info("DNS record is up to date", "name", existingRecord.Name, "id", existingRecord.ID)
 
