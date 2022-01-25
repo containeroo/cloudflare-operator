@@ -39,8 +39,6 @@ type IngressReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-const ingressFinalizer = "finalizers.cf.containeroo.ch"
-
 //+kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -204,13 +202,13 @@ rules:
 
 	isIngressMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
 	if isIngressMarkedToBeDeleted {
-		if controllerutil.ContainsFinalizer(instance, ingressFinalizer) {
+		if controllerutil.ContainsFinalizer(instance, cfv1alpha1.CfFinalizer) {
 			if err := r.finalizeIngress(ctx, log, dnsRecords, instance); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
-		controllerutil.RemoveFinalizer(instance, ingressFinalizer)
+		controllerutil.RemoveFinalizer(instance, cfv1alpha1.CfFinalizer)
 		err := r.Update(ctx, instance)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -218,8 +216,8 @@ rules:
 		return ctrl.Result{}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, ingressFinalizer) {
-		controllerutil.AddFinalizer(instance, ingressFinalizer)
+	if !controllerutil.ContainsFinalizer(instance, cfv1alpha1.CfFinalizer) {
+		controllerutil.AddFinalizer(instance, cfv1alpha1.CfFinalizer)
 		err = r.Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Ingress finalizer")
