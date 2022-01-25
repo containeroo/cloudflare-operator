@@ -109,13 +109,8 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if ttl, ok := instance.Annotations["cf.containeroo.ch/ttl"]; ok {
 		ttlInt, _ := strconv.Atoi(ttl)
 		if *dnsRecordSpec.Proxied == true && ttlInt != 1 {
-			log.Info("DNSRecord is proxied and ttl is not 1. Setting ttl to 1")
-			instance.Annotations["cf.containeroo.ch/ttl"] = "1"
-			err = r.Update(ctx, instance)
-			if err != nil {
-				log.Error(err, "unable to update Ingress")
-				return ctrl.Result{}, err
-			}
+			log.Info("DNSRecord is proxied and ttl is not 1, skipping reconciliation", "ingress", instance.Name)
+			return ctrl.Result{}, nil
 		}
 		dnsRecordSpec.TTL = ttlInt
 	}

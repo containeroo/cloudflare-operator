@@ -137,13 +137,15 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Check if DNS record proxied is true and ttl is not 1
 	if *instance.Spec.Proxied == true && instance.Spec.TTL != 1 {
-		log.Info("DNSRecord is proxied and ttl is not 1. Setting ttl to 1")
-		instance.Spec.TTL = 1
-		err = r.Update(ctx, instance)
+		log.Info("DNSRecord is proxied and ttl is not 1")
+		instance.Status.Phase = "Failed"
+		instance.Status.Message = "DNSRecord is proxied and ttl is not 1"
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
-			log.Error(err, "Failed to update DNSRecord resource")
+			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, err
 	}
 
 	// Record doesn't exist, create it
