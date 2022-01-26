@@ -73,13 +73,18 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	secret := &v1.Secret{}
 	err = r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.GlobalApiKey.SecretRef.Namespace, Name: instance.Spec.GlobalApiKey.SecretRef.Name}, secret)
 	if err != nil {
-		log.Error(err, "Failed to get Secret resource", "Secret.Namespace", instance.Spec.GlobalApiKey.SecretRef.Namespace, "Secret.Name", instance.Spec.GlobalApiKey.SecretRef.Name)
+		instance.Status.Phase = "Failed"
+		instance.Status.Message = "Failed to get secret"
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Account status")
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, err
 	}
 	apiKey := string(secret.Data["apiKey"])
 	cf, err := cloudflare.New(apiKey, instance.Spec.Email)
 	if err != nil {
-		log.Error(err, "Failed to create Cloudflare client")
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = err.Error()
 		err = r.Status().Update(ctx, instance)
@@ -104,21 +109,12 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 	}
 
-	if instance.Status.Phase != "Active" || instance.Status.Message != "" {
-		instance.Status.Phase = "Active"
-		instance.Status.Message = ""
-		err = r.Status().Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update Account status")
-			return ctrl.Result{}, err
-		}
-	}
-
 	// Fetch all Zone objects
 	zonesList := &cfv1alpha1.ZoneList{}
 	err = r.List(ctx, zonesList, client.InNamespace(instance.Namespace))
 	if err != nil {
-		log.Error(err, "Failed to list Zone resources")
+		instance.Status.Phase = "Failed"
+		instance.Status.Message = "Failed to list zones"
 		return ctrl.Result{}, err
 	}
 
@@ -132,7 +128,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}
 		}
 		if !found {
-			log.Info("Zone not found. Creating", "Zone.Name", zone.Name, "Zone.ID", zone.ID)
 			trueVar := true
 			z := &cfv1alpha1.Zone{
 				ObjectMeta: metav1.ObjectMeta{
@@ -164,8 +159,18 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			err = r.Create(ctx, z)
 			if err != nil {
 				log.Error(err, "Failed to create Zone resource", "Zone.Name", zone.Name, "Zone.ID", zone.ID)
-				return ctrl.Result{}, err
+				continue
 			}
+		}
+	}
+
+	if instance.Status.Phase != "Active" || instance.Status.Message != "" {
+		instance.Status.Phase = "Active"
+		instance.Status.Message = ""
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Account status")
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -204,7 +209,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}
 		}
 		if !found {
-			log.Info("Zone not found. Deleting", "Zone.Name", z.Name)
 			err = r.Delete(ctx, &z)
 			if err != nil {
 				log.Error(err, "Failed to delete Zone resource", "Zone.Name", z.Name)
