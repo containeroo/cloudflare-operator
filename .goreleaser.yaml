@@ -20,6 +20,9 @@ dockers:
     extra_files:
       - go.mod
       - go.sum
+      - main.go
+      - api
+      - controllers
     build_flag_templates:
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
