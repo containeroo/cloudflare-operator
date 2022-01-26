@@ -136,7 +136,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	// Check if DNS record proxied is true and ttl is not 1
-	if *instance.Spec.Proxied == true && instance.Spec.TTL != 1 {
+	if *instance.Spec.Proxied && instance.Spec.TTL != 1 {
 		log.Info("DNSRecord is proxied and ttl is not 1")
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = "DNSRecord is proxied and ttl is not 1"
