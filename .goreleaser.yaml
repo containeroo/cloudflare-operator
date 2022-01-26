@@ -19,6 +19,7 @@ dockers:
     dockerfile: Dockerfile
     extra_files:
       - go.mod
+      - go.sum
     build_flag_templates:
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
