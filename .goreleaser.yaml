@@ -17,6 +17,8 @@ dockers:
       - gcr.io/containeroo/cloudflare-operator:latest
       - gcr.io/containeroo/cloudflare-operator:{{ .Version }}
     dockerfile: Dockerfile
+    extra_files:
+      - go.mod
     build_flag_templates:
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
