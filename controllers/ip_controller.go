@@ -18,7 +18,7 @@ package controllers
 
 import (
 	"context"
-	"github.com/go-logr/logr"
+	"fmt"
 	"io/ioutil"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -87,22 +87,27 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 				return ctrl.Result{}, err
 			}
 		}
-		currentIP := getCurrentIP(instance.Spec.DynamicIpSources, log)
-		if currentIP == "" {
-			log.Info("No IP found")
-			return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
+		currentIP, err := getCurrentIP(instance.Spec.DynamicIpSources)
+		if err != nil {
+			instance.Status.Phase = "Failed"
+			instance.Status.Message = err.Error()
+			err := r.Status().Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "Failed to update IP resource")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, err
 		}
 
 		instance.Spec.Address = currentIP
-		err = r.Update(ctx, instance)
+	}
+
+	if instance.Spec.Address != instance.Status.LastObservedIP {
+		err := r.Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update IP resource")
 			return ctrl.Result{}, err
 		}
-	}
-
-	if instance.Spec.Address != instance.Status.LastObservedIP {
-		log.Info("IP has changed. Updating IP resource")
 		instance.Status.LastObservedIP = instance.Spec.Address
 		err = r.Status().Update(ctx, instance)
 		if err != nil {
@@ -115,19 +120,30 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
 		log.Error(err, "Failed to list DNS records")
+		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, err
 	}
 
 	for _, dnsRecord := range dnsRecords.Items {
-		if dnsRecord.Spec.IpRef.Name != instance.ObjectMeta.Name {
+		if dnsRecord.Spec.IpRef.Name != instance.Name {
 			continue
 		}
 		if dnsRecord.Spec.Content == instance.Spec.Address {
 			continue
 		}
 		dnsRecord.Spec.Content = instance.Spec.Address
-		err = r.Update(ctx, &dnsRecord)
+		err := r.Update(ctx, &dnsRecord)
 		if err != nil {
 			log.Error(err, "Failed to update DNS record")
+		}
+	}
+
+	if instance.Status.Phase != "Ready" || instance.Status.Message != "" {
+		instance.Status.Phase = "Ready"
+		instance.Status.Message = ""
+		err := r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update IP resource")
+			return ctrl.Result{}, err
 		}
 	}
 
@@ -145,40 +161,38 @@ func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // getCurrentIP returns the current public IP
-func getCurrentIP(sources []string, log logr.Logger) string {
+func getCurrentIP(sources []string) (string, error) {
 	rand.Seed(time.Now().UnixNano())
 	rand.Shuffle(len(sources), func(i, j int) { sources[i], sources[j] = sources[j], sources[i] })
 
-	var success bool
 	var currentIP string
+	var ipError error
 	for _, provider := range sources {
-		success = false
 		resp, err := http.Get(provider)
 		if err != nil {
-			log.Error(err, "Unable to get public ip from %s: %s")
+			ipError = fmt.Errorf("failed to get IP from %s: %s", provider, err)
 			continue
 		}
 		if resp.StatusCode != 200 {
-			log.Info("Unable to get public ip from %s: http status code %d")
+			ipError = fmt.Errorf("failed to get IP from %s: %s", provider, resp.Status)
 			continue
 		}
 		ip, err := ioutil.ReadAll(resp.Body)
 		if err != nil {
-			log.Error(err, "Unable to get public ip from %s")
+			ipError = fmt.Errorf("failed to get IP from %s: %s", provider, err)
 			continue
 		}
 		currentIP = strings.TrimSpace(string(ip))
 		if net.ParseIP(currentIP) == nil {
-			log.Info("Public ip is invalid")
+			ipError = fmt.Errorf("ip %s is not a valid IP", currentIP)
 			continue
 		}
-		success = true
+		ipError = nil
 		break
 	}
-	if !success {
-		log.Info("Unable to get public ip from any configured provider")
-		return ""
+	if ipError != nil {
+		return "", ipError
 	}
 
-	return currentIP
+	return currentIP, nil
 }

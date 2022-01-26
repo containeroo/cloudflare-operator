@@ -57,7 +57,7 @@ type DNSRecordSpec struct {
 // DNSRecordStatus defines the observed state of DNSRecord
 type DNSRecordStatus struct {
 	// Phase of the DNS record
-	//+kubebuilder:validation:Enum=Created;Failed
+	//+kubebuilder:validation:Enum=Created;Pending;Failed
 	Phase string `json:"phase"`
 	// Message if the DNS record failed
 	Message string `json:"message,omitempty"`

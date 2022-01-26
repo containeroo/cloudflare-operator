@@ -39,6 +39,12 @@ type IPSpec struct {
 
 // IPStatus defines the observed state of IP
 type IPStatus struct {
+	// Phase of the IP
+	//+kubebuilder:validation:Enum=Ready;Failed
+	//+optional
+	Phase string `json:"phase,omitempty"`
+	// Message if the IP failed to update
+	Message        string `json:"message,omitempty"`
 	LastObservedIP string `json:"lastObservedIP"`
 }
 
@@ -49,6 +55,7 @@ type IPStatus struct {
 // IP is the Schema for the ips API
 //+kubebuilder:printcolumn:name="Address",type="string",JSONPath=".spec.address"
 //+kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
+//+kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 type IP struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

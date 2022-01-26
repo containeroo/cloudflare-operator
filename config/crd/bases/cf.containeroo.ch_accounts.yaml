@@ -82,7 +82,7 @@ spec:
               phase:
                 description: Phase of the Account
                 enum:
-                - Ready
+                - Active
                 - Failed
                 type: string
               zones:

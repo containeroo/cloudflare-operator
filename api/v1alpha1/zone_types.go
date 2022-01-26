@@ -37,8 +37,10 @@ type ZoneSpec struct {
 
 // ZoneStatus defines the observed state of Zone
 type ZoneStatus struct {
+	// Phase of the Zone
 	//+kubebuilder:validation:Enum=Active;Pending;Failed
-	Phase   string `json:"phase"`
+	Phase string `json:"phase"`
+	// Message if the Zone failed
 	Message string `json:"message,omitempty"`
 }
 
