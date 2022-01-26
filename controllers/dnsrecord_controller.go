@@ -68,6 +68,17 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
+	if r.Cf.APIKey == "" {
+		instance.Status.Phase = "Pending"
+		instance.Status.Message = "Cloudflare account not ready"
+		err := r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNSRecord status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
+	}
+
 	// Get all Zone objects
 	zones := &cfv1alpha1.ZoneList{}
 	err = r.List(ctx, zones)
@@ -86,26 +97,33 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if dnsRecordZone.Name == "" {
-		log.Error(err, "Failed to find zone for DNSRecord")
+		instance.Status.Phase = "Failed"
+		instance.Status.Message = "Zone not found"
+		err = r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNSRecord status")
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, err
 	}
 
 	if dnsRecordZone.Status.Phase != "Active" {
-		log.Info("Zone is not active. Retrying in 5 seconds.")
+		instance.Status.Phase = "Pending"
+		instance.Status.Message = "Zone not ready"
+		err := r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNSRecord status")
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
 	dnsRecordZoneId := dnsRecordZone.Spec.ID
 
-	if r.Cf.APIKey == "" {
-		log.Info("Cloudflare account not ready. Retrying in 5 seconds")
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
-	}
-
 	// Check if the DNS record already exists
 	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{Name: instance.Spec.Name})
 	if err != nil {
-		log.Error(err, "Failed to get DNS record from cloudflare")
+		log.Error(err, "Failed to get DNS records from Cloudflare")
 		return ctrl.Result{}, err
 	}
 
@@ -124,7 +142,13 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		ip := &cfv1alpha1.IP{}
 		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IpRef.Name}, ip)
 		if err != nil {
-			log.Error(err, "Failed to get IP resource")
+			instance.Status.Phase = "Failed"
+			instance.Status.Message = "IP object not found"
+			err := r.Status().Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "Failed to update DNSRecord status")
+				return ctrl.Result{}, err
+			}
 			return ctrl.Result{}, err
 		}
 		instance.Spec.Content = ip.Spec.Address
@@ -137,7 +161,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	// Check if DNS record proxied is true and ttl is not 1
 	if *instance.Spec.Proxied == true && instance.Spec.TTL != 1 {
-		log.Info("DNSRecord is proxied and ttl is not 1")
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = "DNSRecord is proxied and ttl is not 1"
 		err := r.Status().Update(ctx, instance)
@@ -158,7 +181,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Proxied: instance.Spec.Proxied,
 		})
 		if err != nil {
-			log.Error(err, "Failed to create DNS record in cloudflare")
 			instance.Status.Phase = "Failed"
 			instance.Status.Message = err.Error()
 			err = r.Status().Update(ctx, instance)
@@ -168,7 +190,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 			return ctrl.Result{}, err
 		}
-		log.Info("DNS record created in cloudflare", "name", resp.Result.Name, "id", resp.Result.ID)
 		instance.Status.Phase = "Created"
 		instance.Status.RecordID = resp.Result.ID
 		instance.Status.Message = ""
@@ -197,7 +218,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Proxied: instance.Spec.Proxied,
 		})
 		if err != nil {
-			log.Error(err, "Failed to update DNS record in cloudflare")
 			instance.Status.Phase = "Failed"
 			instance.Status.Message = err.Error()
 			err = r.Status().Update(ctx, instance)
@@ -220,7 +240,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		log.Info("DNS record updated in cloudflare", "name", existingRecord.Name, "id", existingRecord.ID)
 		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 	}
-	log.Info("DNS record is up to date", "name", existingRecord.Name, "id", existingRecord.ID)
 
 	if !reflect.DeepEqual(instance.Status, cfv1alpha1.DNSRecordStatus{Phase: "Created", RecordID: existingRecord.ID, Message: ""}) {
 		instance.Status.Phase = "Created"
@@ -274,6 +293,5 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 		log.Error(err, "Failed to delete DNS record in cloudflare")
 		return err
 	}
-	log.Info("DNS record deleted in cloudflare", "name", d.Spec.Name, "id", d.Status.RecordID)
 	return nil
 }
