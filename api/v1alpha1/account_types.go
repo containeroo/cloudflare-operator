@@ -49,7 +49,7 @@ type AccountStatusZones struct {
 // AccountStatus defines the observed state of Account
 type AccountStatus struct {
 	// Phase of the Account
-	//+kubebuilder:validation:Enum=Ready;Failed
+	//+kubebuilder:validation:Enum=Active;Failed
 	Phase string `json:"phase"`
 	// Message if the Account authentication failed
 	Message string `json:"message,omitempty"`

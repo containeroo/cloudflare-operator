@@ -16,4 +16,4 @@ limitations under the License.
 
 package v1alpha1
 
-const CfFinalizer = "finalizers.cf.containeroo.ch"
+const CfFinalizer = "cf.containeroo.ch/finalizer"

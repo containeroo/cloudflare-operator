@@ -23,6 +23,9 @@ spec:
     - jsonPath: .spec.type
       name: Type
       type: string
+    - jsonPath: .status.phase
+      name: Phase
+      type: string
     name: v1alpha1
     schema:
       openAPIV3Schema:
@@ -62,6 +65,15 @@ spec:
             description: IPStatus defines the observed state of IP
             properties:
               lastObservedIP:
+                type: string
+              message:
+                description: Message if the IP failed to update
+                type: string
+              phase:
+                description: Phase of the IP
+                enum:
+                - Ready
+                - Failed
                 type: string
             required:
             - lastObservedIP

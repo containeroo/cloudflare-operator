@@ -148,6 +148,7 @@ spec:
                 description: Phase of the DNS record
                 enum:
                 - Created
+                - Pending
                 - Failed
                 type: string
               recordId:
