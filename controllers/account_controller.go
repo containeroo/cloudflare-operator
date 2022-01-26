@@ -75,7 +75,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err != nil {
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = "Failed to get secret"
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -87,7 +87,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err != nil {
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = err.Error()
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -101,7 +101,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		log.Error(err, "Failed to create Cloudflare client. Retrying in 30 seconds")
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = err.Error()
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -115,6 +115,11 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if err != nil {
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = "Failed to list zones"
+		err := r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Account status")
+			return ctrl.Result{}, err
+		}
 		return ctrl.Result{}, err
 	}
 
@@ -167,7 +172,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if instance.Status.Phase != "Active" || instance.Status.Message != "" {
 		instance.Status.Phase = "Active"
 		instance.Status.Message = ""
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -192,7 +197,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 	if statusChanged {
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err

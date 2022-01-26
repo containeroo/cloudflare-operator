@@ -103,7 +103,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	if instance.Spec.Address != instance.Status.LastObservedIP {
-		err = r.Update(ctx, instance)
+		err := r.Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update IP resource")
 			return ctrl.Result{}, err
@@ -131,7 +131,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			continue
 		}
 		dnsRecord.Spec.Content = instance.Spec.Address
-		err = r.Update(ctx, &dnsRecord)
+		err := r.Update(ctx, &dnsRecord)
 		if err != nil {
 			log.Error(err, "Failed to update DNS record")
 		}

@@ -99,7 +99,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if dnsRecordZone.Name == "" {
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = "Zone not found"
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
@@ -183,7 +183,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			instance.Status.Phase = "Failed"
 			instance.Status.Message = err.Error()
-			err = r.Status().Update(ctx, instance)
+			err := r.Status().Update(ctx, instance)
 			if err != nil {
 				log.Error(err, "Failed to update DNS record status")
 				return ctrl.Result{}, err
@@ -220,7 +220,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			instance.Status.Phase = "Failed"
 			instance.Status.Message = err.Error()
-			err = r.Status().Update(ctx, instance)
+			err := r.Status().Update(ctx, instance)
 			if err != nil {
 				log.Error(err, "Failed to update DNS record status")
 				return ctrl.Result{}, err
@@ -270,7 +270,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if !controllerutil.ContainsFinalizer(instance, cfv1alpha1.CfFinalizer) {
 		controllerutil.AddFinalizer(instance, cfv1alpha1.CfFinalizer)
-		err = r.Update(ctx, instance)
+		err := r.Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update DNS record finalizer")
 			return ctrl.Result{}, err

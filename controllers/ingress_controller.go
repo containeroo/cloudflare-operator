@@ -185,7 +185,7 @@ rules:
 			// Update the DNSRecord with the new dnsRecordSpec
 			log.Info("Updating DNSRecord", "name", dnsRecord.Name)
 			dnsRecord.Spec = dnsRecordSpec
-			err = r.Update(ctx, &dnsRecord)
+			err := r.Update(ctx, &dnsRecord)
 			if err != nil {
 				log.Error(err, "unable to update DNSRecord")
 				return ctrl.Result{}, err

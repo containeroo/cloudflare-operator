@@ -81,7 +81,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = err.Error()
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
@@ -92,7 +92,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if instance.Status.Phase != "Active" {
 		instance.Status.Phase = "Active"
 		instance.Status.Message = ""
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
@@ -112,7 +112,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	if err != nil {
 		instance.Status.Phase = "Failed"
 		instance.Status.Message = err.Error()
-		err = r.Status().Update(ctx, instance)
+		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
@@ -141,7 +141,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			if err != nil {
 				instance.Status.Phase = "Failed"
 				instance.Status.Message = err.Error()
-				err = r.Status().Update(ctx, instance)
+				err := r.Status().Update(ctx, instance)
 				if err != nil {
 					log.Error(err, "Failed to update Zone status")
 				}
