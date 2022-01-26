@@ -19,14 +19,12 @@ package controllers
 import (
 	"context"
 	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
-	"github.com/go-logr/logr"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 	"strconv"
 	"strings"
@@ -195,31 +193,6 @@ rules:
 		}
 	}
 
-	isIngressMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
-	if isIngressMarkedToBeDeleted {
-		if controllerutil.ContainsFinalizer(instance, cfv1alpha1.CfFinalizer) {
-			if err := r.finalizeIngress(ctx, log, dnsRecords, instance); err != nil {
-				return ctrl.Result{}, err
-			}
-		}
-
-		controllerutil.RemoveFinalizer(instance, cfv1alpha1.CfFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
-	if !controllerutil.ContainsFinalizer(instance, cfv1alpha1.CfFinalizer) {
-		controllerutil.AddFinalizer(instance, cfv1alpha1.CfFinalizer)
-		err = r.Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update Ingress finalizer")
-			return ctrl.Result{}, err
-		}
-	}
-
 	return ctrl.Result{}, nil
 }
 
@@ -228,18 +201,4 @@ func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
 		Complete(r)
-}
-
-func (r *IngressReconciler) finalizeIngress(ctx context.Context, log logr.Logger, d *cfv1alpha1.DNSRecordList, i *networkingv1.Ingress) error {
-	for _, dnsRecord := range d.Items {
-		if dnsRecord.Spec.Name == i.Name {
-			log.Info("Deleting DNSRecord", "name", dnsRecord.Name)
-			err := r.Delete(ctx, &dnsRecord)
-			if err != nil {
-				log.Error(err, "unable to delete DNSRecord")
-				return err
-			}
-		}
-	}
-	return nil
 }
