@@ -14,8 +14,8 @@ builds:
       - arm64
 dockers:
   - image_templates:
-      - gcr.io/containeroo/cloudflare-operator:latest
-      - gcr.io/containeroo/cloudflare-operator:{{ .Version }}
+      - ghcr.io/containeroo/cloudflare-operator:latest
+      - ghcr.io/containeroo/cloudflare-operator:{{ .Version }}
     dockerfile: Dockerfile
     extra_files:
       - go.mod
