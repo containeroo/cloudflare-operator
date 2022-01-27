@@ -153,7 +153,7 @@ spec:
 ```
 
 !!! warning
-    The source must return only the external IPV4 address.
+    The source must return only the external IPv4 address.
 
 good:
 
@@ -174,7 +174,7 @@ curl "https://api.ipify.org?format=json"
 ```
 
 !!! tip
-    To minimize the amount of traffic to each ip source, make sure to add more than one `dynamicIpSources`. cloudflare-operator will randomly choose a source on every `interval`.
+    To minimize the amount of traffic to each IP source, make sure to add more than one `dynamicIpSources`. cloudflare-operator will randomly choose a source on every `interval`.
 
 ## Ingress
 
