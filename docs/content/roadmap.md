@@ -1,6 +1,6 @@
-# roadmap
+# Roadmap
 
-We are planing some more features in the next release:
+These features are planned for the next couple of months:
 
-- send notification if a DNS Record was created/deleted/updated in Cloudflare
-- Support of IPv6 addresses
+- Send notifications for certain events
+- Add support for IPv6 addresses

@@ -1,30 +1,30 @@
-# core concept
+# Core Concept
 
-The goal of cloudflare-operator is to manage Cloudflare DNS Records inside of Kubernetes.
+The goal of cloudflare-operator is to manage Cloudflare DNS records using Kubernetes objects.
 
-## preamble Cloudflare DNS Record
+## Preamble Cloudflare DNS Record
 
-A Cloudflare DNS Record has the following fields:
+A Cloudflare DNS record has the following fields:
 
 ### Type
 
-Cloudflare can handle multiple types. At the moment cloudflare-operator only can handle the types `A` and `CNAME`.
+Cloudflare can handle multiple types. At the moment cloudflare-operator only supports `A` and `CNAME` records.
 
 **A**
 
-A `A` record must point to a valid IPv4 address, eg `172.4.20.69`.
+An `A` record must point to a valid IPv4 address, eg `172.4.20.69`.
 
 !!! info "cloudflare-operator use case"
-    Let the cloudflare-operator create a `A` record for your root domain, eg. `example.com`.
+    Let cloudflare-operator create an `A` record for your root domain, eg. `example.com`.
 
 **CNAME***
 
 A `CNAME` record must point to a valid domain, eg `example.com`.
-Cloudflare has the ability to point a `CNAME` record to a `A` record. `Proxy Status` and `TTL` of the `CNAME` record will be passed to the `A` record.
+Cloudflare has the ability to point a `CNAME` record to an `A` record. `Proxy Status` and `TTL` of the `CNAME` record will be passed to the `A` record.
 
 !!! info "cloudflare-operator use case"
-    Let the cloudflare-operator create for all your subdomains `CNAME` records that point to your `A` record root domain.  
-    This is not mandatory, but so the cloudflare-operator has to change only one DNS record if your external IPv4 address changes.
+    Let cloudflare-operator create `CNAME` records for all your subdomains that point to your `A` record root domain.  
+    This is not mandatory, but doing so cloudflare-operator only has to change one DNS record if your external IPv4 address changes.
 
 ### Name
 
@@ -40,7 +40,7 @@ If of type `CNAME` record must be a valid domain.
 
 ### Proxy Status
 
-Non proxied means all traffic goes directly to the `content` (IPv4 address or domain) without Cloudflare being a safety net in front.
+Not proxied means all traffic goes directly to the `content` (IPv4 address or domain) without Cloudflare being a safety net in front.
 
 ### TTL
 
@@ -49,7 +49,7 @@ TTL (time to live) is a setting that tells the DNS resolver how long to cache a 
 ### Example
 
 | Type  | Name        | Content       | Proxy Status | TTL  |
-| :---- | :---------- | :------------ | :----------- | :--- |
+|:------|:------------|:--------------|:-------------|:-----|
 | A     | example.com | 178.4.20.69   | true         | Auto |
 | CNAME | www         | example.com   | true         | Auto |
 | A     | blog        | 142.251.36.35 | true         | Auto |
@@ -60,7 +60,7 @@ TTL (time to live) is a setting that tells the DNS resolver how long to cache a 
 
 ## Account
 
-The `Account` object contains your Cloudflare credentials (eMail & global API key)
+The `Account` object contains your Cloudflare credentials (email & global API key)
 
 example:
 
@@ -79,12 +79,12 @@ spec:
 
 ## Zone
 
-In the `Zone` object the Cloudflare `Zone ID` is stored. This object will be automatically created by the cloudflare-operator based on the zones available in the Cloudflare account.  
+The `Zone` object stores the zone id. This object will be automatically created by the cloudflare-operator based on the zones available in the Cloudflare account.  
 The zones will be automatic populated and updated in the related `Account` object.
 
-The cloudflare-operator checks if a `DNSRecord.spec.name` ends with `Zone.spec.name` to evaluate in which Cloudflare Zone the Cloudflare DNS Records should be created.
+cloudflare-operator checks if `DNSRecord.spec.name` ends with `Zone.spec.name` to evaluate in which Cloudflare zone the dns record should be created.
 
-The cloudflare-operator will fetch all Cloudflare DNS Records for each `Zone` object.
+cloudflare-operator will fetch all Cloudflare DNS Records for each `Zone` object and deletes them on Cloudflare if they are not present in Kubernetes.
 
 example:
 
@@ -104,7 +104,8 @@ The `IP` object has two purposes:
 
 1. laziness
 
-You have multiple `DNSRecord` with type `A` who points to the same IP. Link this object with a `DNSRecord` (`spec.ipRef.name`) and the cloudflare-operator will update all `DNSRecord`'s with this IP instead of manually update all `DNSRecord`'s (`spec.content`) or ingress annotations (`metadata.annotations.cf\.containeroo\.ch/content`).
+Let's say you have multiple `DNSRecords` pointing to the same IP, you can use the `IP` object to avoid repeating the IP address in the `DNSRecord.spec.content` field.  
+If you change the `IP` object, cloudflare-operator will automatically update the `DNSRecord.spec.content` fields.
 
 example:
 
@@ -120,7 +121,7 @@ spec:
 
 2. "DynDNS"
 
-IF the `type` is set to `dynamic`, the cloudflare-operator will fetch in the given interval (`spec.interval`) your external IPv4 address. To get the external IPV4 address, the cloudflare-operator will random use a list of services.
+If the `type` is set to `dynamic`, cloudflare-operator will fetch your external IPv4 address in a specified interval (`spec.interval`).
 
 example:
 
@@ -131,11 +132,10 @@ metadata:
   name: external-ipv4
 spec:
   type: dynamic
-  address: # will be automatically populated
   interval: 5m
 ```
 
-If no `dynamicIpSources` is specified, the cloudflare-operator will use a hardcoded set of sources.  
+If no `dynamicIpSources` are specified, cloudflare-operator will use a hardcoded set of sources.  
 If you prefer other sources, you can add them as a list in `dynamicIpSources`.
 
 example:
@@ -147,7 +147,6 @@ metadata:
   name: external-ipv4
 spec:
   type: dynamic
-  address: # will be automatically populated
   dynamicIpSources:
     - https://api.ipify.org
   interval: 5m
@@ -175,23 +174,23 @@ curl "https://api.ipify.org?format=json"
 ```
 
 !!! tip
-    To not stress the "IP provider" add more than one `dynamicIpSources`. The cloudflare-operator will randomly choose a provider every `interval`
+    To minimize the amount of traffic to each ip source, make sure to add more than one `dynamicIpSources`. cloudflare-operator will randomly choose a source on every `interval`.
 
 ## Ingress
 
-The cloudflare-operator creates a `DNSRecord` for each host specified in a ingress.
-You must set as minimum the annotation `cf.containeroo.ch/content` or `cf.containeroo.ch/ip-ref`.
+cloudflare-operator creates a `DNSRecord` for each host specified in an `Ingress` object.
+You must set either the annotation `cf.containeroo.ch/content` or `cf.containeroo.ch/ip-ref`.
 To skip the creation of a `DNSRecord`, add the annotation `cf.containeroo.ch/skip=true`.
 
-The following annotation are possible:
+The following annotations are supported:
 
-| annotation                   | value                | description                                                                                                     |
-| :--------------------------- | :------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                                    |
-| `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`  | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic'      |
-| `cf.containeroo.ch/type`     | `A` or `CNAME`       | Cloudflare DNS record type                                                                                      |
-| `cf.containeroo.ch/interval` | `5m`                 | Interval in which cloudflare-operator will compare Cloudflare DNS Records with cloudflare-operator `DNSRecords` |
-| `cf.containeroo.ch/skip`     | `true` or `false`    | Do not create a cloudflare-operator `DNSRecord`                                                                 |
+| annotation                   | value                  | description                                                                                                     |
+|:-----------------------------|:-----------------------|:----------------------------------------------------------------------------------------------------------------|
+| `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                                  |
+| `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`    | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic'      |
+| `cf.containeroo.ch/type`     | `A` or `CNAME`         | Cloudflare DNS record type                                                                                      |
+| `cf.containeroo.ch/interval` | `5m`                   | Interval at which cloudflare-operator will compare Cloudflare DNS records with cloudflare-operator `DNSRecords` |
+| `cf.containeroo.ch/skip`     | `true` or `false`      | Do not create a Cloudflare DNS record                                                                           |
 
 example:
 
@@ -219,13 +218,13 @@ spec:
 
 ## DNSRecord
 
-Represents the Cloudflare DNS Record within Kubernetes. The cloudflare-operator checks if a `DNSRecord.spec.name` ends with `Zone.spec.name` to evaluate in which Cloudflare Zone the Cloudflare DNS Records should be created.
+DNSRecords represent a Cloudflare DNS record within Kubernetes.
 
-The `interval` is the interval in witch the cloudflare-operator will fetch the Cloudflare DNS Records and compare them with the cloudflare-operator `DNSRecord` properties (`proxied`, `ttl`, `type`, `content`). If the Cloudflare DNS Record does not match with the `DNSRecord`, the Cloudflare DNS Record will be updated.
+`interval` specifies, at which interval cloudflare-operator will fetch the Cloudflare DNS records and compare them with `DNSRecord` object spec (`proxied`, `ttl`, `type`, `content`). If the Cloudflare DNS record does not match the `DNSRecord`, Cloudflare DNS record will be updated.
 
-If a `DNSRecord` is deleted, the cloudflare-operator will also delete the corresponding Cloudflare DNS Record.
+If a `DNSRecord` is deleted, cloudflare-operator will also delete the corresponding Cloudflare DNS record.
 
-Set `spec.ipRef` to the name of a `IP` object to automatic update the `content` with the address (`spec.address`) of the linked `IP` object.
+Set `spec.ipRef` to the name of an `IP` object to automatically update the `content` with the address (`spec.address`) of the linked `IP` object.
 
 example:
 
