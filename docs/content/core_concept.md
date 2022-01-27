@@ -36,11 +36,11 @@ If of type `A` record must be a valid IPv4 address.
 If of type `CNAME` record must be a valid domain.
 
 !!! info "cloudflare-operator use case"
-    Our recommendation is to point all your subdomains to your root domain.
+    Our recommendation is to point all your subdomains to your root domain, eg `example.com`.
 
 ### Proxy Status
 
-Non proxied means all traffic goes directly to your own IP without Cloudflare being a safety net in front.
+Non proxied means all traffic goes directly to the `content` (IPv4 address or domain) without Cloudflare being a safety net in front.
 
 ### TTL
 
@@ -100,7 +100,7 @@ spec:
 
 ## IP
 
-The `IP` Object has two purposes:
+The `IP` object has two purposes:
 
 1. laziness
 
@@ -175,7 +175,7 @@ curl "https://api.ipify.org?format=json"
 ```
 
 !!! tip
-    To not stress the IP-provider add more than one `dynamicIpSources`. The cloudflare-operator will randomly choose a IP-provider every `interval`
+    To not stress the "IP provider" add more than one `dynamicIpSources`. The cloudflare-operator will randomly choose a provider every `interval`
 
 ## Ingress
 
@@ -187,7 +187,7 @@ The following annotation are possible:
 
 | annotation                   | value                | description                                                                                                     |
 | :--------------------------- | :------------------- | :-------------------------------------------------------------------------------------------------------------- |
-| `cf.containeroo.ch/content`  | Ip address or domain | Ip address or domain to set as Cloudflare DNS record content                                                    |
+| `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                                    |
 | `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`  | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic'      |
 | `cf.containeroo.ch/type`     | `A` or `CNAME`       | Cloudflare DNS record type                                                                                      |
 | `cf.containeroo.ch/interval` | `5m`                 | Interval in which cloudflare-operator will compare Cloudflare DNS Records with cloudflare-operator `DNSRecords` |
@@ -225,7 +225,7 @@ The `interval` is the interval in witch the cloudflare-operator will fetch the C
 
 If a `DNSRecord` is deleted, the cloudflare-operator will also delete the corresponding Cloudflare DNS Record.
 
-Set `spec.ipRef` to the name of a `IP` Object to automatic update the `content` with the address (`spec.address`) of the linked `IP` object.
+Set `spec.ipRef` to the name of a `IP` object to automatic update the `content` with the address (`spec.address`) of the linked `IP` object.
 
 example:
 
