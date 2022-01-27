@@ -2,14 +2,15 @@
 
 ## Installing with Helm
 
-cloudflare-operator provides Helm charts as a first-class method of installation on Kubernetes.
+cloudflare-operator provides a Helm chart as a first-class method of installation on Kubernetes.
 
 ## Prerequisites
 
-- Install Helm version 3 or later.
-- Install a supported version of Kubernetes.
-- Read Compatibility with Kubernetes Platform Providers if you are using Kubernetes on a cloud platform.
-Steps
+- Install Helm version 3 or later
+- Install a supported version of Kubernetes
+- Read compatibility with Kubernetes Platform Providers if you are using Kubernetes on a cloud platform
+
+## Steps
 
 1. Add the containeroo Helm repository:
 
