@@ -20,7 +20,7 @@ This repository is the only supported source of containeroo charts.
 helm repo add containeroo https://charts.containeroo.ch
 ```
 
-1. Update your local Helm chart repository cache:
+2. Update your local Helm chart repository cache:
 
 ```bash
 helm repo update
@@ -28,19 +28,13 @@ helm repo update
 
 3. Install CustomResourceDefinitions
 
-cloudflare-operator requires a number of CRD resources, which can be installed manually using `kubectl` or using the `installCRDs` option when installing the Helm chart.
+cloudflare-operator requires a number of CRD resources, which must be installed manually using `kubectl`.
 
-Option 1: installing CRDs with kubectl
+Installing CRDs with kubectl:
 
 ```bash
 kubectl apply -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.0.5/crds.yaml
 ```
-
-Option 2: install CRDs as part of the Helm release
-
-To automatically install and manage the CRDs as part of your Helm release, you must add the --set `installCRDs=true` flag to your Helm installation command.
-
-Uncomment the relevant line in the next steps to enable this.
 
 4. Install cloudflare-operator
 
@@ -65,12 +59,12 @@ helm template \
   --namespace cloudflare-operator \
   --create-namespace \
   --version v0.0.5 \
-  ## --set installCRDs=true \           ## Uncomment to also template CRDs
   --values cloudflare-operator.custom.yaml
 
 ## Uninstalling
 
-Warning: To uninstall cloudflare-operator you should always use the same process for installing but in reverse. Deviating from the following process whether cloudflare-operator has been installed from static manifests or Helm can cause issues and potentially broken states. Please ensure you follow the below steps when uninstalling to prevent this happening.
+!!! warning
+    To uninstall cloudflare-operator you should always use the same process for installing but in reverse. Deviating from the following process whether cloudflare-operator has been installed from static manifests or Helm can cause issues and potentially broken states. Please ensure you follow the below steps when uninstalling to prevent this happening.
 
 Before continuing, ensure that all cloudflare-oprator resources that have been created by users have been deleted. You can check for any existing resources with the following command:
 
@@ -96,7 +90,8 @@ kubectl delete namespace cloudflare-operator
 
 Finally, delete the cloudflare-operator CustomResourceDefinitions using the link to the version vX.Y.Z you installed:
 
-**Warning:** This command will also remove installed cloudflare-operator CRDs. All cloudflare-operator resources (e.g. DNSRecord.cloudflare-operator.containeroo.ch resources) will be removed by Kubernetes' garbage collector.
+!!! warning
+    This command will also remove installed cloudflare-operator CRDs. All cloudflare-operator resources (e.g. DNSRecord.cloudflare-operator.containeroo.ch resources) will be removed by Kubernetes' garbage collector.
 
 ```bash
 kubectl delete -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.0.5/crds.yaml
