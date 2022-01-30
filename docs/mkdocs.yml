@@ -51,9 +51,7 @@ nav:
   - 'Home': index.md
   - 'Core concept': core_concept.md
   - 'Getting started': getting_started.md
-  - 'Installation':
-    - 'Helm': installation/helm.md
-    - 'Manifests': installation/manifests.md
+  - 'Installation': installation.md
   - 'Operation': operation.md
   - 'API Reference': api_reference.md
   - 'Roadmap': roadmap.md
