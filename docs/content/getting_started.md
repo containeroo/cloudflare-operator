@@ -77,7 +77,7 @@ kubectl annotate ingress --all-namespaces --all "cf.containeroo.ch/content=examp
 ```
 
 !!! info
-    If you do not want to expose some ingresses, maybe you have ingresses for internal use only, delete the annotation `kubectl annotate ingress --namespace <NAMESPACE> <INGRESS-NAME> cf.containeroo.ch/content-` and add the annotation `kubectl annotate ingress --namespace <NAMESPACE> <INGRESS-NAME> cf.containeroo.ch/skip=true` to skip the creation of the `DNSRecord`.
+    If you do not want to expose some ingresses, maybe you have ingresses for internal use only, delete the annotation `kubectl annotate ingress --namespace <NAMESPACE> <INGRESS-NAME> cf.containeroo.ch/content-` and add the annotation `kubectl annotate ingress --namespace <NAMESPACE> <INGRESS-NAME> cf.containeroo.ch/ignore=true` to skip the creation of the `DNSRecord`.
 
 ## Additional DNSRecord
 

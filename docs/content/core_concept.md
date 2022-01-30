@@ -180,7 +180,7 @@ curl "https://api.ipify.org?format=json"
 
 cloudflare-operator creates a `DNSRecord` for each host specified in an `Ingress` object.
 You must set either the annotation `cf.containeroo.ch/content` or `cf.containeroo.ch/ip-ref`.
-To skip the creation of a `DNSRecord`, add the annotation `cf.containeroo.ch/skip=true`.
+To skip the creation of a `DNSRecord`, add the annotation `cf.containeroo.ch/ignore=true`.
 
 The following annotations are supported:
 
@@ -190,7 +190,7 @@ The following annotations are supported:
 | `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`    | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic'      |
 | `cf.containeroo.ch/type`     | `A` or `CNAME`         | Cloudflare DNS record type                                                                                      |
 | `cf.containeroo.ch/interval` | `5m`                   | Interval at which cloudflare-operator will compare Cloudflare DNS records with cloudflare-operator `DNSRecords` |
-| `cf.containeroo.ch/skip`     | `true` or `false`      | Do not create a Cloudflare DNS record                                                                           |
+| `cf.containeroo.ch/ignore`   | `true` or `false`      | Do not create a Cloudflare DNS record                                                                           |
 
 example:
 

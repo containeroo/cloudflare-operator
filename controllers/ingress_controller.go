@@ -60,8 +60,8 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Check if the Ingress has a skip annotation and if so, return early
-	if instance.Annotations["cf.containeroo.ch/skip"] == "true" {
-		log.Info("Ingress has skip annotation, skipping reconciliation", "ingress", instance.Name)
+	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
+		log.Info("Ingress has ignore annotation, skipping reconciliation", "ingress", instance.Name)
 		return ctrl.Result{}, nil
 	}
 
