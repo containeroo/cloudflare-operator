@@ -18,17 +18,18 @@ package controllers
 
 import (
 	"context"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -77,7 +78,8 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					continue ignores
 				}
 				// mark DNSRecord as deleted
-				dnsRecord.SetDeletionTimestamp(metav1.Now())
+				now := metav1.Time{Time: time.Now()}
+				dnsRecord.SetDeletionTimestamp(&now)
 				err := r.Update(ctx, &dnsRecord)
 				if err != nil {
 					log.Error(err, "unable to delete DNSRecord")
