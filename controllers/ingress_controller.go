@@ -68,29 +68,24 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// Check if the Ingress has a skip annotation and if so, return early
+	// Check if the Ingress has a skip annotation and if so, check if has a corresponding DNSRecord
 	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
-		// Loop through all spec.rules and check if a dns record already exists for the ingress
-	ignores:
-		for _, rule := range instance.Spec.Rules {
-			for _, dnsRecord := range dnsRecords.Items {
-				if dnsRecord.Spec.Name == rule.Host {
-					continue ignores
+		for _, dnsRecord := range dnsRecords.Items {
+			for _, ownerRef := range dnsRecord.OwnerReferences {
+				if ownerRef.UID != instance.UID {
+					continue
 				}
-				// mark DNSRecord as deleted
-				now := metav1.Time{Time: time.Now()}
-				dnsRecord.SetDeletionTimestamp(&now)
-				err := r.Update(ctx, &dnsRecord)
+				err := r.Delete(ctx, &dnsRecord)
 				if err != nil {
 					log.Error(err, "unable to delete DNSRecord")
 					return ctrl.Result{}, err
 				}
-				log.Info("DNSRecord marked as deleted", "name", dnsRecord.Name)
-				return ctrl.Result{}, nil
+				log.Info("Deleted DNSRecord, because it was owned by an Ingress that is being ignored", "DNSRecord", dnsRecord.Name)
+				return ctrl.Result{}, err
 			}
-			log.Info("Ingress has ignore annotation, skipping reconciliation", "ingress", instance.Name)
-			return ctrl.Result{}, nil
 		}
+		log.Info("Ingress has ignore annotation, skipping reconciliation", "ingress", instance.Name)
+		return ctrl.Result{}, nil
 	}
 
 	trueVar := true
