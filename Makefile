@@ -53,6 +53,8 @@ endif
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+include Makefile.vars.mk
+
 .PHONY: all
 all: build
 
@@ -82,6 +84,10 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object:headerFile="hack/boilerplate.go.txt" paths="./..."
+
+.PHONY: crd
+crd: generate ## Generate CRD to file
+	$(KUSTOMIZE) build $(CRD_ROOT_DIR) > $(CRD_FILE)
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
