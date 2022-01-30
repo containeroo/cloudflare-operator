@@ -18,7 +18,6 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"time"
 
@@ -88,7 +87,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	apiKey := string(secret.Data["apiKey"])
 	if apiKey == "" {
 		instance.Status.Phase = "Failed"
-		instance.Status.Message = fmt.Sprintf("Secret '%s' in namespace '%s' does not contain the key 'apiKey'", instance.Spec.GlobalApiKey.SecretRef.Namespace, instance.Spec.GlobalApiKey.SecretRef.Name)
+		instance.Status.Message = "Secret does not contain apiKey"
 		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
