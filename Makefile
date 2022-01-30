@@ -53,8 +53,6 @@ endif
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
-include Makefile.vars.mk
-
 .PHONY: all
 all: build
 
@@ -87,7 +85,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: crd
 crd: generate ## Generate CRD to file
-	$(KUSTOMIZE) build $(CRD_ROOT_DIR) > $(CRD_FILE)
+	$(KUSTOMIZE) build config/crd > ./crds.yaml
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
