@@ -224,19 +224,36 @@ DNSRecords represent a Cloudflare DNS record within Kubernetes.
 
 If a `DNSRecord` is deleted, cloudflare-operator will also delete the corresponding Cloudflare DNS record.
 
-Set `spec.ipRef` to the name of an `IP` object to automatically update the `content` with the address (`spec.address`) of the linked `IP` object.
-
 example:
 
 ```yaml
 apiVersion: cf.containeroo.ch/v1alpha1
 kind: DNSRecord
 metadata:
+  name: www-example-com
+  namespace: www
+spec:
+  name: www.example.com
+  content: example.com
+  type: CNAME
+  proxied: true
+  ttl: 1
+  interval: 5m
+```
+
+Set `spec.ipRef` to the name of an `IP` object to automatically update the `content` with the address (`spec.address`) of the linked `IP` object.
+
+```yaml
+apiVersion: cf.containeroo.ch/v1alpha1
+kind: DNSRecord
+metadata:
   name: blog-example-com
+  namespace: blog
 spec:
   name: blog.example.com
-  content: # will be automatically populated
-  type: CNAME
+  type: A
+  ipRef:
+    name: static-address
   proxied: true
   ttl: 1
   interval: 5m
