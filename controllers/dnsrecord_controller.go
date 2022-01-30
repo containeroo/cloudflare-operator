@@ -40,6 +40,8 @@ type DNSRecordReconciler struct {
 	Cf     *cloudflare.API
 }
 
+const dnsRecordFinalizer = "cf.containeroo.ch/finalizer"
+
 //+kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
 //+kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords/status,verbs=get;update;patch
 //+kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords/finalizers,verbs=update
@@ -254,13 +256,13 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	isDNSRecordMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
 	if isDNSRecordMarkedToBeDeleted {
-		if controllerutil.ContainsFinalizer(instance, cfv1alpha1.CfFinalizer) {
+		if controllerutil.ContainsFinalizer(instance, dnsRecordFinalizer) {
 			if err := r.finalizeDNSRecord(ctx, dnsRecordZoneId, log, instance); err != nil {
 				return ctrl.Result{}, err
 			}
 		}
 
-		controllerutil.RemoveFinalizer(instance, cfv1alpha1.CfFinalizer)
+		controllerutil.RemoveFinalizer(instance, dnsRecordFinalizer)
 		err := r.Update(ctx, instance)
 		if err != nil {
 			return ctrl.Result{}, err
@@ -268,8 +270,8 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, cfv1alpha1.CfFinalizer) {
-		controllerutil.AddFinalizer(instance, cfv1alpha1.CfFinalizer)
+	if !controllerutil.ContainsFinalizer(instance, dnsRecordFinalizer) {
+		controllerutil.AddFinalizer(instance, dnsRecordFinalizer)
 		err := r.Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update DNS record finalizer")
