@@ -72,6 +72,8 @@ type DNSRecordStatus struct {
 //+kubebuilder:printcolumn:name="Record Name",type="string",JSONPath=".spec.name"
 //+kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 //+kubebuilder:printcolumn:name="Content",type="string",JSONPath=".spec.content"
+//+kubebuilder:printcolumn:name="Proxied",type="boolean",JSONPath=".spec.proxied"
+//+kubebuilder:printcolumn:name="TTL",type="integer",JSONPath=".spec.ttl"
 //+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 type DNSRecord struct {
 	metav1.TypeMeta   `json:",inline"`

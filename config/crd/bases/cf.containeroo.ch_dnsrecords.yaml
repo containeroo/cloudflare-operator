@@ -26,6 +26,12 @@ spec:
     - jsonPath: .spec.content
       name: Content
       type: string
+    - jsonPath: .spec.proxied
+      name: Proxied
+      type: boolean
+    - jsonPath: .spec.ttl
+      name: TTL
+      type: integer
     - jsonPath: .status.phase
       name: Status
       type: string
