@@ -18,12 +18,14 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"strings"
+	"time"
+
 	"github.com/cloudflare/cloudflare-go"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -82,7 +84,19 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		return ctrl.Result{}, err
 	}
+
 	apiKey := string(secret.Data["apiKey"])
+	if apiKey == "" {
+		instance.Status.Phase = "Failed"
+		instance.Status.Message = fmt.Sprintf("Secret '%s' in namespace '%s' does not contain the key 'apiKey'", instance.Spec.GlobalApiKey.SecretRef.Namespace, instance.Spec.GlobalApiKey.SecretRef.Name)
+		err := r.Status().Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Account status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, err
+	}
+
 	cf, err := cloudflare.New(apiKey, instance.Spec.Email)
 	if err != nil {
 		instance.Status.Phase = "Failed"
