@@ -126,7 +126,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if len(instance.Spec.ManagedZones) != 0 {
 		for _, zone := range zones {
 			for _, managedZone := range instance.Spec.ManagedZones {
-				if strings.ToLower(zone.Name) != strings.ToLower(managedZone) {
+				if !strings.EqualFold(zone.Name, managedZone) {
 					continue
 				}
 				managedZones = append(managedZones, cloudflare.Zone{Name: zone.Name, ID: zone.ID})
