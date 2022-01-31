@@ -6,7 +6,7 @@ cloudflare-operator is built from the ground up to use Kubernetes' API extension
 
 ## Who is cloudflare-operator for?
 
-cloudflare-operator helps
+cloudflare-operator helps to:
 
 - Manage Cloudflare DNS records using Kubernetes objects
 - Keep Cloudflare DNS records up to date
