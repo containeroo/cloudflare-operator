@@ -8,7 +8,7 @@ To view all `Account` objects use the command:
 kubectl get accounts.cf.containeroo.ch
 ```
 
-output:
+Output:
 
 ```console
 NAME   EMAIL                  PHASE
@@ -23,7 +23,7 @@ To view all `Zone` objects use the command:
 kubectl get zones.cf.containeroo.ch
 ```
 
-output:
+Output:
 
 ```console
 NAME         ZONE NAME    ID                                 PHASE
@@ -39,7 +39,7 @@ To view all `IP` objects use the command:
 kubectl get ips.cf.containeroo.ch
 ```
 
-output:
+Output:
 
 ```console
 NAME            ADDRESS         TYPE      PHASE
@@ -55,7 +55,7 @@ To view all `DNSRecord` objects use the command:
 kubectl get dnsrecords.cf.containeroo.ch --all-namespaces
 ```
 
-output:
+Output:
 
 ```console
 NAMESPACE             NAME                   RECORD NAME            TYPE    CONTENT         PROXIED   TTL   STATUS
@@ -67,11 +67,11 @@ cloudflare-operator   example-com            example.com               A   178.4
 
 ## Troubleshooting
 
-Usually, cloudflare-operator will store errors in the corresponding CRD in the `status.message` field and set the object phase (`stattus.phase`) to `Failed`.
+Usually, cloudflare-operator will store errors in the corresponding object in the `status.message` field and set the object phase (`stattus.phase`) to `Failed`.
 
-### example
+### Example
 
-create a new invalid `DNSRecord`:
+Create a new invalid `DNSRecord`:
 
 ```bash
 kubectl apply -f - << EOF
@@ -90,15 +90,15 @@ EOF
 ```
 
 !!! info
-    The problem here is, that the `type` is set to `CNAME`, but no `content` is set.
+    The problem is, that `type` is set to `CNAME`, but no `content` is set.
 
-list `DNSRecords`:
+List `DNSRecords`:
 
 ```bash
 kubectl get dnsrecords --namespace cloudflare-operator www-example-com
 ```
 
-output:
+Output:
 
 ```console hl_lines="3"
 NAME                   RECORD NAME            TYPE    CONTENT         PROXIED   TTL   STATUS
@@ -108,29 +108,24 @@ vpn-example-com        vpn.example.com       CNAME   example.com      false     
 example-com            example.com               A   178.4.20.69      true      1     Created
 ```
 
-As you can see, the `STATUS` is set to `Failed`.
+As you can see, the status is `Failed`.
 
-Show the new created `DNSRecord` to console:
+Output the newly created `DNSRecord` to console as YAML:
 
 ```bash
 kubectl get dnsrecords --namespace cloudflare-operator www-example-com -oyaml
 ```
 
-output:
+Output:
 
 ```yaml hl_lines="20 21"
 apiVersion: cf.containeroo.ch/v1alpha1
 kind: DNSRecord
 metadata:
-  annotations:
-    kubectl.kubernetes.io/last-applied-configuration: |
-      {"apiVersion":"cf.containeroo.ch/v1alpha1","kind":"DNSRecord","metadata":{"annotations":{},"name":"www-example-com","namespace":"cloudflare-operator"},"spec":{"content":null,"interval":"5m","name":"www.example.com","proxied":true,"ttl":1,"type":"CNAME"}}
-  creationTimestamp: "2022-01-30T18:55:09Z"
-  generation: 1
+  ...
   name: www-example-com
   namespace: cloudflare-operator
-  resourceVersion: "23470117"
-  uid: a832b157-7482-4d0a-be85-89b0748306a3
+  ...
 spec:
   interval: 5m
   name: www.example.com
