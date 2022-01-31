@@ -10,7 +10,7 @@ cloudflare-operator helps
 
 - Manage Cloudflare DNS records using Kubernetes objects
 - Keep Cloudflare DNS records up to date
-- Udate your external IP address on Cloudflare DNS records
+- Update your external IP address on Cloudflare DNS records
 
 ## What can I do with cloudflare-operator?
 
