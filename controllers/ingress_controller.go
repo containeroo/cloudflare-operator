@@ -68,7 +68,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// Check if the Ingress has a skip annotation and if so, check if has a corresponding DNSRecord
+	// Check if Ingress has ignore annotation and if so, delete dependent DNSRecords
 	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
 		for _, dnsRecord := range dnsRecords.Items {
 			for _, ownerRef := range dnsRecord.OwnerReferences {
