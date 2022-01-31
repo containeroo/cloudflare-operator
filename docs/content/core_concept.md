@@ -2,6 +2,10 @@
 
 The goal of cloudflare-operator is to manage Cloudflare DNS records using Kubernetes objects.
 
+## Architecture
+
+![cloudflare-operator](/assets/img/cloudflare-operator.svg)
+
 ## Preamble Cloudflare DNS Record
 
 A Cloudflare DNS record has the following fields:
