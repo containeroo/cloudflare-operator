@@ -4,7 +4,7 @@ The goal of cloudflare-operator is to manage Cloudflare DNS records using Kubern
 
 ## Architecture
 
-![cloudflare-operator](/assets/img/cloudflare-operator.svg)
+![cloudflare-operator](assets/img/cloudflare-operator.svg)
 
 ## Preamble Cloudflare DNS Record
 
