@@ -6,7 +6,7 @@ This tutorial shows you how to start using cloudflare-operator.
 
 Create a secret with your Cloudflare global API Key. The key containing the API key must be named `apiKey`.
 
-```bash
+```bash hl_lines="9"
 kubectl apply -f - << EOF
 apiVersion: v1
 kind: Secret
