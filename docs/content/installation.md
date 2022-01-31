@@ -32,7 +32,7 @@ cloudflare-operator requires a number of CRD resources, which must be installed 
 Installing CRDs with kubectl:
 
 ```bash
-kubectl apply -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.0.6/crds.yaml
+kubectl apply -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.0.7/crds.yaml
 ```
 
 4. Install cloudflare-operator
@@ -44,7 +44,7 @@ helm install \
   cloudflare-operator containeroo/cloudflare-operator \
   --namespace cloudflare-operator \
   --create-namespace \
-  --version v0.0.7
+  --version v0.0.10
 ```
 
 A full list of available Helm values is on [cloudflare-operator’s ArtifactHub page](https://artifacthub.io/packages/helm/containeroo/cloudflare-operator).
@@ -53,12 +53,14 @@ A full list of available Helm values is on [cloudflare-operator’s ArtifactHub 
 
 Instead of directly installing cloudflare-operator using Helm, a static YAML manifest can be generated using the Helm template command. This static manifest can be tuned by providing the flags to overwrite the default Helm values:
 
+```bash
 helm template \
   cloudflare-operator containeroo/cloudflare-operator \
   --namespace cloudflare-operator \
   --create-namespace \
-  --version v0.0.7 \
+  --version v0.0.10 \
   --set your.value=here
+```
 
 ## Uninstalling
 
@@ -91,7 +93,7 @@ Finally, delete the cloudflare-operator CustomResourceDefinitions using the link
     This command will also remove installed cloudflare-operator objects. All cloudflare-operator resources will be removed by Kubernetes' garbage collector.
 
 ```bash
-kubectl delete -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.0.6/crds.yaml
+kubectl delete -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.0.7/crds.yaml
 ```
 
 ## Namespace Stuck in Terminating State
