@@ -49,9 +49,9 @@ plugins:
 
 nav:
   - 'Home': index.md
-  - 'Core concept': core_concept.md
-  - 'Getting started': getting_started.md
+  - 'Core Concept': core_concept.md
+  - 'Getting Started': getting_started.md
   - 'Installation': installation.md
-  - 'Operation': operation.md
+  - 'Operations': operations.md
   - 'API Reference': api_reference.md
   - 'Roadmap': roadmap.md
