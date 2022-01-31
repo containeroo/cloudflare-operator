@@ -18,17 +18,18 @@ package controllers
 
 import (
 	"context"
+	"reflect"
+	"strconv"
+	"strings"
+	"time"
+
 	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"reflect"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-	"strconv"
-	"strings"
-	"time"
 )
 
 // IngressReconciler reconciles a Ingress object
@@ -59,18 +60,32 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Check if the Ingress has a skip annotation and if so, return early
-	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
-		log.Info("Ingress has ignore annotation, skipping reconciliation", "ingress", instance.Name)
-		return ctrl.Result{}, nil
-	}
-
 	// Fetch all DNSRecord instances in the same namespace
 	dnsRecords := &cfv1alpha1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
 		log.Error(err, "unable to fetch DNSRecord")
 		return ctrl.Result{}, err
+	}
+
+	// Check if Ingress has ignore annotation and if so, delete dependent DNSRecords
+	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
+		for _, dnsRecord := range dnsRecords.Items {
+			for _, ownerRef := range dnsRecord.OwnerReferences {
+				if ownerRef.UID != instance.UID {
+					continue
+				}
+				err := r.Delete(ctx, &dnsRecord)
+				if err != nil {
+					log.Error(err, "unable to delete DNSRecord")
+					return ctrl.Result{}, err
+				}
+				log.Info("Deleted DNSRecord, because it was owned by an Ingress that is being ignored", "DNSRecord", dnsRecord.Name)
+				return ctrl.Result{}, err
+			}
+		}
+		log.Info("Ingress has ignore annotation, skipping reconciliation", "ingress", instance.Name)
+		return ctrl.Result{}, nil
 	}
 
 	trueVar := true
