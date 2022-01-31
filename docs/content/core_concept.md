@@ -191,7 +191,7 @@ To skip the creation of a `DNSRecord`, add the annotation `cf.containeroo.ch/ign
 
 The following annotations are supported:
 
-| annotation                   | value                  | description                                                                                                |
+| Annotation                   | Value                  | Description                                                                                                |
 |:-----------------------------|:-----------------------|:-----------------------------------------------------------------------------------------------------------|
 | `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                             |
 | `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`    | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic' |
