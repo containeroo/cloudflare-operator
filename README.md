@@ -24,5 +24,5 @@ Following [this](https://containeroo.github.io/cloudflare-operator/getting_start
 
 Features:
 
-- add, update and delete Cloudflare DNS records
+- Add, update and delete Cloudflare DNS records
 - update Cloudflare DNS records if your external IP address changes
