@@ -91,7 +91,7 @@ If cloudflare-operator should only manage some zones, you can specify them in th
 ## Zone
 
 The `Zone` object stores the zone id. This object will be automatically created by the cloudflare-operator based on the zones available in the Cloudflare account.  
-If a zone is not in the `Account` `managedZones` field, it will not be managed by cloudflare-operator.
+If a zone is not in the `Account.spec.managedZones` field, it will not be managed by cloudflare-operator.
 
 cloudflare-operator checks if a given `DNSRecord.spec.name` ends with `Zone.spec.name` to evaluate in which Cloudflare zone the dns record should be created.
 
