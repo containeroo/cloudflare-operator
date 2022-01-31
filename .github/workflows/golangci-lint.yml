@@ -6,6 +6,8 @@ on:
       - v*
     branches:
       - master
+    paths-ignore:
+      - docs/**
   pull_request:
 permissions:
   contents: read
