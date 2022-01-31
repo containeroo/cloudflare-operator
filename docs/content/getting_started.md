@@ -132,5 +132,5 @@ Now your blog will be routed through Cloudflare.
 !!! note
     Do not forget to change the `content` of the `DNSRecord` if the external IPv4 address of your cloud instance has changed!
 
-!!! tip "bonus tip"
+!!! tip "Bonus tip"
     If you have multiple cloud services accessible with the same IP, you can also create an `IP` object and link this with `ipRef.name`, so you only have to change the IP address of your cloud instance once in the `IP` object.
