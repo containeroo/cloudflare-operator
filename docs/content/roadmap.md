@@ -1,6 +1,6 @@
 # Roadmap
 
-These features are planned for the next couple of months:
+These features are in planning:
 
-- Send notifications for certain events
+- Send Slack notifications for certain events
 - Add support for IPv6 addresses

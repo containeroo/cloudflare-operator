@@ -12,35 +12,37 @@ Cloudflare can handle multiple types. At the moment cloudflare-operator only sup
 
 **A**
 
-An `A` record must point to a valid IPv4 address, eg `172.4.20.69`.
+An `A` record must point to a valid IPv4 address (e.g. `172.4.20.69`).
 
 !!! info "cloudflare-operator use case"
-    Let cloudflare-operator create an `A` record for your root domain, eg. `example.com`.
+    Let cloudflare-operator create an `A` record for your root domain (e.g. `example.com`).
 
 **CNAME**
 
-A `CNAME` record must point to a valid domain, eg `example.com`.
+A `CNAME` record must point to a valid domain (e.g. `example.com`).
 Cloudflare has the ability to point a `CNAME` record to an `A` record. `Proxy Status` and `TTL` of the `CNAME` record will be passed to the `A` record.
 
 !!! info "cloudflare-operator use case"
     Let cloudflare-operator create `CNAME` records for all your subdomains that point to your `A` record root domain.  
-    This is not mandatory, but doing so cloudflare-operator only has to change one DNS record if your external IPv4 address changes.
+    This is not mandatory but recommended, since cloudflare-operator only has to change one DNS record if your external IPv4 address changes.
 
 ### Name
 
-Must be a valid domain or subdomain, eg `example.com` or `blog.example.com`
+Must be a valid domain or subdomain (e.g. `example.com` or `blog.example.com`).
 
 ### Content
 
-If of type `A` record must be a valid IPv4 address.  
-If of type `CNAME` record must be a valid domain.
+If type is `A`, the content must be a valid IPv4 address.  
+If type is `CNAME`, the content must be a valid domain.
 
 !!! info "cloudflare-operator use case"
-    Our recommendation is to point all your subdomains to your root domain, eg `example.com`.
+    Our recommendation is to point all your subdomains to your root domain (e.g. `example.com`).
 
 ### Proxy Status
 
-Not proxied means all traffic goes directly to the `content` (IPv4 address or domain) without Cloudflare being a safety net in front.
+Since Cloudflare is not only a DNS provider, it also has the ability to proxy requests through its CDN.  
+This feature also enables WAF (web application firewall) protection.  
+The `proxied` field is used to enable or disable this feature.
 
 ### TTL
 
@@ -62,7 +64,7 @@ TTL (time to live) is a setting that tells the DNS resolver how long to cache a 
 
 The `Account` object contains your Cloudflare credentials (email & global API key)
 
-example:
+Example:
 
 ```yaml
 apiVersion: cf.containeroo.ch/v1alpha1
@@ -80,13 +82,12 @@ spec:
 ## Zone
 
 The `Zone` object stores the zone id. This object will be automatically created by the cloudflare-operator based on the zones available in the Cloudflare account.  
-The zones will be automatic populated and updated in the related `Account` object.
 
-cloudflare-operator checks if `DNSRecord.spec.name` ends with `Zone.spec.name` to evaluate in which Cloudflare zone the dns record should be created.
+cloudflare-operator checks if a given `DNSRecord.spec.name` ends with `Zone.spec.name` to evaluate in which Cloudflare zone the dns record should be created.
 
 cloudflare-operator will fetch all Cloudflare DNS Records for each `Zone` object and deletes them on Cloudflare if they are not present in Kubernetes.
 
-example:
+Example:
 
 ```yaml
 apiVersion: cf.containeroo.ch/v1alpha1
@@ -102,12 +103,12 @@ spec:
 
 The `IP` object has two purposes:
 
-1. laziness
+1. DRY (Don't Repeat Yourself)
 
-Let's say you have multiple `DNSRecords` pointing to the same IP, you can use the `IP` object to avoid repeating the IP address in the `DNSRecord.spec.content` field.  
+Let's say you have multiple `DNSRecords` pointing to the same IP. You can use the `IP` object to avoid repeating the IP address in the `DNSRecord.spec.content` field.  
 If you change the `IP` object, cloudflare-operator will automatically update the `DNSRecord.spec.content` fields.
 
-example:
+Example:
 
 ```yaml
 apiVersion: cf.containeroo.ch/v1alpha1
@@ -123,7 +124,7 @@ spec:
 
 If the `type` is set to `dynamic`, cloudflare-operator will fetch your external IPv4 address in a specified interval (`spec.interval`).
 
-example:
+Example:
 
 ```yaml
 apiVersion: cf.containeroo.ch/v1alpha1
@@ -138,7 +139,7 @@ spec:
 If no `dynamicIpSources` are specified, cloudflare-operator will use a hardcoded set of sources.  
 If you prefer other sources, you can add them as a list in `dynamicIpSources`.
 
-example:
+Example:
 
 ```yaml
 apiVersion: cf.containeroo.ch/v1alpha1
@@ -155,27 +156,27 @@ spec:
 !!! warning
     The source must return only the external IPv4 address.
 
-    good:
+    Good example:
 
     ```bash
     curl https://api.ipify.org
     ```
 
-    output:
+    Output:
 
     ```console
     142.251.36.35
     ```
 
-    bad:
+    Bad example:
 
     ```bash
     curl "https://api.ipify.org?format=json"
     ```
 
-    output:
+    Output:
 
-    ```
+    ```console
     {"ip":"142.251.36.35"}
     ```
 
@@ -190,25 +191,25 @@ To skip the creation of a `DNSRecord`, add the annotation `cf.containeroo.ch/ign
 
 The following annotations are supported:
 
-| annotation                   | value                  | description                                                                                                     |
-|:-----------------------------|:-----------------------|:----------------------------------------------------------------------------------------------------------------|
-| `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                                  |
-| `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`    | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic'      |
-| `cf.containeroo.ch/type`     | `A` or `CNAME`         | Cloudflare DNS record type                                                                                      |
-| `cf.containeroo.ch/interval` | `5m`                   | Interval at which cloudflare-operator will compare Cloudflare DNS records with cloudflare-operator `DNSRecords` |
-| `cf.containeroo.ch/ignore`   | `true` or `false`      | Do not create a Cloudflare DNS record                                                                           |
+| annotation                   | value                  | description                                                                                                |
+|:-----------------------------|:-----------------------|:-----------------------------------------------------------------------------------------------------------|
+| `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                             |
+| `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`    | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic' |
+| `cf.containeroo.ch/type`     | `A` or `CNAME`         | Cloudflare DNS record type                                                                                 |
+| `cf.containeroo.ch/interval` | `5m`                   | Interval at which cloudflare-operator will compare the Cloudflare DNS record with the `DNSRecord` object   |
+| `cf.containeroo.ch/ignore`   | `true` or `false`      | Skip creation of a DNS record                                                                              |
 
 !!! note "cf.containeroo.ch/ignore"
-    If you add the label `cf.containeroo.ch/ignore=true` and cloudflare-operator has already created a `DNSRecord`, cloudflare-operator will cleanup the `DNSRecord` (Kubernetes and Cloudflare)!
+    If you add the label `cf.containeroo.ch/ignore=true` and cloudflare-operator has already created a `DNSRecord`, cloudflare-operator will clean up the `DNSRecord` (Kubernetes and Cloudflare)!
 
-example:
+Example:
 
 ```yaml
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   annotations:
-    cf.containeroo.ch/content: example.com  # root domain
+    cf.containeroo.ch/content: example.com
   name: blog
   namespace: blog
 spec:
@@ -227,17 +228,18 @@ spec:
 
 !!! warning "apiVersion"
     cloudflare-operator can only fetch ingresses with `apiVersion` `networking.k8s.io/v1`.
-    Older `apiVersions` like `k8s.io/api/extensions/v1beta1"` are not supported!
+    Older `apiVersions` like `extensions/v1beta1` or `networking.k8s.io/v1beta1` are not supported!
 
 ## DNSRecord
 
 DNSRecords represent a Cloudflare DNS record within Kubernetes.
 
-`interval` specifies, at which interval cloudflare-operator will fetch the Cloudflare DNS records and compare them with `DNSRecord` object spec (`proxied`, `ttl`, `type`, `content`). If the Cloudflare DNS record does not match the `DNSRecord`, Cloudflare DNS record will be updated.
+`interval` specifies, at which interval cloudflare-operator will fetch the DNS record from Cloudflare and compare it with `DNSRecord` object spec (`proxied`, `ttl`, `type`, `content`). If the Cloudflare DNS record does not match the `DNSRecord`, the DNS record will be updated on Cloudflare.  
+Therefore, the Kubernetes API can be looked at as a single source of truth.
 
 If a `DNSRecord` is deleted, cloudflare-operator will also delete the corresponding Cloudflare DNS record.
 
-example:
+Example:
 
 ```yaml
 apiVersion: cf.containeroo.ch/v1alpha1
@@ -255,6 +257,8 @@ spec:
 ```
 
 Set `spec.ipRef` to the name of an `IP` object to automatically update the `content` with the address (`spec.address`) of the linked `IP` object.
+
+Example:
 
 ```yaml
 apiVersion: cf.containeroo.ch/v1alpha1
