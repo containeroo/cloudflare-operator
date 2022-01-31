@@ -39,6 +39,9 @@ type AccountSpec struct {
 	//+kubebuilder:default="5m"
 	//+optional
 	Interval metav1.Duration `json:"interval"`
+	// ManagedZones is a list of zone names that should be managed by cloudflare-operator
+	//+optional
+	ManagedZones []string `json:"managedZones,omitempty"`
 }
 
 type AccountStatusZones struct {
