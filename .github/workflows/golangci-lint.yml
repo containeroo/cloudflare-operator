@@ -9,15 +9,15 @@ on:
     paths-ignore:
       - docs/**
   pull_request:
-permissions:
-  contents: read
 jobs:
   golangci:
     name: lint
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v2
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v2
         with:
-          args: --timeout=3m
+          args: --issues-exit-code=0 --timeout=3m ./...

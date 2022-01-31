@@ -69,6 +69,12 @@ spec:
                 default: 5m
                 description: Interval to check account status
                 type: string
+              managedZones:
+                description: ManagedZones is a list of zone names that should be managed
+                  by cloudflare-operator
+                items:
+                  type: string
+                type: array
             required:
             - email
             - globalApiKey

@@ -122,6 +122,20 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: 30 * time.Second}, err
 	}
 
+	var managedZones []cloudflare.Zone
+	if len(instance.Spec.ManagedZones) != 0 {
+		for _, zone := range zones {
+			for _, managedZone := range instance.Spec.ManagedZones {
+				if strings.ToLower(zone.Name) != strings.ToLower(managedZone) {
+					continue
+				}
+				managedZones = append(managedZones, cloudflare.Zone{Name: zone.Name, ID: zone.ID})
+			}
+		}
+	} else {
+		managedZones = zones
+	}
+
 	// Fetch all Zone objects
 	zonesList := &cfv1alpha1.ZoneList{}
 	err = r.List(ctx, zonesList, client.InNamespace(instance.Namespace))
@@ -137,7 +151,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	// Check if all zones are present
-	for _, zone := range zones {
+	for _, zone := range managedZones {
 		found := false
 		for _, z := range zonesList.Items {
 			if z.Spec.ID == zone.ID {
@@ -193,7 +207,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	statusChanged := false
-	for _, zone := range zones {
+	for _, zone := range managedZones {
 		found := false
 		for _, z := range instance.Status.Zones {
 			if z.ID == zone.ID {
@@ -220,7 +234,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	// Check if there are any zones that are not present in Cloudflare
 	for _, z := range zonesList.Items {
 		found := false
-		for _, zone := range zones {
+		for _, zone := range managedZones {
 			if z.Spec.ID == zone.ID {
 				found = true
 				break
