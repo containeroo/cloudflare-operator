@@ -193,6 +193,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				log.Error(err, "Failed to create Zone resource", "Zone.Name", zone.Name, "Zone.ID", zone.ID)
 				continue
 			}
+			log.Info("Created Zone resource", "Zone.Name", zone.Name, "Zone.ID", zone.ID)
 		}
 	}
 
@@ -246,6 +247,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				log.Error(err, "Failed to delete Zone resource", "Zone.Name", z.Name)
 				return ctrl.Result{}, err
 			}
+			log.Info("Deleted Zone resource", "Zone.Name", z.Spec.Name, "Zone.ID", z.Spec.ID)
 		}
 	}
 
