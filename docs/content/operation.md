@@ -100,7 +100,7 @@ kubectl get dnsrecords --namespace cloudflare-operator www-example-com
 
 output:
 
-```console
+```console hl_lines="3"
 NAME                   RECORD NAME            TYPE    CONTENT         PROXIED   TTL   STATUS
 blog-example-com       blog.example.com          A   142.251.36.35    true      1     Created
 www-exmaple-com        www.example.com       CNAME                    true      1     Failed
@@ -118,7 +118,7 @@ kubectl get dnsrecords --namespace cloudflare-operator www-example-com -oyaml
 
 output:
 
-```yaml
+```yaml hl_lines="20 21"
 apiVersion: cf.containeroo.ch/v1alpha1
 kind: DNSRecord
 metadata:

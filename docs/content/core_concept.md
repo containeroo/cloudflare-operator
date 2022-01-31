@@ -17,7 +17,7 @@ An `A` record must point to a valid IPv4 address, eg `172.4.20.69`.
 !!! info "cloudflare-operator use case"
     Let cloudflare-operator create an `A` record for your root domain, eg. `example.com`.
 
-**CNAME***
+**CNAME**
 
 A `CNAME` record must point to a valid domain, eg `example.com`.
 Cloudflare has the ability to point a `CNAME` record to an `A` record. `Proxy Status` and `TTL` of the `CNAME` record will be passed to the `A` record.
@@ -55,8 +55,8 @@ TTL (time to live) is a setting that tells the DNS resolver how long to cache a 
 | A     | blog        | 142.251.36.35 | true         | Auto |
 | CNAME | vpn         | example.com   | false        | 120  |
 
-`www.example.com` is hosted on your server at home with your external IPv4 address `178.4.20.69`.  
-`blog.example.com` is hosted on a cloud provider instance with the IPv4 address `142.251.36.35`
+- `www.example.com` is hosted on your server at home with your external IPv4 address `178.4.20.69`.  
+- `blog.example.com` is hosted on a cloud provider instance with the IPv4 address `142.251.36.35`
 
 ## Account
 
@@ -155,23 +155,29 @@ spec:
 !!! warning
     The source must return only the external IPv4 address.
 
-good:
+    good:
 
-```bash
-curl https://api.ipify.org
+    ```bash
+    curl https://api.ipify.org
+    ```
 
-# output:
-142.251.36.35
-```
+    output:
 
-bad:
+    ```console
+    142.251.36.35
+    ```
 
-```bash
-curl "https://api.ipify.org?format=json"
+    bad:
 
-# output:
-{"ip":"142.251.36.35"}
-```
+    ```bash
+    curl "https://api.ipify.org?format=json"
+    ```
+
+    output:
+
+    ```
+    {"ip":"142.251.36.35"}
+    ```
 
 !!! tip
     To minimize the amount of traffic to each IP source, make sure to add more than one `dynamicIpSources`. cloudflare-operator will randomly choose a source on every `interval`.
@@ -191,6 +197,9 @@ The following annotations are supported:
 | `cf.containeroo.ch/type`     | `A` or `CNAME`         | Cloudflare DNS record type                                                                                      |
 | `cf.containeroo.ch/interval` | `5m`                   | Interval at which cloudflare-operator will compare Cloudflare DNS records with cloudflare-operator `DNSRecords` |
 | `cf.containeroo.ch/ignore`   | `true` or `false`      | Do not create a Cloudflare DNS record                                                                           |
+
+!!! note "cf.containeroo.ch/ignore"
+    If you add the label `cf.containeroo.ch/ignore=true` and cloudflare-operator has already created a `DNSRecord`, cloudflare-operator will cleanup the `DNSRecord` (Kubernetes and Cloudflare)!
 
 example:
 
@@ -215,6 +224,10 @@ spec:
         path: /
         pathType: Prefix
 ```
+
+!!! warning "apiVersion"
+    cloudflare-operator can only fetch ingresses with `apiVersion` `networking.k8s.io/v1`.
+    Older `apiVersions` like `k8s.io/api/extensions/v1beta1"` are not supported!
 
 ## DNSRecord
 
