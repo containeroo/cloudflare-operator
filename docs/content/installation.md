@@ -44,7 +44,7 @@ helm install \
   cloudflare-operator containeroo/cloudflare-operator \
   --namespace cloudflare-operator \
   --create-namespace \
-  --version v0.0.7 \
+  --version v0.0.7
 ```
 
 A full list of available Helm values is on [cloudflare-operator’s ArtifactHub page](https://artifacthub.io/packages/helm/containeroo/cloudflare-operator).
