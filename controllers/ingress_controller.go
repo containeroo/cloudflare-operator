@@ -32,7 +32,7 @@ import (
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// IngressReconciler reconciles a Ingress object
+// IngressReconciler reconciles an Ingress object
 type IngressReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -68,7 +68,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// Check if Ingress has ignore annotation and if so, delete dependent DNSRecords
+	// Check if Ingress has an ignore-annotation and if so, delete dependent DNSRecords
 	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
 		for _, dnsRecord := range dnsRecords.Items {
 			for _, ownerRef := range dnsRecord.OwnerReferences {

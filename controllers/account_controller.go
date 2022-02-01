@@ -34,7 +34,7 @@ import (
 	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
 )
 
-// AccountReconciler reconciles a Account object
+// AccountReconciler reconciles an Account object
 type AccountReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
