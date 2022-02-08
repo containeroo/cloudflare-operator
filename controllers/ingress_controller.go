@@ -165,6 +165,10 @@ rules:
 				},
 			},
 			Spec: dnsRecordSpec,
+			Status: cfv1alpha1.DNSRecordStatus{
+				Phase:   "Pending",
+				Message: "Waiting for DNS record creation",
+			},
 		}
 
 		log.Info("Creating DNSRecord", "name", dnsRecord.Name)

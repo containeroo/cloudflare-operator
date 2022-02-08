@@ -81,9 +81,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 		currentIP, err := getCurrentIP(instance.Spec.DynamicIpSources)
 		if err != nil {
-			instance.Status.Phase = "Failed"
-			instance.Status.Message = err.Error()
-			err := r.Status().Update(ctx, instance)
+			err := r.markFailed(instance, ctx, err.Error())
 			if err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
@@ -187,4 +185,14 @@ func getCurrentIP(sources []string) (string, error) {
 	}
 
 	return currentIP, nil
+}
+
+// markFailed marks the reconciled object as failed
+func (r *IPReconciler) markFailed(instance *cfv1alpha1.IP, ctx context.Context, message string) error {
+	instance.Status.Phase = "Failed"
+	instance.Status.Message = message
+	if err := r.Status().Update(ctx, instance); err != nil {
+		return err
+	}
+	return nil
 }

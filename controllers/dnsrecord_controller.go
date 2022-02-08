@@ -89,9 +89,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if dnsRecordZone.Name == "" {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = "Zone not found"
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, "Zone not found")
 		if err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
@@ -119,22 +117,19 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if instance.Spec.Content == "" && instance.Spec.IpRef.Name == "" {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = "DNSRecord content is empty. Either content or ipRef must be set"
-		if err := r.Status().Update(ctx, instance); err != nil {
+		err := r.markFailed(instance, ctx, "No content or IP reference provided")
+		if err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
 
 	if instance.Spec.Type == "A" && instance.Spec.IpRef.Name != "" {
 		ip := &cfv1alpha1.IP{}
 		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IpRef.Name}, ip)
 		if err != nil {
-			instance.Status.Phase = "Failed"
-			instance.Status.Message = "IP object not found"
-			err := r.Status().Update(ctx, instance)
+			err := r.markFailed(instance, ctx, "IP object not found")
 			if err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
@@ -150,14 +145,12 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if *instance.Spec.Proxied && instance.Spec.TTL != 1 {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = "DNSRecord is proxied and ttl is not 1"
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, "TTL must be 1 when proxied")
 		if err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{}, nil
 	}
 
 	if existingRecords == nil {
@@ -169,9 +162,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Proxied: instance.Spec.Proxied,
 		})
 		if err != nil {
-			instance.Status.Phase = "Failed"
-			instance.Status.Message = err.Error()
-			err := r.Status().Update(ctx, instance)
+			err := r.markFailed(instance, ctx, err.Error())
 			if err != nil {
 				log.Error(err, "Failed to update DNS record status")
 				return ctrl.Result{}, err
@@ -203,9 +194,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Proxied: instance.Spec.Proxied,
 		})
 		if err != nil {
-			instance.Status.Phase = "Failed"
-			instance.Status.Message = err.Error()
-			err := r.Status().Update(ctx, instance)
+			err := r.markFailed(instance, ctx, err.Error())
 			if err != nil {
 				log.Error(err, "Failed to update DNS record status")
 				return ctrl.Result{}, err
@@ -276,6 +265,16 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 	err := r.Cf.DeleteDNSRecord(ctx, dnsRecordZoneId, d.Status.RecordID)
 	if err != nil {
 		log.Error(err, "Failed to delete DNS record in cloudflare")
+		return err
+	}
+	return nil
+}
+
+// markFailed marks the reconciled object as failed
+func (r *DNSRecordReconciler) markFailed(instance *cfv1alpha1.DNSRecord, ctx context.Context, message string) error {
+	instance.Status.Phase = "Failed"
+	instance.Status.Message = message
+	if err := r.Status().Update(ctx, instance); err != nil {
 		return err
 	}
 	return nil
