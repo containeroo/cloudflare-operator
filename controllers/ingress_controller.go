@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022 containeroo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -42,17 +42,9 @@ type IngressReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Ingress object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	// Fetch the Ingress instance
 	instance := &networkingv1.Ingress{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
@@ -60,7 +52,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	// Fetch all DNSRecord instances in the same namespace
 	dnsRecords := &cfv1alpha1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
@@ -68,7 +59,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// Check if Ingress has an ignore-annotation and if so, delete dependent DNSRecords
 	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
 		for _, dnsRecord := range dnsRecords.Items {
 			for _, ownerRef := range dnsRecord.OwnerReferences {
@@ -90,7 +80,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	trueVar := true
 
-	// Create a dnsRecordSpec based on annotations
 	dnsRecordSpec := cfv1alpha1.DNSRecordSpec{}
 
 	if content, ok := instance.Annotations["cf.containeroo.ch/content"]; ok {
@@ -146,7 +135,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		dnsRecordSpec.Interval.Duration = time.Minute * 5
 	}
 
-	// Loop through all spec.rules and check if a dns record already exists for the ingress
 rules:
 	for _, rule := range instance.Spec.Rules {
 		for _, dnsRecord := range dnsRecords.Items {
@@ -177,6 +165,10 @@ rules:
 				},
 			},
 			Spec: dnsRecordSpec,
+			Status: cfv1alpha1.DNSRecordStatus{
+				Phase:   "Pending",
+				Message: "Waiting for DNS record creation",
+			},
 		}
 
 		log.Info("Creating DNSRecord", "name", dnsRecord.Name)
@@ -187,7 +179,6 @@ rules:
 		}
 	}
 
-	// Update DNSRecord if dnsRecordSpec has changed
 	for _, rule := range instance.Spec.Rules {
 		for _, dnsRecord := range dnsRecords.Items {
 			if dnsRecord.Spec.Name != rule.Host {
@@ -197,7 +188,6 @@ rules:
 			if reflect.DeepEqual(dnsRecord.Spec, dnsRecordSpec) {
 				continue
 			}
-			// Update the DNSRecord with the new dnsRecordSpec
 			log.Info("Updating DNSRecord", "name", dnsRecord.Name)
 			dnsRecord.Spec = dnsRecordSpec
 			err := r.Update(ctx, &dnsRecord)

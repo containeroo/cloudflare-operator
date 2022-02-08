@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022 containeroo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -48,17 +48,9 @@ type AccountReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Account object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	// Fetch the Account instance
 	instance := &cfv1alpha1.Account{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
@@ -70,13 +62,10 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// Fetch the secret
 	secret := &v1.Secret{}
 	err = r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.GlobalApiKey.SecretRef.Namespace, Name: instance.Spec.GlobalApiKey.SecretRef.Name}, secret)
 	if err != nil {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = "Failed to get secret"
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, "Failed to get secret")
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -86,9 +75,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	apiKey := string(secret.Data["apiKey"])
 	if apiKey == "" {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = "Secret does not contain apiKey"
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, "Secret does not contain apiKey")
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -98,9 +85,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	cf, err := cloudflare.New(apiKey, instance.Spec.Email)
 	if err != nil {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = err.Error()
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, err.Error())
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -112,9 +97,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	zones, err := r.Cf.ListZones(ctx)
 	if err != nil {
 		log.Error(err, "Failed to create Cloudflare client. Retrying in 30 seconds")
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = err.Error()
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, err.Error())
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -136,13 +119,10 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		managedZones = zones
 	}
 
-	// Fetch all Zone objects
 	zonesList := &cfv1alpha1.ZoneList{}
 	err = r.List(ctx, zonesList, client.InNamespace(instance.Namespace))
 	if err != nil {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = "Failed to list zones"
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, "Failed to list zones")
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
@@ -150,7 +130,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	// Check if all zones are present
 	for _, zone := range managedZones {
 		found := false
 		for _, z := range zonesList.Items {
@@ -232,7 +211,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	// Check if there are any zones that are not present in Cloudflare
 	for _, z := range zonesList.Items {
 		found := false
 		for _, zone := range managedZones {
@@ -259,4 +237,14 @@ func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cfv1alpha1.Account{}).
 		Complete(r)
+}
+
+// markFailed marks the reconciled object as failed
+func (r *AccountReconciler) markFailed(instance *cfv1alpha1.Account, ctx context.Context, message string) error {
+	instance.Status.Phase = "Failed"
+	instance.Status.Message = message
+	if err := r.Status().Update(ctx, instance); err != nil {
+		return err
+	}
+	return nil
 }

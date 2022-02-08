@@ -1,5 +1,5 @@
 /*
-Copyright 2022.
+Copyright 2022 containeroo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -44,17 +44,9 @@ type ZoneReconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// TODO(user): Modify the Reconcile function to compare the state specified by
-// the Zone object against the actual cluster state, and then
-// perform operations to make the cluster state reflect the state specified by
-// the user.
-//
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.10.0/pkg/reconcile
 func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	// Fetch the Zone instance
 	instance := &cfv1alpha1.Zone{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
@@ -79,9 +71,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	_, err = r.Cf.ZoneDetails(ctx, instance.Spec.ID)
 	if err != nil {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = err.Error()
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, err.Error())
 		if err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
@@ -99,7 +89,6 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	// Fetch all DNSRecord objects
 	dnsRecords := &cfv1alpha1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
@@ -107,12 +96,9 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	// Fetch all DNS records from Cloudflare
 	cfDnsRecords, err := r.Cf.DNSRecords(ctx, instance.Spec.ID, cloudflare.DNSRecord{})
 	if err != nil {
-		instance.Status.Phase = "Failed"
-		instance.Status.Message = err.Error()
-		err := r.Status().Update(ctx, instance)
+		err := r.markFailed(instance, ctx, err.Error())
 		if err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
@@ -120,7 +106,6 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	// Delete any DNS records in Cloudflare without a DNSRecord object
 	for _, cfDnsRecord := range cfDnsRecords {
 		if !strings.HasSuffix(cfDnsRecord.Name, instance.Spec.Name) {
 			continue
@@ -139,9 +124,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		if !found {
 			err = r.Cf.DeleteDNSRecord(ctx, instance.Spec.ID, cfDnsRecord.ID)
 			if err != nil {
-				instance.Status.Phase = "Failed"
-				instance.Status.Message = err.Error()
-				err := r.Status().Update(ctx, instance)
+				err := r.markFailed(instance, ctx, err.Error())
 				if err != nil {
 					log.Error(err, "Failed to update Zone status")
 				}
@@ -158,4 +141,14 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cfv1alpha1.Zone{}).
 		Complete(r)
+}
+
+// markFailed marks the reconciled object as failed
+func (r *ZoneReconciler) markFailed(instance *cfv1alpha1.Zone, ctx context.Context, message string) error {
+	instance.Status.Phase = "Failed"
+	instance.Status.Message = message
+	if err := r.Status().Update(ctx, instance); err != nil {
+		return err
+	}
+	return nil
 }
