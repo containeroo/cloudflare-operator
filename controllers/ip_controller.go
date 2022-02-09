@@ -71,15 +71,15 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 				return ctrl.Result{}, err
 			}
 		}
-		if instance.Spec.DynamicIpSources == nil {
-			instance.Spec.DynamicIpSources = append(instance.Spec.DynamicIpSources, "https://ifconfig.me/ip", "https://ipecho.net/plain", "https://myip.is/ip/", "https://checkip.amazonaws.com", "https://api.ipify.org")
+		if instance.Spec.DynamicIPSources == nil {
+			instance.Spec.DynamicIPSources = append(instance.Spec.DynamicIPSources, "https://ifconfig.me/ip", "https://ipecho.net/plain", "https://myip.is/ip/", "https://checkip.amazonaws.com", "https://api.ipify.org")
 			err := r.Update(ctx, instance)
 			if err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
 		}
-		currentIP, err := getCurrentIP(instance.Spec.DynamicIpSources)
+		currentIP, err := getCurrentIP(instance.Spec.DynamicIPSources)
 		if err != nil {
 			err := r.markFailed(instance, ctx, err.Error())
 			if err != nil {
@@ -114,7 +114,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	for _, dnsRecord := range dnsRecords.Items {
-		if dnsRecord.Spec.IpRef.Name != instance.Name {
+		if dnsRecord.Spec.IPRef.Name != instance.Name {
 			continue
 		}
 		if dnsRecord.Spec.Content == instance.Spec.Address {

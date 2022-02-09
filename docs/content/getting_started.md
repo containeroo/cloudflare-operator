@@ -29,7 +29,7 @@ metadata:
   name: account-sample
 spec:
   email: mail@example.com
-  globalApiKey:
+  globalAPIKey:
     secretRef:
       name: cloudflare-global-api-key
       namespace: cloudflare-operator

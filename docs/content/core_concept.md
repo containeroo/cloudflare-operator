@@ -77,7 +77,7 @@ metadata:
   name: account-sample
 spec:
   email: mail@example.com
-  globalApiKey:
+  globalAPIKey:
     secretRef:
       name: global-api-key
       namespace: default
@@ -146,8 +146,8 @@ spec:
   interval: 5m
 ```
 
-If no `dynamicIpSources` are specified, cloudflare-operator will use a hardcoded set of sources.  
-If you prefer other sources, you can add them as a list in `dynamicIpSources`.
+If no `dynamicIPSources` are specified, cloudflare-operator will use a hardcoded set of sources.  
+If you prefer other sources, you can add them as a list in `dynamicIPSources`.
 
 Example:
 
@@ -158,7 +158,7 @@ metadata:
   name: external-ipv4
 spec:
   type: dynamic
-  dynamicIpSources:
+  dynamicIPSources:
     - https://api.ipify.org
   interval: 5m
 ```
@@ -191,7 +191,7 @@ spec:
     ```
 
 !!! tip
-    To minimize the amount of traffic to each IP source, make sure to add more than one `dynamicIpSources`. cloudflare-operator will randomly choose a source on every `interval`.
+    To minimize the amount of traffic to each IP source, make sure to add more than one `dynamicIPSources`. cloudflare-operator will randomly choose a source on every `interval`.
 
 ## Ingress
 

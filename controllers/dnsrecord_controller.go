@@ -116,7 +116,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if instance.Spec.Content == "" && instance.Spec.IpRef.Name == "" {
+	if instance.Spec.Content == "" && instance.Spec.IPRef.Name == "" {
 		err := r.markFailed(instance, ctx, "No content or IP reference provided")
 		if err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
@@ -125,9 +125,9 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	if instance.Spec.Type == "A" && instance.Spec.IpRef.Name != "" {
+	if instance.Spec.Type == "A" && instance.Spec.IPRef.Name != "" {
 		ip := &cfv1alpha1.IP{}
-		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IpRef.Name}, ip)
+		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IPRef.Name}, ip)
 		if err != nil {
 			err := r.markFailed(instance, ctx, "IP object not found")
 			if err != nil {

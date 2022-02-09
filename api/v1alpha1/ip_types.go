@@ -35,7 +35,7 @@ type IPSpec struct {
 	Interval *metav1.Duration `json:"interval,omitempty"`
 	// List of services that return the public IP address
 	//+optional
-	DynamicIpSources []string `json:"dynamicIpSources,omitempty"`
+	DynamicIPSources []string `json:"dynamicIPSources,omitempty"`
 }
 
 // IPStatus defines the observed state of IP

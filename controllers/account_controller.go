@@ -63,7 +63,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	secret := &v1.Secret{}
-	err = r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.GlobalApiKey.SecretRef.Namespace, Name: instance.Spec.GlobalApiKey.SecretRef.Name}, secret)
+	err = r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.GlobalAPIKey.SecretRef.Namespace, Name: instance.Spec.GlobalAPIKey.SecretRef.Name}, secret)
 	if err != nil {
 		err := r.markFailed(instance, ctx, "Failed to get secret")
 		if err != nil {

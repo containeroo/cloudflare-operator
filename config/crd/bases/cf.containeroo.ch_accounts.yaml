@@ -46,7 +46,7 @@ spec:
               email:
                 description: Email of the Cloudflare account
                 type: string
-              globalApiKey:
+              globalAPIKey:
                 description: Global API key of the Cloudflare account
                 properties:
                   secretRef:
@@ -76,7 +76,7 @@ spec:
                 type: array
             required:
             - email
-            - globalApiKey
+            - globalAPIKey
             type: object
           status:
             description: AccountStatus defines the observed state of Account
