@@ -1,6 +1,10 @@
 site_name: Cloudflare Operator
+site_url: https://docs.cf.containeroo.ch
+site_description: cloudflare-operator documentation
+site_author: containeroo
+
 repo_url: https://github.com/containeroo/cloudflare-operator
-edit_uri: 'edit/master/content'
+edit_uri: 'edit/master/docs/content'
 docs_dir: 'content'
 
 theme:
