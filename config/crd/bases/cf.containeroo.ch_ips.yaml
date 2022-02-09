@@ -47,15 +47,19 @@ spec:
             description: IPSpec defines the desired state of IP
             properties:
               address:
+                description: IP address (omit if type is dynamic)
                 type: string
               dynamicIpSources:
+                description: List of services that return the public IP address
                 items:
                   type: string
                 type: array
               interval:
+                description: Interval at which a dynamic IP should be checked
                 type: string
               type:
                 default: static
+                description: IP address type (static or dynamic)
                 enum:
                 - static
                 - dynamic

@@ -70,8 +70,7 @@ spec:
                 description: Interval to check account status
                 type: string
               managedZones:
-                description: ManagedZones is a list of zone names that should be managed
-                  by cloudflare-operator
+                description: List of zone names that should be managed by cloudflare-operator
                 items:
                   type: string
                 type: array

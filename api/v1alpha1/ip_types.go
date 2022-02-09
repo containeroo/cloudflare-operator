@@ -22,14 +22,18 @@ import (
 
 // IPSpec defines the desired state of IP
 type IPSpec struct {
+	// IP address (omit if type is dynamic)
 	//+optional
 	Address string `json:"address"`
+	// IP address type (static or dynamic)
 	//+kubebuilder:validation:Enum=static;dynamic
 	//+kubebuilder:default=static
 	//+optional
 	Type string `json:"type"`
+	// Interval at which a dynamic IP should be checked
 	//+optional
 	Interval *metav1.Duration `json:"interval,omitempty"`
+	// List of services that return the public IP address
 	//+optional
 	DynamicIpSources []string `json:"dynamicIpSources,omitempty"`
 }

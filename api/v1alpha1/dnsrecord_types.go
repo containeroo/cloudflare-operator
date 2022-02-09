@@ -28,6 +28,7 @@ type DNSRecordSpec struct {
 	// Content of the DNS record (e.g. 144.231.20.1)
 	//+optional
 	Content string `json:"content"`
+	// Reference to an IP object
 	//+optional
 	IpRef v1.ObjectReference `json:"ipRef,omitempty"`
 	// Type of DNS record (A, CNAME)
