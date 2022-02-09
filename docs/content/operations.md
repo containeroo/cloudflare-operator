@@ -135,7 +135,7 @@ spec:
 status:
   message: DNSRecord content is empty. Either content or ipRef must be set
   phase: Failed
-  recordId: ""
+  recordID: ""
 ```
 
 In the `status.message` you can see the error. The `Phase` is also set to `Failed`.

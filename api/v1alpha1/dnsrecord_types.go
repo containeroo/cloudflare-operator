@@ -17,9 +17,13 @@ limitations under the License.
 package v1alpha1
 
 import (
-	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+type DNSRecordSpecIPRef struct {
+	// Name of the IP object
+	Name string `json:"name"`
+}
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
@@ -30,7 +34,7 @@ type DNSRecordSpec struct {
 	Content string `json:"content"`
 	// Reference to an IP object
 	//+optional
-	IpRef v1.ObjectReference `json:"ipRef,omitempty"`
+	IPRef DNSRecordSpecIPRef `json:"ipRef,omitempty"`
 	// Type of DNS record (A, CNAME)
 	//+kubebuilder:validation:Enum=A;CNAME
 	//+kubebuilder:default=A
@@ -60,7 +64,7 @@ type DNSRecordStatus struct {
 	// Message if the DNS record failed
 	Message string `json:"message,omitempty"`
 	// Cloudflare DNS record ID
-	RecordID string `json:"recordId"`
+	RecordID string `json:"recordID"`
 }
 
 //+kubebuilder:object:root=true

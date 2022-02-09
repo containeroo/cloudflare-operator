@@ -6,6 +6,6 @@ spec:
   type: dynamic  # or static
   address: 1.1.1.1  # will be automatically generated if type is dynamic
   # list of services that return your public IP
-  # dynamicIpSources:
+  # dynamicIPSources:
   #   - https://checkip.amazonaws.com
   interval: 1m  # only used if type is dynamic, interval to check if IP has changed

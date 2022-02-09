@@ -87,10 +87,10 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if ipRef, ok := instance.Annotations["cf.containeroo.ch/ip-ref"]; ok {
-		dnsRecordSpec.IpRef.Name = ipRef
+		dnsRecordSpec.IPRef.Name = ipRef
 	}
 
-	if dnsRecordSpec.Content == "" && dnsRecordSpec.IpRef.Name == "" {
+	if dnsRecordSpec.Content == "" && dnsRecordSpec.IPRef.Name == "" {
 		log.Info("Ingress has no content or ip-ref annotation, skipping reconciliation", "ingress", instance.Name)
 		return ctrl.Result{}, nil
 	}

@@ -21,7 +21,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type AccountSpecGlobalApiKey struct {
+type AccountSpecGlobalAPIKey struct {
 	// Secret name containing the API key (key must be named "apiKey")
 	SecretRef v1.SecretReference `json:"secretRef"`
 }
@@ -31,7 +31,7 @@ type AccountSpec struct {
 	// Email of the Cloudflare account
 	Email string `json:"email"`
 	// Global API key of the Cloudflare account
-	GlobalApiKey AccountSpecGlobalApiKey `json:"globalApiKey"`
+	GlobalAPIKey AccountSpecGlobalAPIKey `json:"globalAPIKey"`
 	// Interval to check account status
 	//+kubebuilder:default="5m"
 	//+optional
