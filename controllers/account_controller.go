@@ -41,10 +41,10 @@ type AccountReconciler struct {
 	Cf     *cloudflare.API
 }
 
-//+kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts/finalizers,verbs=update
-//+kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
+// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.

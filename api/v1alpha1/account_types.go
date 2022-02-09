@@ -33,39 +33,44 @@ type AccountSpec struct {
 	// Global API key of the Cloudflare account
 	GlobalAPIKey AccountSpecGlobalAPIKey `json:"globalAPIKey"`
 	// Interval to check account status
-	//+kubebuilder:default="5m"
-	//+optional
-	Interval metav1.Duration `json:"interval"`
+	// +kubebuilder:default="5m"
+	// +optional
+	Interval metav1.Duration `json:"interval,omitempty"`
 	// List of zone names that should be managed by cloudflare-operator
-	//+optional
+	// +optional
 	ManagedZones []string `json:"managedZones,omitempty"`
 }
 
 type AccountStatusZones struct {
 	// Name of the zone
-	Name string `json:"name"`
+	// +optional
+	Name string `json:"name,omitempty"`
 	// ID of the zone
-	ID string `json:"id"`
+	// +optional
+	ID string `json:"id,omitempty"`
 }
 
 // AccountStatus defines the observed state of Account
 type AccountStatus struct {
 	// Phase of the Account
-	//+kubebuilder:validation:Enum=Active;Failed
-	Phase string `json:"phase"`
+	// +kubebuilder:validation:Enum=Active;Failed
+	// +optional
+	Phase string `json:"phase,omitempty"`
 	// Message if the Account authentication failed
+	// +optional
 	Message string `json:"message,omitempty"`
 	// Zones contains all the zones of the Account
+	// +optional
 	Zones []AccountStatusZones `json:"zones,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 
 // Account is the Schema for the accounts API
-//+kubebuilder:printcolumn:name="Email",type="string",JSONPath=".spec.email"
-//+kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Email",type="string",JSONPath=".spec.email"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 type Account struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -74,7 +79,7 @@ type Account struct {
 	Status AccountStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // AccountList contains a list of Account
 type AccountList struct {

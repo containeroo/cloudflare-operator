@@ -73,8 +73,6 @@ spec:
                 - Pending
                 - Failed
                 type: string
-            required:
-            - phase
             type: object
         type: object
     served: true

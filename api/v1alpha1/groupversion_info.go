@@ -15,8 +15,8 @@ limitations under the License.
 */
 
 // Package v1alpha1 contains API Schema definitions for the cf v1alpha1 API group
-//+kubebuilder:object:generate=true
-//+groupName=cf.containeroo.ch
+// +kubebuilder:object:generate=true
+// +groupName=cf.containeroo.ch
 package v1alpha1
 
 import (

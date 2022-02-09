@@ -22,7 +22,8 @@ import (
 
 type DNSRecordSpecIPRef struct {
 	// Name of the IP object
-	Name string `json:"name"`
+	// +optional
+	Name string `json:"name,omitempty"`
 }
 
 // DNSRecordSpec defines the desired state of DNSRecord
@@ -30,53 +31,56 @@ type DNSRecordSpec struct {
 	// Name of the DNS record (e.g. app.example.com)
 	Name string `json:"name"`
 	// Content of the DNS record (e.g. 144.231.20.1)
-	//+optional
-	Content string `json:"content"`
+	// +optional
+	Content string `json:"content,omitempty"`
 	// Reference to an IP object
-	//+optional
+	// +optional
 	IPRef DNSRecordSpecIPRef `json:"ipRef,omitempty"`
 	// Type of DNS record (A, CNAME)
-	//+kubebuilder:validation:Enum=A;CNAME
-	//+kubebuilder:default=A
-	//+optional
-	Type string `json:"type"`
+	// +kubebuilder:validation:Enum=A;CNAME
+	// +kubebuilder:default=A
+	// +optional
+	Type string `json:"type,omitempty"`
 	// Proxied indicates whether the DNS record should be proxied
-	//+kubebuilder:default=true
-	//+optional
-	Proxied *bool `json:"proxied"`
+	// +kubebuilder:default=true
+	// +optional
+	Proxied *bool `json:"proxied,omitempty"`
 	// TTL of the DNS record (e.g. 300, 1 for automatic)
-	//+kubebuilder:validation:Minimum=1
-	//+kubebuilder:validation:Maximum=86400
-	//+kubebuilder:default=1
-	//+optional
-	TTL int `json:"ttl"`
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=86400
+	// +kubebuilder:default=1
+	// +optional
+	TTL int `json:"ttl,omitempty"`
 	// Interval to check DNSRecord
-	//+kubebuilder:default="5m"
-	//+optional
-	Interval metav1.Duration `json:"interval"`
+	// +kubebuilder:default="5m"
+	// +optional
+	Interval metav1.Duration `json:"interval,omitempty"`
 }
 
 // DNSRecordStatus defines the observed state of DNSRecord
 type DNSRecordStatus struct {
 	// Phase of the DNS record
-	//+kubebuilder:validation:Enum=Created;Pending;Failed
-	Phase string `json:"phase"`
+	// +kubebuilder:validation:Enum=Created;Pending;Failed
+	// +optional
+	Phase string `json:"phase,omitempty"`
 	// Message if the DNS record failed
+	// +optional
 	Message string `json:"message,omitempty"`
 	// Cloudflare DNS record ID
-	RecordID string `json:"recordID"`
+	// +optional
+	RecordID string `json:"recordID,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
 
 // DNSRecord is the Schema for the dnsrecords API
-//+kubebuilder:printcolumn:name="Record Name",type="string",JSONPath=".spec.name"
-//+kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
-//+kubebuilder:printcolumn:name="Content",type="string",JSONPath=".spec.content"
-//+kubebuilder:printcolumn:name="Proxied",type="boolean",JSONPath=".spec.proxied"
-//+kubebuilder:printcolumn:name="TTL",type="integer",JSONPath=".spec.ttl"
-//+kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Record Name",type="string",JSONPath=".spec.name"
+// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
+// +kubebuilder:printcolumn:name="Content",type="string",JSONPath=".spec.content"
+// +kubebuilder:printcolumn:name="Proxied",type="boolean",JSONPath=".spec.proxied"
+// +kubebuilder:printcolumn:name="TTL",type="integer",JSONPath=".spec.ttl"
+// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
 type DNSRecord struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -85,7 +89,7 @@ type DNSRecord struct {
 	Status DNSRecordStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // DNSRecordList contains a list of DNSRecord
 type DNSRecordList struct {

@@ -100,13 +100,8 @@ spec:
                     name:
                       description: Name of the zone
                       type: string
-                  required:
-                  - id
-                  - name
                   type: object
                 type: array
-            required:
-            - phase
             type: object
         type: object
     served: true
