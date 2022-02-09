@@ -23,41 +23,43 @@ import (
 // IPSpec defines the desired state of IP
 type IPSpec struct {
 	// IP address (omit if type is dynamic)
-	//+optional
-	Address string `json:"address"`
+	// +optional
+	Address string `json:"address,omitempty"`
 	// IP address type (static or dynamic)
-	//+kubebuilder:validation:Enum=static;dynamic
-	//+kubebuilder:default=static
-	//+optional
-	Type string `json:"type"`
+	// +kubebuilder:validation:Enum=static;dynamic
+	// +kubebuilder:default=static
+	// +optional
+	Type string `json:"type,omitempty"`
 	// Interval at which a dynamic IP should be checked
-	//+optional
+	// +optional
 	Interval *metav1.Duration `json:"interval,omitempty"`
 	// List of services that return the public IP address
-	//+optional
+	// +optional
 	DynamicIPSources []string `json:"dynamicIPSources,omitempty"`
 }
 
 // IPStatus defines the observed state of IP
 type IPStatus struct {
 	// Phase of the IP
-	//+kubebuilder:validation:Enum=Ready;Failed
-	//+optional
+	// +kubebuilder:validation:Enum=Ready;Failed
+	// +optional
 	Phase string `json:"phase,omitempty"`
 	// Message if the IP failed to update
+	// +optional
 	Message string `json:"message,omitempty"`
 	// LastObservedIP contains the IP address observed at the last interval (used to determine whether the IP has changed)
-	LastObservedIP string `json:"lastObservedIP"`
+	// +optional
+	LastObservedIP string `json:"lastObservedIP,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 
 // IP is the Schema for the ips API
-//+kubebuilder:printcolumn:name="Address",type="string",JSONPath=".spec.address"
-//+kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
-//+kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Address",type="string",JSONPath=".spec.address"
+// +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 type IP struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -66,7 +68,7 @@ type IP struct {
 	Status IPStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // IPList contains a list of IP
 type IPList struct {

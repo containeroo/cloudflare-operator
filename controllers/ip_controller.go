@@ -42,9 +42,9 @@ type IPReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-//+kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips,verbs=get;list;watch;create;update;patch;delete
-//+kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips/status,verbs=get;update;patch
-//+kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips/finalizers,verbs=update
+// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -60,6 +60,15 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 		log.Error(err, "Failed to get IP resource")
 		return ctrl.Result{}, err
+	}
+
+	if instance.Spec.Type == "static" && instance.Spec.Address == "" {
+		err := r.markFailed(instance, ctx, "Address is required for static IPs")
+		if err != nil {
+			log.Error(err, "Failed to update IP resource")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
 	if instance.Spec.Type == "dynamic" {

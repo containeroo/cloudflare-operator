@@ -81,8 +81,6 @@ spec:
                 - Ready
                 - Failed
                 type: string
-            required:
-            - lastObservedIP
             type: object
         type: object
     served: true

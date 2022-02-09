@@ -68,8 +68,6 @@ spec:
                   name:
                     description: Name of the IP object
                     type: string
-                required:
-                - name
                 type: object
               name:
                 description: Name of the DNS record (e.g. app.example.com)
@@ -110,9 +108,6 @@ spec:
               recordID:
                 description: Cloudflare DNS record ID
                 type: string
-            required:
-            - phase
-            - recordID
             type: object
         type: object
     served: true

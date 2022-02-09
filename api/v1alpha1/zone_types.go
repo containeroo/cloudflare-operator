@@ -27,28 +27,30 @@ type ZoneSpec struct {
 	// ID of the zone
 	ID string `json:"id"`
 	// Interval to check zone status
-	//+kubebuilder:default="5m"
-	//+optional
-	Interval metav1.Duration `json:"interval"`
+	// +kubebuilder:default="5m"
+	// +optional
+	Interval metav1.Duration `json:"interval,omitempty"`
 }
 
 // ZoneStatus defines the observed state of Zone
 type ZoneStatus struct {
 	// Phase of the Zone
-	//+kubebuilder:validation:Enum=Active;Pending;Failed
-	Phase string `json:"phase"`
+	// +kubebuilder:validation:Enum=Active;Pending;Failed
+	// +optional
+	Phase string `json:"phase,omitempty"`
 	// Message if the Zone failed
+	// +optional
 	Message string `json:"message,omitempty"`
 }
 
-//+kubebuilder:object:root=true
-//+kubebuilder:subresource:status
-//+kubebuilder:resource:scope=Cluster
+// +kubebuilder:object:root=true
+// +kubebuilder:subresource:status
+// +kubebuilder:resource:scope=Cluster
 
 // Zone is the Schema for the zones API
-//+kubebuilder:printcolumn:name="Zone Name",type="string",JSONPath=".spec.name"
-//+kubebuilder:printcolumn:name="ID",type="string",JSONPath=".spec.id"
-//+kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Zone Name",type="string",JSONPath=".spec.name"
+// +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".spec.id"
+// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
 type Zone struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
@@ -57,7 +59,7 @@ type Zone struct {
 	Status ZoneStatus `json:"status,omitempty"`
 }
 
-//+kubebuilder:object:root=true
+// +kubebuilder:object:root=true
 
 // ZoneList contains a list of Zone
 type ZoneList struct {
