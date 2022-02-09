@@ -45,7 +45,8 @@ type IPStatus struct {
 	//+optional
 	Phase string `json:"phase,omitempty"`
 	// Message if the IP failed to update
-	Message        string `json:"message,omitempty"`
+	Message string `json:"message,omitempty"`
+	// LastObservedIP contains the IP address observed at the last interval (used to determine whether the IP has changed)
 	LastObservedIP string `json:"lastObservedIP"`
 }
 

@@ -95,8 +95,10 @@ spec:
                 items:
                   properties:
                     id:
+                      description: ID of the zone
                       type: string
                     name:
+                      description: Name of the zone
                       type: string
                   required:
                   - id

@@ -69,6 +69,8 @@ spec:
             description: IPStatus defines the observed state of IP
             properties:
               lastObservedIP:
+                description: LastObservedIP contains the IP address observed at the
+                  last interval (used to determine whether the IP has changed)
                 type: string
               message:
                 description: Message if the IP failed to update

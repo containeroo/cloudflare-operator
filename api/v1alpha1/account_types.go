@@ -42,8 +42,10 @@ type AccountSpec struct {
 }
 
 type AccountStatusZones struct {
+	// Name of the zone
 	Name string `json:"name"`
-	ID   string `json:"id"`
+	// ID of the zone
+	ID string `json:"id"`
 }
 
 // AccountStatus defines the observed state of Account
