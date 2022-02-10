@@ -213,7 +213,7 @@ The following annotations are supported:
     If you add the label `cf.containeroo.ch/ignore=true` and cloudflare-operator has already created a `DNSRecord`, cloudflare-operator will clean up the `DNSRecord` (Kubernetes and Cloudflare).
 
 !!! note "cf.containeroo.ch/interval"
-    If you delete the `DNSRecord` object, cloudflare-operator will automatically recreate it with the `interval` specified in the annotation.
+    If you delete the `DNSRecord` object, cloudflare-operator will automatically recreate at the next `Ingress` reconciliation loop. If not specified, the default interval `5m` will be used.
 
 Example:
 
