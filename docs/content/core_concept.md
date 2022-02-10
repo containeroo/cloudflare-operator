@@ -162,34 +162,24 @@ The `IP` object has two purposes:
        - https://api.ipify.org
      interval: 5m
    ```
-   
    !!! warning
        The source must return only the external IPv4 address.
-   
        Good example:
-   
        ```bash
        curl https://api.ipify.org
        ```
-   
        Output:
-   
        ```console
        142.251.36.35
        ```
-   
        Bad example:
-   
        ```bash
        curl "https://api.ipify.org?format=json"
        ```
-   
        Output:
-   
        ```console
        {"ip":"142.251.36.35"}
        ```
-   
    !!! tip
        To minimize the amount of traffic to each IP source, make sure to add more than one `dynamicIPSources`. cloudflare-operator will randomly choose a source on every `interval`.
 
