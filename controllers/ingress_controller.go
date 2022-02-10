@@ -78,21 +78,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	if instance.Annotations["cf.containeroo.ch/interval"] == "" {
-		instance.Annotations["cf.containeroo.ch/interval"] = "5m"
-		err := r.Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update Ingress")
-			return ctrl.Result{}, err
-		}
-	}
-
-	intervalDuration, err := time.ParseDuration(instance.Annotations["cf.containeroo.ch/interval"])
-	if err != nil {
-		log.Error(err, "Failed to parse interval", "interval", instance.Annotations["cf.containeroo.ch/interval"], "ingress", instance.Name)
-		return ctrl.Result{}, err
-	}
-
 	trueVar := true
 
 	dnsRecordSpec := cfv1alpha1.DNSRecordSpec{}
@@ -143,7 +128,11 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if interval, ok := instance.Annotations["cf.containeroo.ch/interval"]; ok {
-		intervalDuration, _ := time.ParseDuration(interval)
+		intervalDuration, err := time.ParseDuration(interval)
+		if err != nil {
+			log.Error(err, "Failed to parse interval", "interval", interval, "ingress", instance.Name)
+			return ctrl.Result{}, err
+		}
 		dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
 	}
 	if dnsRecordSpec.Interval.Duration == 0 {
@@ -213,7 +202,7 @@ rules:
 		}
 	}
 
-	return ctrl.Result{RequeueAfter: intervalDuration}, nil
+	return ctrl.Result{RequeueAfter: dnsRecordSpec.Interval.Duration}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
