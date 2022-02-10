@@ -213,9 +213,9 @@ The following annotations are supported:
     If you add the label `cf.containeroo.ch/ignore=true` and cloudflare-operator has already created a `DNSRecord`, cloudflare-operator will clean up the `DNSRecord` (Kubernetes and Cloudflare).
 
 !!! note "cf.containeroo.ch/interval"
-    This interval as two purposes:
-    1. It specifies at which interval cloudflare-operator will fetch the DNS record from Cloudflare and compare it with the `DNSRecord` object spec. If the DNS record does not match the spec, cloudflare-operator will update the DNS record on Cloudflare.
-    2. Interval at which cloudflare-operator will check if the corresponding `DNSRecord` object still exists. If it does not exist, cloudflare-operator will recreate the `DNSRecord` object.
+    This interval as two purposes:  
+    1. It specifies at which interval cloudflare-operator will fetch the DNS record from Cloudflare and compare it with the `DNSRecord` object spec. If the DNS record does not match the spec, cloudflare-operator will update the DNS record on Cloudflare.  
+    2. Interval at which cloudflare-operator will check if the corresponding `DNSRecord` object still exists. If it does not exist, cloudflare-operator will recreate the `DNSRecord` object.  
     If not specified, cloudflare-operator will use a default interval of 5 minutes.
 
 Example:
