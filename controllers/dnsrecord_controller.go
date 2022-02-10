@@ -164,7 +164,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			err := r.markFailed(instance, ctx, err.Error())
 			if err != nil {
-				log.Error(err, "Failed to update DNS record status")
+				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, err
@@ -174,7 +174,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		instance.Status.Message = ""
 		err = r.Status().Update(ctx, instance)
 		if err != nil {
-			log.Error(err, "Failed to update DNS record status")
+			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
@@ -196,7 +196,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if err != nil {
 			err := r.markFailed(instance, ctx, err.Error())
 			if err != nil {
-				log.Error(err, "Failed to update DNS record status")
+				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, err
@@ -208,7 +208,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		err = r.Status().Update(ctx, instance)
 		if err != nil {
-			log.Error(err, "Failed to update DNS record status")
+			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
 		log.Info("DNS record updated in cloudflare", "name", existingRecord.Name, "id", existingRecord.ID)
@@ -221,7 +221,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		instance.Status.Message = ""
 		err := r.Status().Update(ctx, instance)
 		if err != nil {
-			log.Error(err, "Failed to update DNS record status")
+			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
 	}
@@ -246,7 +246,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		controllerutil.AddFinalizer(instance, dnsRecordFinalizer)
 		err := r.Update(ctx, instance)
 		if err != nil {
-			log.Error(err, "Failed to update DNS record finalizer")
+			log.Error(err, "Failed to update DNSRecord finalizer")
 			return ctrl.Result{}, err
 		}
 	}

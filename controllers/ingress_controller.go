@@ -48,14 +48,14 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	instance := &networkingv1.Ingress{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		log.Error(err, "unable to fetch Ingress")
+		log.Error(err, "Failed to fetch Ingress")
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	dnsRecords := &cfv1alpha1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
-		log.Error(err, "unable to fetch DNSRecord")
+		log.Error(err, "Failed to fetch DNSRecord")
 		return ctrl.Result{}, err
 	}
 
@@ -67,7 +67,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				}
 				err := r.Delete(ctx, &dnsRecord)
 				if err != nil {
-					log.Error(err, "unable to delete DNSRecord")
+					log.Error(err, "Failed to delete DNSRecord")
 					return ctrl.Result{}, err
 				}
 				log.Info("Deleted DNSRecord, because it was owned by an Ingress that is being ignored", "DNSRecord", dnsRecord.Name)
@@ -128,7 +128,11 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if interval, ok := instance.Annotations["cf.containeroo.ch/interval"]; ok {
-		intervalDuration, _ := time.ParseDuration(interval)
+		intervalDuration, err := time.ParseDuration(interval)
+		if err != nil {
+			log.Error(err, "Failed to parse interval", "interval", interval, "ingress", instance.Name)
+			return ctrl.Result{}, err
+		}
 		dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
 	}
 	if dnsRecordSpec.Interval.Duration == 0 {
@@ -174,7 +178,7 @@ rules:
 		log.Info("Creating DNSRecord", "name", dnsRecord.Name)
 		err = r.Create(ctx, dnsRecord)
 		if err != nil {
-			log.Error(err, "unable to create DNSRecord")
+			log.Error(err, "Failed to create DNSRecord")
 			return ctrl.Result{}, err
 		}
 	}
@@ -192,13 +196,13 @@ rules:
 			dnsRecord.Spec = dnsRecordSpec
 			err := r.Update(ctx, &dnsRecord)
 			if err != nil {
-				log.Error(err, "unable to update DNSRecord")
+				log.Error(err, "Failed to update DNSRecord")
 				return ctrl.Result{}, err
 			}
 		}
 	}
 
-	return ctrl.Result{}, nil
+	return ctrl.Result{RequeueAfter: dnsRecordSpec.Interval.Duration}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

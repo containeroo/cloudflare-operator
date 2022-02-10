@@ -14,7 +14,7 @@ cloudflare-operator helps to:
 
 ## What can I do with cloudflare-operator?
 
-cloudflare-operator is based on a set of Kubernetes API extensions (“custom resources”), which control Cloudflare DNS records.
+cloudflare-operator is based on a set of Kubernetes API extensions ("custom resources"), which control Cloudflare DNS records.
 
 ## Where do I start?
 

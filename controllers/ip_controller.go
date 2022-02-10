@@ -118,7 +118,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	dnsRecords := &cfv1alpha1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
-		log.Error(err, "Failed to list DNS records")
+		log.Error(err, "Failed to list DNSRecords")
 		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, err
 	}
 
@@ -132,7 +132,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		dnsRecord.Spec.Content = instance.Spec.Address
 		err := r.Update(ctx, &dnsRecord)
 		if err != nil {
-			log.Error(err, "Failed to update DNS record")
+			log.Error(err, "Failed to update DNSRecord")
 		}
 	}
 

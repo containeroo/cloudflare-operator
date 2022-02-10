@@ -14,11 +14,11 @@ cloudflare-operator helps to:
 
 ## What can I do with cloudflare-operator?
 
-cloudflare-operator is based on a set of Kubernetes API extensions (“custom resources”), which control Cloudflare DNS records.
+cloudflare-operator is based on a set of Kubernetes API extensions ("custom resources"), which control Cloudflare DNS records.
 
 ## Where do I start?
 
-Following [this](https://containeroo.github.io/cloudflare-operator/getting_started/) guide will just take a couple of minutes to complete. After installing the cloudflare-operator helm chart and adding some annotation to your ingresses, cloudflare-operator will take care of your Cloudflare DNS records.
+Following [this](https://docs.cf.containeroo.ch/getting_started/) guide will just take a couple of minutes to complete. After installing the cloudflare-operator helm chart and adding some annotation to your ingresses, cloudflare-operator will take care of your Cloudflare DNS records.
 
 ## More detail on what’s in cloudflare-operator
 
