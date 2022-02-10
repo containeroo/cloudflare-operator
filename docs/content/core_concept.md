@@ -201,16 +201,19 @@ To skip the creation of a `DNSRecord`, add the annotation `cf.containeroo.ch/ign
 
 The following annotations are supported:
 
-| Annotation                   | Value                  | Description                                                                                                |
-|:-----------------------------|:-----------------------|:-----------------------------------------------------------------------------------------------------------|
-| `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                             |
-| `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`    | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic' |
-| `cf.containeroo.ch/type`     | `A` or `CNAME`         | Cloudflare DNS record type                                                                                 |
-| `cf.containeroo.ch/interval` | `5m`                   | Interval at which cloudflare-operator will compare the Cloudflare DNS record with the `DNSRecord` object   |
-| `cf.containeroo.ch/ignore`   | `true` or `false`      | Skip creation of a DNS record                                                                              |
+| Annotation                   | Value                  | Description                                                                                                                                 |
+|:-----------------------------|:-----------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|
+| `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                                                              |
+| `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`    | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic'                                  |
+| `cf.containeroo.ch/type`     | `A` or `CNAME`         | Cloudflare DNS record type                                                                                                                  |
+| `cf.containeroo.ch/interval` | `5m`                   | Interval at which cloudflare-operator will compare the Cloudflare DNS record with the `DNSRecord` object and reconcile the DNSRecord object |
+| `cf.containeroo.ch/ignore`   | `true` or `false`      | Skip creation of a DNS record                                                                                                               |
 
 !!! note "cf.containeroo.ch/ignore"
-    If you add the label `cf.containeroo.ch/ignore=true` and cloudflare-operator has already created a `DNSRecord`, cloudflare-operator will clean up the `DNSRecord` (Kubernetes and Cloudflare)!
+    If you add the label `cf.containeroo.ch/ignore=true` and cloudflare-operator has already created a `DNSRecord`, cloudflare-operator will clean up the `DNSRecord` (Kubernetes and Cloudflare).
+
+!!! note "cf.containeroo.ch/interval"
+    If you delete the `DNSRecord` object, cloudflare-operator will automatically recreate it with the `interval` specified in the annotation.
 
 Example:
 
