@@ -115,83 +115,83 @@ The `IP` object has two purposes:
 
 1. **DRY (Don't Repeat Yourself)**
 
-   Let's say you have multiple `DNSRecords` pointing to the same IP. You can use the `IP` object to avoid repeating the IP address in the `DNSRecord.spec.content` field.  
-   If you change the `IP` object, cloudflare-operator will automatically update the `DNSRecord.spec.content` fields.
+    Let's say you have multiple `DNSRecords` pointing to the same IP. You can use the `IP` object to avoid repeating the IP address in the `DNSRecord.spec.content` field.  
+    If you change the `IP` object, cloudflare-operator will automatically update the `DNSRecord.spec.content` fields.
 
-   Example:
+    Example:
 
-   ```yaml
-   apiVersion: cf.containeroo.ch/v1alpha1
-   kind: IP
-   metadata:
-     name: static-address
-   spec:
-     type: static
-     address: 142.251.36.35
-   ```
+    ```yaml
+    apiVersion: cf.containeroo.ch/v1alpha1
+    kind: IP
+    metadata:
+      name: static-address
+    spec:
+      type: static
+      address: 142.251.36.35
+    ```
 
 2. **Dynamic DNS**
 
-   If the `type` is set to `dynamic`, cloudflare-operator will fetch your external IPv4 address in a specified interval (`spec.interval`).
+    If the `type` is set to `dynamic`, cloudflare-operator will fetch your external IPv4 address in a specified interval (`spec.interval`).
 
-   Example:
+    Example:
 
-   ```yaml
-   apiVersion: cf.containeroo.ch/v1alpha1
-   kind: IP
-   metadata:
-     name: external-ipv4
-   spec:
-     type: dynamic
-     interval: 5m
-   ```
+    ```yaml
+    apiVersion: cf.containeroo.ch/v1alpha1
+    kind: IP
+    metadata:
+      name: external-ipv4
+    spec:
+      type: dynamic
+      interval: 5m
+    ```
 
-   If no `dynamicIPSources` are specified, cloudflare-operator will use a hardcoded set of sources.  
-   If you prefer other sources, you can add them as a list in `dynamicIPSources`.
+    If no `dynamicIPSources` are specified, cloudflare-operator will use a hardcoded set of sources.  
+    If you prefer other sources, you can add them as a list in `dynamicIPSources`.
 
-   Example:
+    Example:
 
-   ```yaml
-   apiVersion: cf.containeroo.ch/v1alpha1
-   kind: IP
-   metadata:
-     name: external-ipv4
-   spec:
-     type: dynamic
-     dynamicIPSources:
-       - https://api.ipify.org
-     interval: 5m
-   ```
+    ```yaml
+    apiVersion: cf.containeroo.ch/v1alpha1
+    kind: IP
+    metadata:
+      name: external-ipv4
+    spec:
+      type: dynamic
+      dynamicIPSources:
+        - https://api.ipify.org
+      interval: 5m
+    ```
 
-   !!! warning
-       The source must return only the external IPv4 address.
+    !!! warning
+        The source must return only the external IPv4 address.
 
-       Good example:
+        Good example:
 
-       ```bash
-       curl https://api.ipify.org
-       ```
+        ```bash
+        curl https://api.ipify.org
+        ```
 
-       Output:
+        Output:
 
-       ```console
-       142.251.36.35
-       ```
+        ```console
+        142.251.36.35
+        ```
 
-       Bad example:
+        Bad example:
 
-       ```bash
-       curl "https://api.ipify.org?format=json"
-       ```
+        ```bash
+        curl "https://api.ipify.org?format=json"
+        ```
 
-       Output:
+        Output:
 
-       ```console
-       {"ip":"142.251.36.35"}
-       ```
+        ```console
+        {"ip":"142.251.36.35"}
+        ```
 
-   !!! tip
-       To minimize the amount of traffic to each IP source, make sure to add more than one `dynamicIPSources`. cloudflare-operator will randomly choose a source on every `interval`.
+    !!! tip
+        To minimize the amount of traffic to each IP source, make sure to add more than one `dynamicIPSources`. cloudflare-operator will randomly choose a source on every `interval`.
 
 ## Ingress
 
