@@ -5,7 +5,7 @@ go 1.16
 require (
 	cloud.google.com/go v0.99.0 // indirect
 	github.com/cespare/xxhash/v2 v2.1.2 // indirect
-	github.com/cloudflare/cloudflare-go v0.31.0
+	github.com/cloudflare/cloudflare-go v0.32.0
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-logr/logr v0.4.0
 	github.com/json-iterator/go v1.1.12 // indirect
