@@ -20,6 +20,7 @@ import (
 	"context"
 	"github.com/cloudflare/cloudflare-go"
 	"k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strings"
 	"time"
 
@@ -57,6 +58,30 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		log.Error(err, "Failed to get Zone resource")
 		return ctrl.Result{}, err
 	}
+
+	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Zone finalizer")
+			return ctrl.Result{}, err
+		}
+	}
+
+	if instance.GetDeletionTimestamp() != nil {
+		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
+			zoneFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Name)
+		}
+
+		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(0)
 
 	if r.Cf.APIKey == "" {
 		instance.Status.Phase = "Pending"
@@ -145,6 +170,7 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // markFailed marks the reconciled object as failed
 func (r *ZoneReconciler) markFailed(instance *cfv1alpha1.Zone, ctx context.Context, message string) error {
+	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(1)
 	instance.Status.Phase = "Failed"
 	instance.Status.Message = message
 	if err := r.Status().Update(ctx, instance); err != nil {
