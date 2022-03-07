@@ -87,13 +87,23 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 
 	ipFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(0)
 
-	if instance.Spec.Type == "static" && instance.Spec.Address == "" {
-		err := r.markFailed(instance, ctx, "Address is required for static IPs")
-		if err != nil {
-			log.Error(err, "Failed to update IP resource")
-			return ctrl.Result{}, err
+	if instance.Spec.Type == "static" {
+		if instance.Spec.Address == "" {
+			err := r.markFailed(instance, ctx, "Address is required for static IPs")
+			if err != nil {
+				log.Error(err, "Failed to update IP resource")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
 		}
-		return ctrl.Result{}, nil
+		if net.ParseIP(instance.Spec.Address) == nil {
+			err := r.markFailed(instance, ctx, "Address is not a valid IP address")
+			if err != nil {
+				log.Error(err, "Failed to update IP resource")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{}, nil
+		}
 	}
 
 	if instance.Spec.Type == "dynamic" {
