@@ -126,15 +126,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, dnsRecordFinalizer) {
-		controllerutil.AddFinalizer(instance, dnsRecordFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update DNSRecord finalizer")
-			return ctrl.Result{}, err
-		}
-	}
-
 	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{Name: instance.Spec.Name})
 	if err != nil {
 		log.Error(err, "Failed to get DNS records from Cloudflare")
@@ -251,6 +242,15 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
+	if !controllerutil.ContainsFinalizer(instance, dnsRecordFinalizer) {
+		controllerutil.AddFinalizer(instance, dnsRecordFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNSRecord finalizer")
+			return ctrl.Result{}, err
+		}
+	}
+
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }
 
@@ -273,6 +273,7 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 
 // markFailed marks the reconciled object as failed
 func (r *DNSRecordReconciler) markFailed(instance *cfv1alpha1.DNSRecord, ctx context.Context, message string) error {
+	dnsRecordFailures.Inc()
 	instance.Status.Phase = "Failed"
 	instance.Status.Message = message
 	if err := r.Status().Update(ctx, instance); err != nil {
