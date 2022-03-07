@@ -22,14 +22,36 @@ import (
 )
 
 var (
-	dnsRecordFailures = prometheus.NewCounter(
-		prometheus.CounterOpts{
-			Name: "cloudflare_dns_record_failures_total",
-			Help: "Number of failed DNS record operations",
+	accountFailureCounter = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "cloudflare_operator_account_failure_counter",
+			Help: "Cloudflare accounts that failed",
 		},
+		[]string{"name"},
+	)
+	dnsRecordFailureCounter = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "cloudflare_operator_dns_record_failure_counter",
+			Help: "Cloudflare DNS records that failed",
+		},
+		[]string{"namespace", "name", "recordName", "recordType"},
+	)
+	ipFailureCounter = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "cloudflare_operator_ip_failure_counter",
+			Help: "IPs that failed",
+		},
+		[]string{"name", "ipType"},
+	)
+	zoneFailureCounter = prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "cloudflare_operator_zone_failure_counter",
+			Help: "Cloudflare zones that failed",
+		},
+		[]string{"name", "zoneName"},
 	)
 )
 
 func init() {
-	metrics.Registry.MustRegister(dnsRecordFailures)
+	metrics.Registry.MustRegister(accountFailureCounter, dnsRecordFailureCounter, ipFailureCounter, zoneFailureCounter)
 }

@@ -25,6 +25,7 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strings"
 	"time"
 
@@ -61,6 +62,30 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		log.Error(err, "Failed to get IP resource")
 		return ctrl.Result{}, err
 	}
+
+	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update IP finalizer")
+			return ctrl.Result{}, err
+		}
+	}
+
+	if instance.GetDeletionTimestamp() != nil {
+		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
+			ipFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Type)
+		}
+
+		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	ipFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(0)
 
 	if instance.Spec.Type == "static" && instance.Spec.Address == "" {
 		err := r.markFailed(instance, ctx, "Address is required for static IPs")
@@ -198,6 +223,7 @@ func getCurrentIP(sources []string) (string, error) {
 
 // markFailed marks the reconciled object as failed
 func (r *IPReconciler) markFailed(instance *cfv1alpha1.IP, ctx context.Context, message string) error {
+	ipFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(1)
 	instance.Status.Phase = "Failed"
 	instance.Status.Message = message
 	if err := r.Status().Update(ctx, instance); err != nil {

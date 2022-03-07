@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"strings"
 	"time"
 
@@ -61,6 +62,30 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		log.Error(err, "Failed to get Account resource")
 		return ctrl.Result{}, err
 	}
+
+	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update Account finalizer")
+			return ctrl.Result{}, err
+		}
+	}
+
+	if instance.GetDeletionTimestamp() != nil {
+		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
+			accountFailureCounter.DeleteLabelValues(instance.Name)
+		}
+
+		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
+	accountFailureCounter.WithLabelValues(instance.Name).Set(0)
 
 	secret := &v1.Secret{}
 	err = r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.GlobalAPIKey.SecretRef.Namespace, Name: instance.Spec.GlobalAPIKey.SecretRef.Name}, secret)
@@ -241,6 +266,7 @@ func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // markFailed marks the reconciled object as failed
 func (r *AccountReconciler) markFailed(instance *cfv1alpha1.Account, ctx context.Context, message string) error {
+	accountFailureCounter.WithLabelValues(instance.Name).Set(1)
 	instance.Status.Phase = "Failed"
 	instance.Status.Message = message
 	if err := r.Status().Update(ctx, instance); err != nil {

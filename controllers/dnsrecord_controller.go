@@ -40,8 +40,6 @@ type DNSRecordReconciler struct {
 	Cf     *cloudflare.API
 }
 
-const dnsRecordFinalizer = "cf.containeroo.ch/finalizer"
-
 // +kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cf.containeroo.ch,resources=dnsrecords/finalizers,verbs=update
@@ -110,21 +108,30 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	dnsRecordZoneId := dnsRecordZone.Spec.ID
 
-	isDNSRecordMarkedToBeDeleted := instance.GetDeletionTimestamp() != nil
-	if isDNSRecordMarkedToBeDeleted {
-		if controllerutil.ContainsFinalizer(instance, dnsRecordFinalizer) {
-			if err := r.finalizeDNSRecord(ctx, dnsRecordZoneId, log, instance); err != nil {
-				return ctrl.Result{}, err
-			}
+	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
+		err := r.Update(ctx, instance)
+		if err != nil {
+			log.Error(err, "Failed to update DNSRecord finalizer")
+			return ctrl.Result{}, err
+		}
+	}
+
+	if instance.GetDeletionTimestamp() != nil {
+		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
+			r.finalizeDNSRecord(ctx, dnsRecordZoneId, log, instance)
+			dnsRecordFailureCounter.DeleteLabelValues(instance.Namespace, instance.Name, instance.Spec.Name, instance.Spec.Type)
 		}
 
-		controllerutil.RemoveFinalizer(instance, dnsRecordFinalizer)
+		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
 		err := r.Update(ctx, instance)
 		if err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
+
+	dnsRecordFailureCounter.WithLabelValues(instance.Namespace, instance.Name, instance.Spec.Name, instance.Spec.Type).Set(0)
 
 	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{Name: instance.Spec.Name})
 	if err != nil {
@@ -242,15 +249,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, dnsRecordFinalizer) {
-		controllerutil.AddFinalizer(instance, dnsRecordFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update DNSRecord finalizer")
-			return ctrl.Result{}, err
-		}
-	}
-
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }
 
@@ -262,18 +260,16 @@ func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // finalizeDNSRecord deletes the DNS record from cloudflare
-func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1alpha1.DNSRecord) error {
+func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1alpha1.DNSRecord) {
 	err := r.Cf.DeleteDNSRecord(ctx, dnsRecordZoneId, d.Status.RecordID)
 	if err != nil {
-		log.Error(err, "Failed to delete DNS record in cloudflare")
-		return err
+		log.Error(err, "Failed to delete DNS record in Cloudflare. Record may still exist in Cloudflare")
 	}
-	return nil
 }
 
 // markFailed marks the reconciled object as failed
 func (r *DNSRecordReconciler) markFailed(instance *cfv1alpha1.DNSRecord, ctx context.Context, message string) error {
-	dnsRecordFailures.Inc()
+	dnsRecordFailureCounter.WithLabelValues(instance.Namespace, instance.Name, instance.Spec.Name, instance.Spec.Type).Set(1)
 	instance.Status.Phase = "Failed"
 	instance.Status.Message = message
 	if err := r.Status().Update(ctx, instance); err != nil {
