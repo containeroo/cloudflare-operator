@@ -14,8 +14,9 @@ builds:
       - arm64
 dockers:
   - image_templates:
-      - ghcr.io/containeroo/cloudflare-operator:latest
-      - ghcr.io/containeroo/cloudflare-operator:{{ .Version }}
+      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-amd64
+      - containeroo/cloudflare-operator:{{ .Tag }}-amd64
+    use: buildx
     dockerfile: Dockerfile
     extra_files:
       - go.mod
@@ -24,6 +25,8 @@ dockers:
       - api
       - controllers
     build_flag_templates:
+      - --pull
+      - --platform=linux/amd64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
       - --label=org.opencontainers.image.url=https://github.com/containeroo/cloudflare-operator
@@ -31,7 +34,47 @@ dockers:
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
-      #  - --label=org.opencontainers.image.licenses=MIT -> TBD
+      - --label=org.opencontainers.image.licenses="GNU General Public License v3.0"
+  - image_templates:
+      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-arm64
+      - containeroo/cloudflare-operator:{{ .Tag }}-arm64
+    use: buildx
+    dockerfile: Dockerfile
+    extra_files:
+      - go.mod
+      - go.sum
+      - main.go
+      - api
+      - controllers
+    goarch: arm64
+    build_flag_templates:
+      - --pull
+      - --platform=linux/arm64
+      - --label=org.opencontainers.image.title={{ .ProjectName }}
+      - --label=org.opencontainers.image.description={{ .ProjectName }}
+      - --label=org.opencontainers.image.url=https://github.com/containeroo/cloudflare-operator
+      - --label=org.opencontainers.image.source=https://github.com/containeroo/cloudflare-operator
+      - --label=org.opencontainers.image.version={{ .Version }}
+      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
+      - --label=org.opencontainers.image.revision={{ .FullCommit }}
+      - --label=org.opencontainers.image.licenses="GNU General Public License v3.0"
+docker_manifests:
+  - name_template: containeroo/cloudflare-operator:{{ .Tag }}
+    image_templates:
+      - containeroo/cloudflare-operator:{{ .Tag }}-amd64
+      - containeroo/cloudflare-operator:{{ .Tag }}-arm64
+  - name_template: ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}
+    image_templates:
+      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-amd64
+      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-arm64
+  - name_template: containeroo/cloudflare-operator:latest
+    image_templates:
+      - containeroo/cloudflare-operator:{{ .Tag }}-amd64
+      - containeroo/cloudflare-operator:{{ .Tag }}-arm64
+  - name_template: ghcr.io/containeroo/cloudflare-operator:latest
+    image_templates:
+      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-amd64
+      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-arm64
 release:
   extra_files:
     - glob: ./crds.yaml
