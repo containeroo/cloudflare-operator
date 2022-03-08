@@ -23,7 +23,7 @@ Create an `Account` object:
 
 ```bash
 kubectl apply -f - << EOF
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: Account
 metadata:
   name: account-sample
@@ -40,7 +40,7 @@ Create an `IP` object for your root domain to automatically update your external
 
 ```bash
 kubectl apply -f - << EOF
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: IP
 metadata:
   name: dynamic-external-ipv4-address
@@ -54,7 +54,7 @@ Create a `DNSRecord` with type `A` for your root domain:
 
 ```bash
 kubectl apply -f - << EOF
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
   name: root-domain
@@ -86,7 +86,7 @@ kubectl annotate ingress --all-namespaces --all "cf.containeroo.ch/content=examp
 Let's say you have a vpn-server on a Raspberry Pi. In order to manage the Cloudflare DNS record for you, create a `DNSRecord` object:
 
 ```bash
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
   name: vpn
@@ -112,7 +112,7 @@ Set `proxied` to `false` because Cloudflare cannot proxy vpn traffic.
 Let's say you have an external website `blog.example.com` hosted on a cloud VPC and your external cloud instance IP address is `178.4.20.69`.
 
 ```bash
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
   name: blog

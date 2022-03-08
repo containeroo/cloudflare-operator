@@ -75,7 +75,7 @@ Create a new invalid `DNSRecord`:
 
 ```bash
 kubectl apply -f - << EOF
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
   name: www-example-com
@@ -119,7 +119,7 @@ kubectl get dnsrecords --namespace cloudflare-operator www-example-com -oyaml
 Output:
 
 ```yaml hl_lines="20 21"
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
   ...
@@ -139,3 +139,24 @@ status:
 ```
 
 In the `status.message` you can see the error. The `Phase` is also set to `Failed`.
+
+## Metrics
+
+When installing cloudflare-operator with helm, set the following values to enable metrics:
+
+```yaml
+metrics:
+  podMonitor:
+    enabled: true
+  prometheusRule:
+    enabled: true
+```
+
+cloudflare-operator then exposes the following metrics:
+
+```text
+cloudflare_operator_account_failure_counter
+cloudflare_operator_dns_record_failure_counter
+cloudflare_operator_ip_failure_counter
+cloudflare_operator_zone_failure_counter
+```

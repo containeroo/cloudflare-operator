@@ -30,7 +30,7 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
-	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
+	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
 )
 
 // DNSRecordReconciler reconciles a DNSRecord object
@@ -49,7 +49,7 @@ type DNSRecordReconciler struct {
 func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1alpha1.DNSRecord{}
+	instance := &cfv1beta1.DNSRecord{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -71,14 +71,14 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
 	}
 
-	zones := &cfv1alpha1.ZoneList{}
+	zones := &cfv1beta1.ZoneList{}
 	err = r.List(ctx, zones)
 	if err != nil {
 		log.Error(err, "Failed to list Zone resources")
 		return ctrl.Result{}, err
 	}
 
-	var dnsRecordZone cfv1alpha1.Zone
+	var dnsRecordZone cfv1beta1.Zone
 	for _, zone := range zones.Items {
 		if strings.HasSuffix(instance.Spec.Name, zone.Spec.Name) {
 			dnsRecordZone = zone
@@ -149,7 +149,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if instance.Spec.Type == "A" && instance.Spec.IPRef.Name != "" {
-		ip := &cfv1alpha1.IP{}
+		ip := &cfv1beta1.IP{}
 		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IPRef.Name}, ip)
 		if err != nil {
 			err := r.markFailed(instance, ctx, "IP object not found")
@@ -224,7 +224,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 			return ctrl.Result{}, err
 		}
-		if !reflect.DeepEqual(instance.Status, cfv1alpha1.DNSRecordStatus{Phase: "Created", RecordID: existingRecord.ID, Message: ""}) {
+		if !reflect.DeepEqual(instance.Status, cfv1beta1.DNSRecordStatus{Phase: "Created", RecordID: existingRecord.ID, Message: ""}) {
 			instance.Status.Phase = "Created"
 			instance.Status.RecordID = existingRecord.ID
 			instance.Status.Message = ""
@@ -238,7 +238,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 	}
 
-	if !reflect.DeepEqual(instance.Status, cfv1alpha1.DNSRecordStatus{Phase: "Created", RecordID: existingRecord.ID, Message: ""}) {
+	if !reflect.DeepEqual(instance.Status, cfv1beta1.DNSRecordStatus{Phase: "Created", RecordID: existingRecord.ID, Message: ""}) {
 		instance.Status.Phase = "Created"
 		instance.Status.RecordID = existingRecord.ID
 		instance.Status.Message = ""
@@ -255,12 +255,12 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1alpha1.DNSRecord{}).
+		For(&cfv1beta1.DNSRecord{}).
 		Complete(r)
 }
 
 // finalizeDNSRecord deletes the DNS record from cloudflare
-func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1alpha1.DNSRecord) {
+func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1beta1.DNSRecord) {
 	err := r.Cf.DeleteDNSRecord(ctx, dnsRecordZoneId, d.Status.RecordID)
 	if err != nil {
 		log.Error(err, "Failed to delete DNS record in Cloudflare. Record may still exist in Cloudflare")
@@ -268,7 +268,7 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 }
 
 // markFailed marks the reconciled object as failed
-func (r *DNSRecordReconciler) markFailed(instance *cfv1alpha1.DNSRecord, ctx context.Context, message string) error {
+func (r *DNSRecordReconciler) markFailed(instance *cfv1beta1.DNSRecord, ctx context.Context, message string) error {
 	dnsRecordFailureCounter.WithLabelValues(instance.Namespace, instance.Name, instance.Spec.Name).Set(1)
 	instance.Status.Phase = "Failed"
 	instance.Status.Message = message

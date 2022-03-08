@@ -34,7 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
-	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
+	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
 )
 
 // IPReconciler reconciles a IP object
@@ -52,7 +52,7 @@ type IPReconciler struct {
 func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1alpha1.IP{}
+	instance := &cfv1beta1.IP{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -150,7 +150,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	dnsRecords := &cfv1alpha1.DNSRecordList{}
+	dnsRecords := &cfv1beta1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
 		log.Error(err, "Failed to list DNSRecords")
@@ -190,7 +190,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 // SetupWithManager sets up the controller with the Manager.
 func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1alpha1.IP{}).
+		For(&cfv1beta1.IP{}).
 		Complete(r)
 }
 
@@ -232,7 +232,7 @@ func getCurrentIP(sources []string) (string, error) {
 }
 
 // markFailed marks the reconciled object as failed
-func (r *IPReconciler) markFailed(instance *cfv1alpha1.IP, ctx context.Context, message string) error {
+func (r *IPReconciler) markFailed(instance *cfv1beta1.IP, ctx context.Context, message string) error {
 	ipFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(1)
 	instance.Status.Phase = "Failed"
 	instance.Status.Message = message

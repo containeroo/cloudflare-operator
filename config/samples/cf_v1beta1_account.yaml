@@ -1,4 +1,4 @@
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: Account
 metadata:
   name: account-sample

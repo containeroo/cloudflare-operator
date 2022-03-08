@@ -56,6 +56,7 @@ nav:
   - 'Core Concept': core_concept.md
   - 'Getting Started': getting_started.md
   - 'Installation': installation.md
+  - 'Upgrade Notes': upgrade_notes.md
   - 'Operations': operations.md
   - 'API Reference': api_reference.md
   - 'Roadmap': roadmap.md

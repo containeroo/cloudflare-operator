@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
-	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
+	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
 )
 
 // AccountReconciler reconciles an Account object
@@ -52,7 +52,7 @@ type AccountReconciler struct {
 func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1alpha1.Account{}
+	instance := &cfv1beta1.Account{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -144,7 +144,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		managedZones = zones
 	}
 
-	zonesList := &cfv1alpha1.ZoneList{}
+	zonesList := &cfv1beta1.ZoneList{}
 	err = r.List(ctx, zonesList, client.InNamespace(instance.Namespace))
 	if err != nil {
 		err := r.markFailed(instance, ctx, "Failed to list zones")
@@ -165,7 +165,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		if !found {
 			trueVar := true
-			z := &cfv1alpha1.Zone{
+			z := &cfv1beta1.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: strings.ReplaceAll(zone.Name, ".", "-"),
 					Labels: map[string]string{
@@ -174,7 +174,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "cf.containeroo.ch/v1alpha1",
+							APIVersion:         "cf.containeroo.ch/v1beta1",
 							Kind:               "Account",
 							Name:               instance.Name,
 							UID:                instance.UID,
@@ -183,12 +183,12 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 						},
 					},
 				},
-				Spec: cfv1alpha1.ZoneSpec{
+				Spec: cfv1beta1.ZoneSpec{
 					Name:     zone.Name,
 					ID:       zone.ID,
 					Interval: instance.Spec.Interval,
 				},
-				Status: cfv1alpha1.ZoneStatus{
+				Status: cfv1beta1.ZoneStatus{
 					Phase: "Pending",
 				},
 			}
@@ -222,7 +222,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 		if !found {
 			statusChanged = true
-			instance.Status.Zones = append(instance.Status.Zones, cfv1alpha1.AccountStatusZones{
+			instance.Status.Zones = append(instance.Status.Zones, cfv1beta1.AccountStatusZones{
 				ID:   zone.ID,
 				Name: zone.Name,
 			})
@@ -260,12 +260,12 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 // SetupWithManager sets up the controller with the Manager.
 func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1alpha1.Account{}).
+		For(&cfv1beta1.Account{}).
 		Complete(r)
 }
 
 // markFailed marks the reconciled object as failed
-func (r *AccountReconciler) markFailed(instance *cfv1alpha1.Account, ctx context.Context, message string) error {
+func (r *AccountReconciler) markFailed(instance *cfv1beta1.Account, ctx context.Context, message string) error {
 	accountFailureCounter.WithLabelValues(instance.Name).Set(1)
 	instance.Status.Phase = "Failed"
 	instance.Status.Message = message
