@@ -1,15 +1,15 @@
-# Helm
+# Installation
 
 ## Installing with Helm
 
 cloudflare-operator provides a Helm chart as a first-class method of installation on Kubernetes.
 
-## Prerequisites
+### Prerequisites
 
 - Install Helm version 3 or later
 - Install a supported version of Kubernetes
 
-## Steps
+### Steps
 
 1. Add the containeroo Helm repository:
 
@@ -32,7 +32,7 @@ cloudflare-operator requires a number of CRD resources, which must be installed 
 Installing CRDs with kubectl:
 
 ```bash
-kubectl apply -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.0.20/crds.yaml
+kubectl apply -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.1.0/crds.yaml
 ```
 
 4. Install cloudflare-operator
@@ -44,7 +44,7 @@ helm install \
   cloudflare-operator containeroo/cloudflare-operator \
   --namespace cloudflare-operator \
   --create-namespace \
-  --version v0.0.27
+  --version v0.1.0
 ```
 
 A full list of available Helm values is on [cloudflare-operator’s ArtifactHub page](https://artifacthub.io/packages/helm/containeroo/cloudflare-operator).
@@ -58,7 +58,7 @@ helm template \
   cloudflare-operator containeroo/cloudflare-operator \
   --namespace cloudflare-operator \
   --create-namespace \
-  --version v0.0.27 \
+  --version v0.1.0 \
   --set your.value=here
 ```
 
@@ -75,7 +75,7 @@ kubectl get Account,DNSRecord,IP --all-namespaces
 
 Once all these resources have been deleted you are ready to uninstall cloudflare-operator using the procedure determined by how you installed.
 
-## Uninstalling with Helm
+### Uninstalling with Helm
 
 Uninstalling cloudflare-operator from a helm installation is a case of running the installation process, in reverse, using the delete command on both `kubectl` and `helm`.
 
@@ -93,7 +93,7 @@ Finally, delete the cloudflare-operator CustomResourceDefinitions using the link
     This command will also remove installed cloudflare-operator objects. All cloudflare-operator resources will be removed by Kubernetes' garbage collector.
 
 ```bash
-kubectl delete -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.0.20/crds.yaml
+kubectl delete -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.1.0/crds.yaml
 ```
 
 ## Namespace Stuck in Terminating State
@@ -101,5 +101,5 @@ kubectl delete -f https://github.com/containeroo/cloudflare-operator/releases/do
 If the namespace has been marked for deletion without deleting the cloudflare-operator installation first, the namespace may become stuck in a terminating state. This is typically due to the fact that the APIService resource still exists however the webhook is no longer running so is no longer reachable. To resolve this, ensure you have run the above commands correctly, and if you’re still experiencing issues then run:
 
 ```bash
-kubectl delete apiservice v1alpha1.cf.containeroo.ch
+kubectl delete apiservice v1beta1.cf.containeroo.ch
 ```

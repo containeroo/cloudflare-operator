@@ -71,7 +71,7 @@ The `Account` object contains your Cloudflare credentials (email & global API ke
 Example:
 
 ```yaml
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: Account
 metadata:
   name: account-sample
@@ -100,7 +100,7 @@ cloudflare-operator will fetch all Cloudflare DNS records for each `Zone` object
 Example:
 
 ```yaml
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: Zone
 metadata:
   name: example-com
@@ -121,7 +121,7 @@ The `IP` object has two purposes:
     Example:
 
     ```yaml
-    apiVersion: cf.containeroo.ch/v1alpha1
+    apiVersion: cf.containeroo.ch/v1beta1
     kind: IP
     metadata:
       name: static-address
@@ -137,7 +137,7 @@ The `IP` object has two purposes:
     Example:
 
     ```yaml
-    apiVersion: cf.containeroo.ch/v1alpha1
+    apiVersion: cf.containeroo.ch/v1beta1
     kind: IP
     metadata:
       name: external-ipv4
@@ -152,7 +152,7 @@ The `IP` object has two purposes:
     Example:
 
     ```yaml
-    apiVersion: cf.containeroo.ch/v1alpha1
+    apiVersion: cf.containeroo.ch/v1beta1
     kind: IP
     metadata:
       name: external-ipv4
@@ -258,7 +258,7 @@ If a `DNSRecord` is deleted, cloudflare-operator will also delete the correspond
 Example:
 
 ```yaml
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
   name: www-example-com
@@ -277,7 +277,7 @@ Set `spec.ipRef` to the name of an `IP` object to automatically update the `cont
 Example:
 
 ```yaml
-apiVersion: cf.containeroo.ch/v1alpha1
+apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
   name: blog-example-com

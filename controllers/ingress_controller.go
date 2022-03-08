@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	cfv1alpha1 "github.com/containeroo/cloudflare-operator/api/v1alpha1"
+	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -52,7 +52,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	dnsRecords := &cfv1alpha1.DNSRecordList{}
+	dnsRecords := &cfv1beta1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
 		log.Error(err, "Failed to fetch DNSRecord")
@@ -80,7 +80,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	trueVar := true
 
-	dnsRecordSpec := cfv1alpha1.DNSRecordSpec{}
+	dnsRecordSpec := cfv1beta1.DNSRecordSpec{}
 
 	if content, ok := instance.Annotations["cf.containeroo.ch/content"]; ok {
 		dnsRecordSpec.Content = content
@@ -149,7 +149,7 @@ rules:
 
 		dnsRecordSpec.Name = rule.Host
 
-		dnsRecord := &cfv1alpha1.DNSRecord{
+		dnsRecord := &cfv1beta1.DNSRecord{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      strings.ReplaceAll(rule.Host, ".", "-"),
 				Namespace: instance.Namespace,
@@ -169,7 +169,7 @@ rules:
 				},
 			},
 			Spec: dnsRecordSpec,
-			Status: cfv1alpha1.DNSRecordStatus{
+			Status: cfv1beta1.DNSRecordStatus{
 				Phase:   "Pending",
 				Message: "Waiting for DNS record creation",
 			},
