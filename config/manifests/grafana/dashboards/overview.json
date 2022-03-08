@@ -66,10 +66,103 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1646743216243,
+  "iteration": 1646743216346,
   "links": [],
   "liveNow": false,
   "panels": [
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "palette-classic"
+          },
+          "custom": {
+            "axisLabel": "",
+            "axisPlacement": "auto",
+            "barAlignment": 0,
+            "drawStyle": "line",
+            "fillOpacity": 10,
+            "gradientMode": "none",
+            "hideFrom": {
+              "legend": false,
+              "tooltip": false,
+              "viz": false
+            },
+            "lineInterpolation": "linear",
+            "lineWidth": 1,
+            "pointSize": 5,
+            "scaleDistribution": {
+              "type": "linear"
+            },
+            "showPoints": "never",
+            "spanNulls": true,
+            "stacking": {
+              "group": "A",
+              "mode": "normal"
+            },
+            "thresholdsStyle": {
+              "mode": "off"
+            }
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 80
+              }
+            ]
+          },
+          "unit": "bytes"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 9,
+        "w": 9,
+        "x": 0,
+        "y": 0
+      },
+      "id": 14,
+      "options": {
+        "legend": {
+          "calcs": [
+            "mean",
+            "lastNotNull"
+          ],
+          "displayMode": "table",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "single"
+        }
+      },
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": false,
+          "expr": "rate(go_memstats_alloc_bytes_total{namespace=\"$namespace\",pod=~\"cloudflare-operator.*\"}[$__range])",
+          "instant": true,
+          "interval": "",
+          "legendFormat": "{{pod}}",
+          "refId": "A"
+        }
+      ],
+      "title": "Memory Usage",
+      "type": "timeseries"
+    },
     {
       "datasource": {
         "type": "prometheus",
@@ -105,8 +198,8 @@
       },
       "gridPos": {
         "h": 9,
-        "w": 12,
-        "x": 0,
+        "w": 3,
+        "x": 9,
         "y": 0
       },
       "id": 2,
@@ -334,7 +427,7 @@
               },
               {
                 "color": "red",
-                "value": 80
+                "value": 1
               }
             ]
           }
@@ -366,7 +459,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(cloudflare_operator_zone_failure_counter >= 0) by (name, zone_name)",
+          "expr": "sum(cloudflare_operator_zone_failure_counter{zone_name != \"\"} >= 0) by (name, zone_name)",
           "format": "table",
           "interval": "",
           "legendFormat": "",
@@ -458,9 +551,10 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "exemplar": true,
-          "expr": "sum(cloudflare_operator_ip_failure_counter >= 0) by (name, ip_type)",
+          "exemplar": false,
+          "expr": "sum(cloudflare_operator_ip_failure_counter{ip_type != \"\"} >= 0) by (name, ip_type)",
           "format": "table",
+          "instant": false,
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -558,11 +652,11 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(cloudflare_operator_dns_record_failure_counter >= 0) by (exported_namespace, name, record_name)",
+          "expr": "sum(cloudflare_operator_dns_record_failure_counter{record_name != \"\"} >= 0) by (exported_namespace, name, record_name)",
           "format": "table",
           "instant": false,
           "interval": "",
-          "intervalFactor": 2,
+          "intervalFactor": 1,
           "legendFormat": "",
           "refId": "A"
         }
@@ -659,13 +753,13 @@
     ]
   },
   "time": {
-    "from": "now-30m",
+    "from": "now-24h",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "cloudflare-operator",
   "uid": "z0UxTsL7z",
-  "version": 20,
+  "version": 25,
   "weekStart": ""
 }
