@@ -91,7 +91,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
+		return ctrl.Result{RequeueAfter: time.Second * 5}, err
 	}
 
 	_, err = r.Cf.ZoneDetails(ctx, instance.Spec.ID)

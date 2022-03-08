@@ -68,7 +68,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: 5 * time.Second}, err
+		return ctrl.Result{RequeueAfter: time.Second * 5}, err
 	}
 
 	zones := &cfv1beta1.ZoneList{}
@@ -92,7 +92,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 5}, err
 	}
 
 	if dnsRecordZone.Status.Phase != "Active" {
