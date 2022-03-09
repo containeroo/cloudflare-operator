@@ -326,7 +326,7 @@ spec:
 
 ### self-healing
 
-The `DNSRecord` controller reconcile itself in the given interval, if an error occurs. See following table:
+The `DNSRecord` controller reconciles itself in the given interval, if an error occurs. See the following table:
 
 | error                                                          | interval |
 | :------------------------------------------------------------- | :------- |
