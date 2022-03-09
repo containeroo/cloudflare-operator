@@ -66,7 +66,7 @@ TTL (time to live) is a setting that tells the DNS resolver how long to cache a 
 
 ## Account
 
-The `Account` object contains your Cloudflare credentials (email & global API key) and creates `Zone` objects.
+The `Account` object contains your Cloudflare credentials (email & global API key) and owns `Zone` objects.
 
 Example:
 
