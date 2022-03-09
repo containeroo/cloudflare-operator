@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1646851640320,
+  "iteration": 1646851640323,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -91,16 +91,13 @@
               "type": "value"
             }
           ],
+          "noValue": "not ready",
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
                 "color": "green",
                 "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
               }
             ]
           }
@@ -767,6 +764,6 @@
   "timezone": "",
   "title": "cloudflare-operator",
   "uid": "z0UxTsL7z",
-  "version": 1,
+  "version": 49,
   "weekStart": ""
 }
