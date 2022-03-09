@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1646840896121,
+  "iteration": 1646851640314,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -223,6 +223,7 @@
             "mode": "thresholds"
           },
           "mappings": [],
+          "noValue": "0",
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -323,7 +324,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Status (lastNotNull)"
+              "options": "Status"
             },
             "properties": [
               {
@@ -369,19 +370,6 @@
       "title": "Zones",
       "transformations": [
         {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "Value": "Status",
-              "Value (lastNotNull)": "Status",
-              "name": "Name",
-              "zone_name": "Zone name"
-            }
-          }
-        },
-        {
           "id": "groupBy",
           "options": {
             "fields": {
@@ -391,13 +379,13 @@
               },
               "Status": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
               "Value": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
@@ -409,6 +397,20 @@
                 "aggregations": [],
                 "operation": "groupby"
               }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Status",
+              "Value (last)": "Status",
+              "Value (lastNotNull)": "Status",
+              "name": "Name",
+              "zone_name": "Zone name"
             }
           }
         }
@@ -465,7 +467,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Value (lastNotNull)"
+              "options": "Value (last)"
             },
             "properties": [
               {
@@ -517,7 +519,7 @@
             "fields": {
               "Value": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
               },
@@ -541,6 +543,7 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
+              "Value (last)": "Status",
               "Value (lastNotNull)": "Status",
               "ip_type": "Type",
               "name": "Name",
@@ -601,7 +604,7 @@
           {
             "matcher": {
               "id": "byName",
-              "options": "Status (lastNotNull)"
+              "options": "Status"
             },
             "properties": [
               {
@@ -627,7 +630,8 @@
           ],
           "show": false
         },
-        "showHeader": true
+        "showHeader": true,
+        "sortBy": []
       },
       "pluginVersion": "8.3.6",
       "targets": [
@@ -649,29 +653,6 @@
       "title": "DNSRecords",
       "transformations": [
         {
-          "id": "organize",
-          "options": {
-            "excludeByName": {
-              "Time": true,
-              "__name__": true,
-              "container": true,
-              "endpoint": true,
-              "instance": true,
-              "job": true,
-              "namespace": true,
-              "pod": true
-            },
-            "indexByName": {},
-            "renameByName": {
-              "Value": "Status",
-              "exported_namespace": "Namespace",
-              "name": "Name",
-              "namespace": "",
-              "record_name": "Content"
-            }
-          }
-        },
-        {
           "id": "groupBy",
           "options": {
             "fields": {
@@ -689,10 +670,52 @@
               },
               "Status": {
                 "aggregations": [
-                  "lastNotNull"
+                  "last"
                 ],
                 "operation": "aggregate"
+              },
+              "Value": {
+                "aggregations": [
+                  "last"
+                ],
+                "operation": "aggregate"
+              },
+              "exported_namespace": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "name": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "record_name": {
+                "aggregations": [],
+                "operation": "groupby"
               }
+            }
+          }
+        },
+        {
+          "id": "organize",
+          "options": {
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "namespace": true,
+              "pod": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Status",
+              "Value (last)": "Status",
+              "exported_namespace": "Namespace",
+              "name": "Name",
+              "namespace": "",
+              "record_name": "Content"
             }
           }
         }
@@ -736,6 +759,6 @@
   "timezone": "",
   "title": "cloudflare-operator",
   "uid": "z0UxTsL7z",
-  "version": 43,
+  "version": 46,
   "weekStart": ""
 }
