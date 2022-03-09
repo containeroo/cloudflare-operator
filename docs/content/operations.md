@@ -140,6 +140,22 @@ status:
 
 In the `status.message` you can see the error. The `Phase` is also set to `Failed`.
 
+### Remove Finalizers From All DNSRecords
+
+If you want to delete all `DNSRecords` at once, you can issue the following command:
+
+```bash
+kubectl get dnsrecords \
+        --all-namespaces \
+        --no-headers \
+        --output=custom-columns='namespace:.metadata.namespace,name:.metadata.name' | \
+  xargs -n 2 -I{} \
+    kubectl patch dnsrecords.cf.containeroo.ch \
+            --namespace {} \
+            --patch '{"metadata":{"finalizers":null}}' \
+            --type merge
+```
+
 ## Metrics
 
 When installing cloudflare-operator with helm, set the following values to enable metrics:
