@@ -12,12 +12,6 @@
   "__elements": [],
   "__requires": [
     {
-      "type": "panel",
-      "id": "gauge",
-      "name": "Gauge",
-      "version": ""
-    },
-    {
       "type": "grafana",
       "id": "grafana",
       "name": "Grafana",
@@ -31,14 +25,14 @@
     },
     {
       "type": "panel",
-      "id": "table",
-      "name": "Table",
+      "id": "stat",
+      "name": "Stat",
       "version": ""
     },
     {
       "type": "panel",
-      "id": "timeseries",
-      "name": "Time series",
+      "id": "table",
+      "name": "Table",
       "version": ""
     }
   ],
@@ -66,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1646837873518,
+  "iteration": 1646840896118,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -78,37 +72,25 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
+            "mode": "thresholds"
           },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "green",
+                  "index": 0,
+                  "text": "OK"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "NOK"
+                }
+              },
+              "type": "value"
             }
-          },
-          "mappings": [],
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -121,89 +103,21 @@
                 "value": 80
               }
             ]
-          },
-          "unit": "bytes"
+          }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
-        "w": 9,
+        "h": 6,
+        "w": 6,
         "x": 0,
         "y": 0
       },
-      "id": 14,
+      "id": 22,
       "options": {
-        "legend": {
-          "calcs": [
-            "mean",
-            "lastNotNull"
-          ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "exemplar": true,
-          "expr": "rate(go_memstats_alloc_bytes_total{namespace=\"$namespace\",pod=~\"cloudflare-operator.*\"}[$__range])",
-          "instant": false,
-          "interval": "",
-          "legendFormat": "{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "title": "Memory Usage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "#EAB839",
-                "value": 500000000
-              },
-              {
-                "color": "red",
-                "value": 900000000
-              }
-            ]
-          },
-          "unit": "decbits"
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 9,
-        "w": 3,
-        "x": 9,
-        "y": 0
-      },
-      "id": 2,
-      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
@@ -212,8 +126,7 @@
           "fields": "",
           "values": false
         },
-        "showThresholdLabels": false,
-        "showThresholdMarkers": true
+        "textMode": "auto"
       },
       "pluginVersion": "8.3.6",
       "targets": [
@@ -223,14 +136,14 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(go_memstats_alloc_bytes{namespace=\"$namespace\",pod=~\"cloudflare-operator-.*\"})",
+          "expr": "cloudflare_operator_account_failure_counter",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
         }
       ],
-      "title": "Memory",
-      "type": "gauge"
+      "title": "Account",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -240,42 +153,14 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "palette-classic"
-          },
-          "custom": {
-            "axisLabel": "",
-            "axisPlacement": "auto",
-            "barAlignment": 0,
-            "drawStyle": "line",
-            "fillOpacity": 10,
-            "gradientMode": "none",
-            "hideFrom": {
-              "legend": false,
-              "tooltip": false,
-              "viz": false
-            },
-            "lineInterpolation": "linear",
-            "lineWidth": 1,
-            "pointSize": 5,
-            "scaleDistribution": {
-              "type": "linear"
-            },
-            "showPoints": "never",
-            "spanNulls": true,
-            "stacking": {
-              "group": "A",
-              "mode": "normal"
-            },
-            "thresholdsStyle": {
-              "mode": "off"
-            }
+            "mode": "thresholds"
           },
           "mappings": [],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               },
               {
@@ -283,94 +168,93 @@
                 "value": 80
               }
             ]
+          },
+          "unit": "short"
+        },
+        "overrides": []
+      },
+      "gridPos": {
+        "h": 6,
+        "w": 6,
+        "x": 6,
+        "y": 0
+      },
+      "id": 14,
+      "options": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
+          "calcs": [
+            "last"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "textMode": "value"
+      },
+      "pluginVersion": "8.3.6",
+      "targets": [
+        {
+          "datasource": {
+            "type": "prometheus",
+            "uid": "${DS_PROMETHEUS}"
+          },
+          "exemplar": true,
+          "expr": "count(cloudflare_operator_dns_record_failure_counter)",
+          "format": "time_series",
+          "interval": "",
+          "legendFormat": "",
+          "refId": "A"
+        }
+      ],
+      "title": "Total managed DNSRecords",
+      "type": "stat"
+    },
+    {
+      "datasource": {
+        "type": "prometheus",
+        "uid": "${DS_PROMETHEUS}"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "color": {
+            "mode": "thresholds"
+          },
+          "mappings": [],
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "red",
+                "value": null
+              }
+            ]
           }
         },
         "overrides": []
       },
       "gridPos": {
-        "h": 9,
-        "w": 12,
+        "h": 6,
+        "w": 5,
         "x": 12,
         "y": 0
       },
-      "id": 4,
+      "id": 16,
       "options": {
-        "legend": {
+        "colorMode": "value",
+        "graphMode": "none",
+        "justifyMode": "auto",
+        "orientation": "auto",
+        "reduceOptions": {
           "calcs": [
-            "mean",
             "lastNotNull"
           ],
-          "displayMode": "table",
-          "placement": "bottom"
-        },
-        "tooltip": {
-          "mode": "single"
-        }
-      },
-      "targets": [
-        {
-          "datasource": {
-            "type": "prometheus",
-            "uid": "${DS_PROMETHEUS}"
-          },
-          "exemplar": true,
-          "expr": "rate(process_cpu_seconds_total{namespace=\"$namespace\",pod=~\"cloudflare-operator.*\"}[$__range])",
-          "interval": "",
-          "legendFormat": "{{pod}}",
-          "refId": "A"
-        }
-      ],
-      "title": "CPU Usage",
-      "type": "timeseries"
-    },
-    {
-      "datasource": {
-        "type": "prometheus",
-        "uid": "${DS_PROMETHEUS}"
-      },
-      "description": "",
-      "fieldConfig": {
-        "defaults": {
-          "color": {
-            "mode": "thresholds"
-          },
-          "custom": {
-            "align": "auto",
-            "displayMode": "auto"
-          },
-          "mappings": [],
-          "thresholds": {
-            "mode": "absolute",
-            "steps": [
-              {
-                "color": "green",
-                "value": null
-              },
-              {
-                "color": "red",
-                "value": 80
-              }
-            ]
-          }
-        },
-        "overrides": []
-      },
-      "gridPos": {
-        "h": 5,
-        "w": 4,
-        "x": 0,
-        "y": 9
-      },
-      "id": 12,
-      "options": {
-        "footer": {
           "fields": "",
-          "reducer": [
-            "sum"
-          ],
-          "show": false
+          "values": false
         },
-        "showHeader": true
+        "textMode": "auto"
       },
       "pluginVersion": "8.3.6",
       "targets": [
@@ -380,28 +264,14 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(cloudflare_operator_account_failure_counter >= 0) by (name)",
-          "format": "table",
+          "expr": "count(cloudflare_operator_dns_record_failure_counter > 0)\n",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
         }
       ],
-      "title": "Accounts",
-      "transformations": [
-        {
-          "id": "groupBy",
-          "options": {
-            "fields": {
-              "name": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
-            }
-          }
-        }
-      ],
-      "type": "table"
+      "title": "Failing DNSRecords",
+      "type": "stat"
     },
     {
       "datasource": {
@@ -415,14 +285,31 @@
           },
           "custom": {
             "align": "auto",
-            "displayMode": "auto"
+            "displayMode": "auto",
+            "filterable": true
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "Ready"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Failed"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               },
               {
@@ -432,13 +319,26 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status (lastNotNull)"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 5,
-        "w": 12,
-        "x": 4,
-        "y": 9
+        "w": 7,
+        "x": 0,
+        "y": 6
       },
       "id": 10,
       "options": {
@@ -459,7 +359,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(cloudflare_operator_zone_failure_counter{zone_name != \"\"} >= 0) by (name, zone_name)",
+          "expr": "cloudflare_operator_zone_failure_counter",
           "format": "table",
           "interval": "",
           "legendFormat": "",
@@ -469,9 +369,38 @@
       "title": "Zones",
       "transformations": [
         {
+          "id": "organize",
+          "options": {
+            "excludeByName": {},
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Status",
+              "Value (lastNotNull)": "Status",
+              "name": "Name",
+              "zone_name": "Zone name"
+            }
+          }
+        },
+        {
           "id": "groupBy",
           "options": {
             "fields": {
+              "Name": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Status": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
+              "Value": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
               "name": {
                 "aggregations": [],
                 "operation": "groupby"
@@ -480,16 +409,6 @@
                 "aggregations": [],
                 "operation": "groupby"
               }
-            }
-          }
-        },
-        {
-          "id": "organize",
-          "options": {
-            "excludeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "zone_name": "zone name"
             }
           }
         }
@@ -508,14 +427,31 @@
           },
           "custom": {
             "align": "auto",
-            "displayMode": "color-background"
+            "displayMode": "auto",
+            "filterable": true
           },
-          "mappings": [],
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "Ready"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Failed"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               },
               {
@@ -525,13 +461,26 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Value (lastNotNull)"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
         "h": 5,
-        "w": 8,
-        "x": 16,
-        "y": 9
+        "w": 10,
+        "x": 7,
+        "y": 6
       },
       "id": 8,
       "options": {
@@ -552,7 +501,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": false,
-          "expr": "sum(cloudflare_operator_ip_failure_counter{ip_type != \"\"} >= 0) by (name, ip_type)",
+          "expr": "cloudflare_operator_ip_failure_counter",
           "format": "table",
           "instant": false,
           "interval": "",
@@ -560,12 +509,18 @@
           "refId": "A"
         }
       ],
-      "title": "IP",
+      "title": "IPs",
       "transformations": [
         {
           "id": "groupBy",
           "options": {
             "fields": {
+              "Value": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              },
               "ip_type": {
                 "aggregations": [],
                 "operation": "groupby"
@@ -575,8 +530,7 @@
                 "operation": "groupby"
               },
               "namespace": {
-                "aggregations": [],
-                "operation": "groupby"
+                "aggregations": []
               }
             }
           }
@@ -587,8 +541,10 @@
             "excludeByName": {},
             "indexByName": {},
             "renameByName": {
-              "ip_type": "type",
-              "name": ""
+              "Value (lastNotNull)": "Status",
+              "ip_type": "Type",
+              "name": "Name",
+              "namespace": "Namespace"
             }
           }
         }
@@ -603,19 +559,35 @@
       "fieldConfig": {
         "defaults": {
           "color": {
-            "mode": "continuous-GrYlRd"
+            "mode": "thresholds"
           },
           "custom": {
             "align": "auto",
-            "displayMode": "color-background"
+            "displayMode": "auto",
+            "filterable": true
           },
-          "mappings": [],
-          "noValue": "0",
+          "mappings": [
+            {
+              "options": {
+                "0": {
+                  "color": "blue",
+                  "index": 0,
+                  "text": "Ready"
+                },
+                "1": {
+                  "color": "red",
+                  "index": 1,
+                  "text": "Failed"
+                }
+              },
+              "type": "value"
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
               },
               {
@@ -625,13 +597,26 @@
             ]
           }
         },
-        "overrides": []
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "Status (lastNotNull)"
+            },
+            "properties": [
+              {
+                "id": "custom.displayMode",
+                "value": "color-background"
+              }
+            ]
+          }
+        ]
       },
       "gridPos": {
-        "h": 7,
+        "h": 11,
         "w": 24,
         "x": 0,
-        "y": 14
+        "y": 11
       },
       "id": 6,
       "options": {
@@ -652,7 +637,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "sum(cloudflare_operator_dns_record_failure_counter{record_name != \"\"} >= 0) by (exported_namespace, name, record_name)",
+          "expr": "cloudflare_operator_dns_record_failure_counter",
           "format": "table",
           "instant": false,
           "interval": "",
@@ -661,40 +646,53 @@
           "refId": "A"
         }
       ],
-      "title": "DNS records",
+      "title": "DNSRecords",
       "transformations": [
         {
-          "id": "groupBy",
+          "id": "organize",
           "options": {
-            "fields": {
-              "exported_namespace": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "name": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "namespace": {
-                "aggregations": [],
-                "operation": "groupby"
-              },
-              "record_name": {
-                "aggregations": [],
-                "operation": "groupby"
-              }
+            "excludeByName": {
+              "Time": true,
+              "__name__": true,
+              "container": true,
+              "endpoint": true,
+              "instance": true,
+              "job": true,
+              "namespace": true,
+              "pod": true
+            },
+            "indexByName": {},
+            "renameByName": {
+              "Value": "Status",
+              "exported_namespace": "Namespace",
+              "name": "Name",
+              "namespace": "",
+              "record_name": "Content"
             }
           }
         },
         {
-          "id": "organize",
+          "id": "groupBy",
           "options": {
-            "excludeByName": {},
-            "indexByName": {},
-            "renameByName": {
-              "exported_namespace": "namespace",
-              "namespace": "",
-              "record_name": "content"
+            "fields": {
+              "Content": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Name": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Namespace": {
+                "aggregations": [],
+                "operation": "groupby"
+              },
+              "Status": {
+                "aggregations": [
+                  "lastNotNull"
+                ],
+                "operation": "aggregate"
+              }
             }
           }
         }
@@ -702,7 +700,7 @@
       "type": "table"
     }
   ],
-  "refresh": "10s",
+  "refresh": "",
   "schemaVersion": 34,
   "style": "dark",
   "tags": [
@@ -753,13 +751,13 @@
     ]
   },
   "time": {
-    "from": "now-24h",
+    "from": "now-30m",
     "to": "now"
   },
   "timepicker": {},
   "timezone": "",
   "title": "cloudflare-operator",
   "uid": "z0UxTsL7z",
-  "version": 27,
+  "version": 42,
   "weekStart": ""
 }
