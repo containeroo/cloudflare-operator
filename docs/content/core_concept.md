@@ -55,7 +55,7 @@ TTL (time to live) is a setting that tells the DNS resolver how long to cache a 
 ### Example
 
 | Type  | Name        | Content       | Proxy Status | TTL  |
-|:------|:------------|:--------------|:-------------|:-----|
+| :---- | :---------- | :------------ | :----------- | :--- |
 | A     | example.com | 178.4.20.69   | true         | Auto |
 | CNAME | www         | example.com   | true         | Auto |
 | A     | blog        | 142.251.36.35 | true         | Auto |
@@ -66,7 +66,7 @@ TTL (time to live) is a setting that tells the DNS resolver how long to cache a 
 
 ## Account
 
-The `Account` object contains your Cloudflare credentials (email & global API key)
+The `Account` object contains your Cloudflare credentials (email & global API key) and creates `Zone` objects.
 
 Example:
 
@@ -88,6 +88,18 @@ spec:
 
 If cloudflare-operator should only manage some zones, you can specify them in the `managedZones` field.
 
+### self-healing
+
+The `Account` controller reconcile itself in the given interval, if an error occurs. See following table:
+
+| error                                                 | interval |
+| :---------------------------------------------------- | :------- |
+| referenced secret (`secretRef`) not found             | 30s      |
+| `apiKey` in referenced secret (`secretRef`) not found | 30s      |
+| connection to Cloudflare                              | 30s      |
+| fetching zones from Cloudflare                        | 30s      |
+| fetching zones from `Zone` object                     | 30s      |
+
 ## Zone
 
 The `Zone` object stores the zone id. This object will be automatically created by cloudflare-operator based on the zones available in the Cloudflare account.  
@@ -95,7 +107,7 @@ If a zone is not in the `Account.spec.managedZones` field, it will not be manage
 
 cloudflare-operator checks if a given `DNSRecord.spec.name` ends with `Zone.spec.name` to evaluate in which Cloudflare zone the dns record should be created.
 
-cloudflare-operator will fetch all Cloudflare DNS records for each `Zone` object and deletes them on Cloudflare if they are not present in Kubernetes.
+cloudflare-operator will fetch in the given interval (`.spec.interval`) all Cloudflare DNS records for each `Zone` object and deletes them on Cloudflare if they are not present in Kubernetes. The interval will be inherited from `Account.spec.interval`.
 
 Example:
 
@@ -108,6 +120,17 @@ spec:
   id: abcdef123456
   name: example.com
 ```
+
+### self-healing
+
+The `Zone` controller reconcile itself in the given interval, if an error occurs. See following table:
+
+| error                                                | interval |
+| :--------------------------------------------------- | :------- |
+| `apiKey` in secret from `Account.secretRef` is empty | 5s       |
+| fetching zones from Cloudflare                       | 30s      |
+| fetching `DNSRecord` objects                         | 30s      |
+| fetching DNS records from Cloudflare                 | 30s      |
 
 ## IP
 
@@ -202,7 +225,7 @@ To skip the creation of a `DNSRecord`, add the annotation `cf.containeroo.ch/ign
 The following annotations are supported:
 
 | Annotation                   | Value                  | Description                                                                                                                                 |
-|:-----------------------------|:-----------------------|:--------------------------------------------------------------------------------------------------------------------------------------------|
+| :--------------------------- | :--------------------- | :------------------------------------------------------------------------------------------------------------------------------------------ |
 | `cf.containeroo.ch/content`  | IPv4 address or domain | IPv4 address or domain to set as Cloudflare DNS record content                                                                              |
 | `cf.containeroo.ch/ttl`      | `1` or `60`-`86400`    | Time to live, in seconds, of the Cloudflare DNS record. Must be between 60 and 86400, or 1 for 'automatic'                                  |
 | `cf.containeroo.ch/type`     | `A` or `CNAME`         | Cloudflare DNS record type                                                                                                                  |
@@ -246,11 +269,20 @@ spec:
     cloudflare-operator can only fetch ingresses with `apiVersion` `networking.k8s.io/v1`.
     Older `apiVersions` like `extensions/v1beta1` or `networking.k8s.io/v1beta1` are not supported!
 
+### self-healing
+
+The `Ingress` controller reconcile itself in the given interval, if an error occurs. See following table:
+
+| error                        | interval |
+| :--------------------------- | :------- |
+| fetching `DNSRecord` objects | 30s      |
+
 ## DNSRecord
 
 DNSRecords represent a Cloudflare DNS record within Kubernetes.
 
 `interval` specifies, at which interval cloudflare-operator will fetch the DNS record from Cloudflare and compare it with `DNSRecord` object spec (`proxied`, `ttl`, `type`, `content`). If the Cloudflare DNS record does not match the `DNSRecord`, the DNS record will be updated on Cloudflare.  
+Default `interval` is set to 5 minutes.  
 Therefore, the Kubernetes API can be looked at as a single source of truth.
 
 If a `DNSRecord` is deleted, cloudflare-operator will also delete the corresponding Cloudflare DNS record.
@@ -291,3 +323,17 @@ spec:
   ttl: 1
   interval: 5m
 ```
+
+### self-healing
+
+The `DNSRecord` controller reconcile itself in the given interval, if an error occurs. See following table:
+
+| error                                                          | interval |
+| :------------------------------------------------------------- | :------- |
+| `apiKey` in secret from `Account.secretRef` is empty           | 5s       |
+| fetching zones from Cloudflare                                 | 30s      |
+| `Zone.name` in Cloudflare not found                            | 30s      |
+| `Zone` object not ready                                        | 5s       |
+| fetching zones from Cloudflare                                 | 30s      |
+| fetching DNS records from Cloudflare                           | 30s      |
+| referenced `IP` object (`DNSRecord.spec.IPRef.name`) not found | 30s      |
