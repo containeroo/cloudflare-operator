@@ -140,7 +140,7 @@ status:
 
 In the `status.message` you can see the error. The `Phase` is also set to `Failed`.
 
-### remove finalizers from all DNSRecords
+### Remove Finalizers From All DNSRecords
 
 If you want to delete all `DNSRecord` at once you can issue the following command:
 
