@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1646851640314,
+  "iteration": 1646851640317,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -523,6 +523,9 @@
                 ],
                 "operation": "aggregate"
               },
+              "__name__": {
+                "aggregations": []
+              },
               "ip_type": {
                 "aggregations": [],
                 "operation": "groupby"
@@ -541,7 +544,11 @@
           "id": "organize",
           "options": {
             "excludeByName": {},
-            "indexByName": {},
+            "indexByName": {
+              "Value (last)": 2,
+              "ip_type": 1,
+              "name": 0
+            },
             "renameByName": {
               "Value (last)": "Status",
               "Value (lastNotNull)": "Status",
