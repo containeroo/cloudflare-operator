@@ -142,13 +142,15 @@ In the `status.message` you can see the error. The `Phase` is also set to `Faile
 
 ## Metrics
 
-When installing cloudflare-operator with helm, set the following values to enable metrics:
+When installing cloudflare-operator with helm, set the following values to enable metrics and Prometheus rules:
 
 ```yaml
 metrics:
   podMonitor:
     enabled: true
   prometheusRule:
+    enabled: true
+  grafanaDashboard:
     enabled: true
 ```
 
@@ -160,3 +162,5 @@ cloudflare_operator_dns_record_failure_counter
 cloudflare_operator_ip_failure_counter
 cloudflare_operator_zone_failure_counter
 ```
+
+You can find a Grafana dashboard [here](ttps://raw.githubusercontent.com/containeroo/cloudflare-operator/master/config/manifests/grafana/dashboards/overview.json).
