@@ -107,7 +107,7 @@ If a zone is not in the `Account.spec.managedZones` field, it will not be manage
 
 cloudflare-operator checks if a given `DNSRecord.spec.name` ends with `Zone.spec.name` to evaluate in which Cloudflare zone the dns record should be created.
 
-cloudflare-operator will fetch in the given interval (`.spec.interval`) all Cloudflare DNS records for each `Zone` object and deletes them on Cloudflare if they are not present in Kubernetes. The interval will be inherited from `Account.spec.interval`.
+cloudflare-operator will fetch in the given interval (`spec.interval`) all Cloudflare DNS records for each `Zone` object and deletes them on Cloudflare if they are not present in Kubernetes. The interval will be inherited from `Account.spec.interval`.
 
 Example:
 
