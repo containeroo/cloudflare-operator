@@ -95,7 +95,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	apiKey := string(secret.Data["apiKey"])
@@ -105,7 +105,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	cf, err := cloudflare.New(apiKey, instance.Spec.Email)
@@ -115,13 +115,12 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 	*r.Cf = *cf
 
 	zones, err := r.Cf.ListZones(ctx)
 	if err != nil {
-		log.Error(err, "Failed to create Cloudflare client. Retrying in 30 seconds")
 		err := r.markFailed(instance, ctx, err.Error())
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
@@ -152,7 +151,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	for _, zone := range managedZones {
