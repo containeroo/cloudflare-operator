@@ -130,7 +130,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
 
 		instance.Spec.Address = currentIP
@@ -154,7 +154,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
 		log.Error(err, "Failed to list DNSRecords")
-		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	for _, dnsRecord := range dnsRecords.Items {

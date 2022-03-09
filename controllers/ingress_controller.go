@@ -56,7 +56,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
 	if err != nil {
 		log.Error(err, "Failed to fetch DNSRecord")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
@@ -68,7 +68,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				err := r.Delete(ctx, &dnsRecord)
 				if err != nil {
 					log.Error(err, "Failed to delete DNSRecord")
-					return ctrl.Result{}, err
+					return ctrl.Result{RequeueAfter: time.Second * 30}, err
 				}
 				log.Info("Deleted DNSRecord, because it was owned by an Ingress that is being ignored", "DNSRecord", dnsRecord.Name)
 				return ctrl.Result{}, err
