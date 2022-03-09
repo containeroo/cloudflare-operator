@@ -172,7 +172,7 @@ cloudflare-operator then exposes the following metrics:
 
 ```text
 cloudflare_operator_account_status
-cloudflare_operator_dns_record_failure_status
+cloudflare_operator_dns_record_status
 cloudflare_operator_ip_status
 cloudflare_operator_zone_status
 ```
