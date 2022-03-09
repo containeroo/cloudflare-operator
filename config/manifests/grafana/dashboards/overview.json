@@ -66,7 +66,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1646743216346,
+  "iteration": 1646837873518,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -152,9 +152,9 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "exemplar": false,
+          "exemplar": true,
           "expr": "rate(go_memstats_alloc_bytes_total{namespace=\"$namespace\",pod=~\"cloudflare-operator.*\"}[$__range])",
-          "instant": true,
+          "instant": false,
           "interval": "",
           "legendFormat": "{{pod}}",
           "refId": "A"
@@ -702,7 +702,7 @@
       "type": "table"
     }
   ],
-  "refresh": "",
+  "refresh": "10s",
   "schemaVersion": 34,
   "style": "dark",
   "tags": [
@@ -760,6 +760,6 @@
   "timezone": "",
   "title": "cloudflare-operator",
   "uid": "z0UxTsL7z",
-  "version": 25,
+  "version": 27,
   "weekStart": ""
 }
