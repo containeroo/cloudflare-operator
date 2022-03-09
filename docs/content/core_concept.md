@@ -88,7 +88,7 @@ spec:
 
 If cloudflare-operator should only manage some zones, you can specify them in the `managedZones` field.
 
-### self-healing
+### Self-Healing
 
 The `Account` controller reconcile itself in the given interval, if an error occurs. See following table:
 
