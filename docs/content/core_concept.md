@@ -121,7 +121,7 @@ spec:
   name: example.com
 ```
 
-### self-healing
+### Self-Healing
 
 The `Zone` controller reconcile itself in the given interval, if an error occurs. See following table:
 
