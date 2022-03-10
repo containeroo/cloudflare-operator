@@ -17,24 +17,30 @@ limitations under the License.
 package controllers
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
+	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
+	"github.com/go-logr/logr"
+	"io"
 	"io/ioutil"
+	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/util/jsonpath"
 	"math/rand"
 	"net"
 	"net/http"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strings"
-	"time"
-
-	"k8s.io/apimachinery/pkg/runtime"
+	"net/url"
+	"regexp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-
-	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
+	"strings"
+	"time"
 )
 
 // IPReconciler reconciles a IP object
@@ -46,6 +52,7 @@ type IPReconciler struct {
 // +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips/finalizers,verbs=update
+// +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -115,25 +122,43 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 				return ctrl.Result{}, err
 			}
 		}
-		if instance.Spec.DynamicIPSources == nil {
-			instance.Spec.DynamicIPSources = append(instance.Spec.DynamicIPSources, "https://ifconfig.me/ip", "https://ipecho.net/plain", "https://myip.is/ip/", "https://checkip.amazonaws.com", "https://api.ipify.org")
-			err := r.Update(ctx, instance)
+
+		if len(instance.Spec.IPSources) == 0 {
+			err := r.markFailed(instance, ctx, "IPSources is required for dynamic IPs")
 			if err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
+			return ctrl.Result{}, err
 		}
-		currentIP, err := getCurrentIP(instance.Spec.DynamicIPSources)
-		if err != nil {
-			err := r.markFailed(instance, ctx, err.Error())
+
+		if len(instance.Spec.IPSources) > 1 {
+			rand.Seed(time.Now().UnixNano())
+			rand.Shuffle(len(instance.Spec.IPSources), func(i, j int) {
+				instance.Spec.IPSources[i], instance.Spec.IPSources[j] = instance.Spec.IPSources[j], instance.Spec.IPSources[i]
+			})
+		}
+
+		ipSourceError := true
+		for _, source := range instance.Spec.IPSources {
+			response, err := r.getIPSource(ctx, source, log)
+			if err != nil {
+				log.Error(err, "Failed to process source %s", source.URL)
+				continue
+			}
+			instance.Spec.Address = response
+			ipSourceError = false
+			break
+		}
+
+		if ipSourceError {
+			err := r.markFailed(instance, ctx, "Failed to get IP from any source")
 			if err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
-
-		instance.Spec.Address = currentIP
 	}
 
 	if instance.Spec.Address != instance.Status.LastObservedIP {
@@ -194,41 +219,93 @@ func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// getCurrentIP returns the current public IP
-func getCurrentIP(sources []string) (string, error) {
-	rand.Seed(time.Now().UnixNano())
-	rand.Shuffle(len(sources), func(i, j int) { sources[i], sources[j] = sources[j], sources[i] })
-
-	var currentIP string
-	var ipError error
-	for _, provider := range sources {
-		resp, err := http.Get(provider)
-		if err != nil {
-			ipError = fmt.Errorf("failed to get IP from %s: %s", provider, err)
-			continue
-		}
-		if resp.StatusCode != 200 {
-			ipError = fmt.Errorf("failed to get IP from %s: %s", provider, resp.Status)
-			continue
-		}
-		ip, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			ipError = fmt.Errorf("failed to get IP from %s: %s", provider, err)
-			continue
-		}
-		currentIP = strings.TrimSpace(string(ip))
-		if net.ParseIP(currentIP) == nil {
-			ipError = fmt.Errorf("ip %s is not a valid IP", currentIP)
-			continue
-		}
-		ipError = nil
-		break
-	}
-	if ipError != nil {
-		return "", ipError
+// getIPSource returns the IP gathered from the IPSource
+func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecIPSources, log logr.Logger) (string, error) {
+	_, err := url.Parse(source.URL)
+	if err != nil {
+		return "", fmt.Errorf("failed to parse URL %s: %s", source.URL, err)
 	}
 
-	return currentIP, nil
+	httpClient := &http.Client{}
+	req, err := http.NewRequest(source.RequestMethod, source.URL,
+		io.Reader(bytes.NewBuffer([]byte(source.RequestBody))))
+
+	for key, value := range source.RequestHeaders {
+		req.Header.Add(key, value)
+	}
+
+	if source.RequestHeadersSecretRef.Name != "" {
+		secret := &v1.Secret{}
+		err := r.Get(ctx, client.ObjectKey{Name: source.RequestHeadersSecretRef.Name,
+			Namespace: source.RequestHeadersSecretRef.Namespace}, secret)
+		if err != nil {
+			return "", fmt.Errorf("failed to get secret %s: %s", source.RequestHeadersSecretRef.Name, err)
+		}
+		for key, value := range secret.Data {
+			req.Header.Add(key, string(value))
+		}
+	}
+
+	httpClient.Timeout = time.Second * 30
+	req.Header.Add("User-Agent", "cloudflare-operator")
+
+	resp, err := httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, err)
+	}
+	defer func(Body io.ReadCloser) {
+		err := Body.Close()
+		if err != nil {
+			log.Error(err, "Failed to close response body")
+		}
+	}(resp.Body)
+
+	if resp.StatusCode != 200 {
+		return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, resp.Status)
+	}
+	response, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, err)
+	}
+
+	var extractedIP string
+	extractedIP = strings.TrimSpace(string(response))
+	if source.ResponseJSONPath != "" {
+		var jsonResponse map[string]interface{}
+		err := json.Unmarshal(response, &jsonResponse)
+		if err != nil {
+			return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, err)
+		}
+		j := jsonpath.New("jsonpath")
+		buf := new(bytes.Buffer)
+		if err := j.Parse(source.ResponseJSONPath); err != nil {
+			return "", fmt.Errorf("failed to parse jsonpath %s: %s", source.ResponseJSONPath, err)
+		}
+		if err := j.Execute(buf, jsonResponse); err != nil {
+			return "", fmt.Errorf("failed to extract IP from %s: %s", source.URL, err)
+		}
+
+		extractedIP = strings.TrimSpace(buf.String())
+	}
+
+	if source.ResponseTextRegex != "" {
+		re, err := regexp.Compile(source.ResponseTextRegex)
+		if err != nil {
+			return "", fmt.Errorf("failed to compile regex %s: %s", source.ResponseTextRegex, err)
+		}
+		match := re.FindStringSubmatch(strings.TrimSpace(string(response)))
+		if len(match) == 0 {
+			return "", fmt.Errorf("failed to extract IP from %s: %s", source.URL, string(response))
+		}
+
+		extractedIP = strings.TrimSpace(match[len(match)-1])
+	}
+
+	if net.ParseIP(extractedIP) == nil {
+		return "", fmt.Errorf("failed to extract IP from %s: %s", source.URL, string(response))
+	}
+
+	return extractedIP, nil
 }
 
 // markFailed marks the reconciled object as failed
