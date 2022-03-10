@@ -24,29 +24,29 @@ import (
 var (
 	accountFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "cloudflare_operator_account_failure_counter",
-			Help: "Cloudflare accounts that failed",
+			Name: "cloudflare_operator_account_status",
+			Help: "Cloudflare account status",
 		},
 		[]string{"name"},
 	)
 	dnsRecordFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "cloudflare_operator_dns_record_failure_counter",
-			Help: "Cloudflare DNS records that failed",
+			Name: "cloudflare_operator_dns_record_status",
+			Help: "Cloudflare DNS records status",
 		},
 		[]string{"namespace", "name", "record_name"},
 	)
 	ipFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "cloudflare_operator_ip_failure_counter",
-			Help: "IPs that failed",
+			Name: "cloudflare_operator_ip_status",
+			Help: "IPs status",
 		},
 		[]string{"name", "ip_type"},
 	)
 	zoneFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
-			Name: "cloudflare_operator_zone_failure_counter",
-			Help: "Cloudflare zones that failed",
+			Name: "cloudflare_operator_zone_status",
+			Help: "Cloudflare zones status",
 		},
 		[]string{"name", "zone_name"},
 	)
