@@ -133,7 +133,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "cloudflare_operator_account_failure_counter",
+          "expr": "cloudflare_operator_account_status",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -200,7 +200,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "count(cloudflare_operator_dns_record_failure_counter)",
+          "expr": "count(cloudflare_operator_dns_record_status)",
           "format": "time_series",
           "interval": "",
           "legendFormat": "",
@@ -263,7 +263,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "count(cloudflare_operator_dns_record_failure_counter > 0)\n",
+          "expr": "count(cloudflare_operator_dns_record_status > 0)\n",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -358,7 +358,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "cloudflare_operator_zone_failure_counter",
+          "expr": "cloudflare_operator_zone_status",
           "format": "table",
           "interval": "",
           "legendFormat": "",
@@ -501,7 +501,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": false,
-          "expr": "cloudflare_operator_ip_failure_counter",
+          "expr": "cloudflare_operator_ip_status",
           "format": "table",
           "instant": false,
           "interval": "",
@@ -646,7 +646,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "cloudflare_operator_dns_record_failure_counter",
+          "expr": "cloudflare_operator_dns_record_status",
           "format": "table",
           "instant": false,
           "interval": "",
