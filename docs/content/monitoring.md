@@ -49,7 +49,7 @@ groups:
     annotations:
       summary: DNSRecord {{ $labels.name }} ({{ $labels.record_name }}) in namespace
         {{ $labels.exported_namespace }} failed
-    expr: cloudflare_operator_dns_record_failure_counter > 0
+    expr: cloudflare_operator_dns_record_status > 0
     for: 1m
     labels:
       severity: critical
@@ -63,7 +63,5 @@ groups:
       podMonitor:
         enabled: true
       prometheusRule:
-        enabled: true
-      grafanaDashboard:
         enabled: true
     ```

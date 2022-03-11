@@ -150,17 +150,15 @@ metrics:
     enabled: true
   prometheusRule:
     enabled: true
-  grafanaDashboard:
-    enabled: true
 ```
 
 cloudflare-operator then exposes the following metrics:
 
 ```text
-cloudflare_operator_account_failure_counter
-cloudflare_operator_dns_record_failure_counter
-cloudflare_operator_ip_failure_counter
-cloudflare_operator_zone_failure_counter
+cloudflare_operator_account_status
+cloudflare_operator_dns_record_status
+cloudflare_operator_ip_status
+cloudflare_operator_zone_status
 ```
 
 You can find a Grafana dashboard [here](ttps://raw.githubusercontent.com/containeroo/cloudflare-operator/master/config/manifests/grafana/dashboards/overview.json).
