@@ -54,14 +54,3 @@ groups:
     labels:
       severity: critical
 ```
-
-!!! info "easy going"
-    When installing cloudflare-operator with helm, set the following values to enable metrics, Grafana dashboard and Prometheus rules:
-
-    ```yaml
-    metrics:
-      podMonitor:
-        enabled: true
-      prometheusRule:
-        enabled: true
-    ```
