@@ -71,6 +71,7 @@ The `Account` object contains your Cloudflare credentials (email & global API ke
 Example:
 
 ```yaml
+---
 apiVersion: cf.containeroo.ch/v1beta1
 kind: Account
 metadata:
@@ -90,7 +91,7 @@ If cloudflare-operator should only manage some zones, you can specify them in th
 
 ### Self-Healing
 
-The `Account` controller reconciles itself in the given interval, if an error occurs. See the following table:
+The `Account` controller reconciles itself in the given interval if an error occurs. See the following table:
 
 | error                                                 | interval |
 | :---------------------------------------------------- | :------- |
@@ -112,6 +113,7 @@ cloudflare-operator will fetch in the given interval (`spec.interval`) all Cloud
 Example:
 
 ```yaml
+---
 apiVersion: cf.containeroo.ch/v1beta1
 kind: Zone
 metadata:
@@ -123,7 +125,7 @@ spec:
 
 ### Self-Healing
 
-The `Zone` controller reconcile itself in the given interval, if an error occurs. See following table:
+The `Zone` controller reconcile itself in the given interval if an error occurs. See following table:
 
 | error                                                | interval |
 | :--------------------------------------------------- | :------- |
@@ -141,80 +143,117 @@ The `IP` object has two purposes:
     Let's say you have multiple `DNSRecords` pointing to the same IP. You can use the `IP` object to avoid repeating the IP address in the `DNSRecord.spec.content` field.  
     If you change the `IP` object, cloudflare-operator will automatically update the `DNSRecord.spec.content` fields.
 
-    Example:
-
-    ```yaml
-    apiVersion: cf.containeroo.ch/v1beta1
-    kind: IP
-    metadata:
-      name: static-address
-    spec:
-      type: static
-      address: 142.251.36.35
-    ```
-
 2. **Dynamic DNS**
 
-    If the `type` is set to `dynamic`, cloudflare-operator will fetch your external IPv4 address in a specified interval (`spec.interval`).
+    If the `type` is set to `dynamic`, cloudflare-operator will fetch your IPv4 address in a specified interval (`spec.interval`).
 
-    Example:
+### Type static
 
-    ```yaml
-    apiVersion: cf.containeroo.ch/v1beta1
-    kind: IP
-    metadata:
-      name: external-ipv4
-    spec:
-      type: dynamic
-      interval: 5m
-    ```
+A `IP` object with type `static` will update Cloudflare DNS records in the given interval (`DNSRecord.spec.interval`) with its `address`.
 
-    If no `dynamicIPSources` are specified, cloudflare-operator will use a hardcoded set of sources.  
-    If you prefer other sources, you can add them as a list in `dynamicIPSources`.
+Example:
 
-    Example:
+```yaml
+---
+apiVersion: cf.containeroo.ch/v1beta1
+kind: IP
+metadata:
+  name: static-address
+spec:
+  type: static
+  address: 142.251.36.35
+```
 
-    ```yaml
-    apiVersion: cf.containeroo.ch/v1beta1
-    kind: IP
-    metadata:
-      name: external-ipv4
-    spec:
-      type: dynamic
-      dynamicIPSources:
-        - https://api.ipify.org
-      interval: 5m
-    ```
+### Type dynamic
 
-    !!! warning
-        The source must return only the external IPv4 address.
+An `IP` object with type `dynamic` will fetch an IPv4 address from the defined `.spec.IpSources[*].url` in the given interval (`.spec.interval`).  
+If more than one `IpSources` are configured, cloudflare-operator shuffle the list with `IpSources` and try to fetch a valid IPv4 address, until the first response is valid. If none of the `IpSources` return a valid IPv4 address, cloudflare-operator will set the status of the `IP` object as `failed`.
+Default `interval` is set to 5 minutes.  
 
-        Good example:
+A `source` can have following keys:
 
-        ```bash
-        curl https://api.ipify.org
-        ```
+| key                     | description                                                                                                                                                          | example                               |
+| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
+| url                     | URL to fetch IPv4 address                                                                                                                                            | `https://ipecho.net`                  |
+| requestBody             | Additional request body to send to the `url`                                                                                                                         |                                       |
+| requestHeaders          | Additional request headers to send to the `url`. The key will be passed as http header and the value will be passed as headers value                                 | `Accept: application/json`            |
+| requestHeadersSecretRef | link to a `secret` with additional http headers. All secret's key will be passed as http header and the corresponding secret's value will be passed as headers value | see example below                     |
+| requestMethod           | request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                                 | `GET`                                 |
+| responseTextRegex       | If the IPv4 address must be extracted from the http response. Uses the default golang regex engine.                                                                  | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
+| responseJSONPath        | jsonpath to extract Ipv4 address. Uses the kubectl jsonpath library                                                                                                  | `'{.ip}'`                             |
 
-        Output:
+!!! warning "responseTextRegex"
+    Be aware that the http request will fetch the **complete html document** and not what you see in your browser!
 
-        ```console
-        142.251.36.35
-        ```
+!!! note
+    If neither `responseJSONPath` nor `responseTextRegex` is set, cloudflare-operator will try to parse the **complete html document** as IPv4 address.
 
-        Bad example:
+Examples:
 
-        ```bash
-        curl "https://api.ipify.org?format=json"
-        ```
+**Fetch your external IPv4 address from three "IP" providers**
 
-        Output:
+```yaml
+---
+apiVersion: cf.containeroo.ch/v1beta1
+kind: IP
+metadata:
+  name: external-ipv4
+spec:
+  type: dynamic
+  IpSources:
+    - url: https://ipecho.net
+      responseTextRegex: \d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}
+    - url: https://api.ipify.org?format=json
+      responseJSONPath: '{.ip}'
+    - url: https://checkip.amazonaws.com
+  interval: 5m
+```
 
-        ```console
-        {"ip":"142.251.36.35"}
-        ```
+!!! info
+    Because more than one `source` is set, cloudflare-operator shuffle the list with `IpSources` and try to fetch a valid IPv4 address, until the first response is valid. If none of the `IpSources` return a valid IPv4 address, cloudflare-operator will set the status of the `IP` object as `failed`.
 
-    !!! tip
-        To minimize the amount of traffic to each IP source, make sure to add more than one `dynamicIPSources`. cloudflare-operator will randomly choose a source on every `interval`.
+**Fetch your external IPv4 from a cloud provider**
+
+Create a secret with your provider API credentials:
+
+```yaml hl_lines="9"
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: hetzner-bearer-token
+  namespace: default
+type: Opaque
+stringData:
+  Authorization: Bearer TOKEN123
+```
+
+Create a IP object which reference to the secret created above
+
+```yaml hl_lines="12"
+---
+apiVersion: cf.containeroo.ch/v1beta1
+kind: IP
+metadata:
+  name: hetzner-ipv4
+spec:
+  type: dynamic
+  IpSources:
+    - url: https://api.hetzner.cloud/v1/servers
+      responseJSONPath: '{.servers[0].public_net.ipv4.ip}'
+      requestHeadersSecretRef:
+        name: hetzner-bearer-token
+        namespace: default
+  interval: 5m
+```
+
+### Self-Healing
+
+The `IP` controller reconcile itself in the given interval if an error occurs. See following table:
+
+| error                                                                     | interval |
+| :------------------------------------------------------------------------ | :------- |
+| none of the provided `.spec.IpSources[*].url`'s return a valid IPv4 address | 60s      |
 
 ## Ingress
 
@@ -244,6 +283,7 @@ The following annotations are supported:
 Example:
 
 ```yaml
+---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
@@ -271,7 +311,7 @@ spec:
 
 ### self-healing
 
-The `Ingress` controller reconcile itself in the given interval, if an error occurs. See following table:
+The `Ingress` controller reconcile itself in the given interval if an error occurs. See following table:
 
 | error                        | interval |
 | :--------------------------- | :------- |
@@ -290,6 +330,7 @@ If a `DNSRecord` is deleted, cloudflare-operator will also delete the correspond
 Example:
 
 ```yaml
+---
 apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
@@ -308,7 +349,8 @@ Set `spec.ipRef` to the name of an `IP` object to automatically update the `cont
 
 Example:
 
-```yaml
+```yaml hl_lines="11"
+---
 apiVersion: cf.containeroo.ch/v1beta1
 kind: DNSRecord
 metadata:
@@ -326,14 +368,14 @@ spec:
 
 ### self-healing
 
-The `DNSRecord` controller reconciles itself in the given interval, if an error occurs. See the following table:
+The `DNSRecord` controller reconciles itself in the given interval if an error occurs. See the following table:
 
-| error                                                          | interval |
-| :------------------------------------------------------------- | :------- |
-| `apiKey` in secret from `Account.secretRef` is empty           | 5s       |
-| fetching zones from Cloudflare                                 | 30s      |
-| `Zone.name` in Cloudflare not found                            | 30s      |
-| `Zone` object not ready                                        | 5s       |
-| fetching zones from Cloudflare                                 | 30s      |
-| fetching DNS records from Cloudflare                           | 30s      |
+| error                                                | interval |
+| :--------------------------------------------------- | :------- |
+| `apiKey` in secret from `Account.secretRef` is empty | 5s       |
+| fetching zones from Cloudflare                       | 30s      |
+| `Zone.name` in Cloudflare not found                  | 30s      |
+| `Zone` object not ready                              | 5s       |
+| fetching zones from Cloudflare                       | 30s      |
+| fetching DNS records from Cloudflare                 | 30s      |
 | referenced `IP` object (`spec.ipRef.name`) not found | 30s      |
