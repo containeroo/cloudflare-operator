@@ -251,9 +251,10 @@ spec:
 
 The `IP` controller reconcile itself in the given interval if an error occurs. See following table:
 
-| error                                                                     | interval |
-| :------------------------------------------------------------------------ | :------- |
+| error                                                                       | interval |
+| :-------------------------------------------------------------------------- | :------- |
 | none of the provided `.spec.IpSources[*].url`'s return a valid IPv4 address | 60s      |
+| fetching `DNSRecord` objects                                                | 30s      |
 
 ## Ingress
 
