@@ -2,7 +2,7 @@
 
 ## From v0.1.3 to v0.2.0
 
-Properties of the cloudflare-operator CRD `ip.containeroo.ch` has BREAKING changes.  
+Properties of the cloudflare-operator CRD `ips.cf.containeroo.ch` has BREAKING changes.  
 You have to delete all `IP` objects before updating and re-create it according the new specification:
 
 ```bash
