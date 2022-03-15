@@ -374,7 +374,7 @@ The `DNSRecord` controller reconciles itself in the given interval if an error o
 | error                                                | interval |
 | :--------------------------------------------------- | :------- |
 | `apiKey` in secret from `Account.secretRef` is empty | 5s       |
-| fetching zones from Cloudflare                       | 30s      |
+| Fetching zones from Cloudflare                       | 30s      |
 | `Zone.name` in Cloudflare not found                  | 30s      |
 | `Zone` object not ready                              | 5s       |
 | fetching zones from Cloudflare                       | 30s      |
