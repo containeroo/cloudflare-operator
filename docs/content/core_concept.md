@@ -173,20 +173,20 @@ Default `interval` is set to 5 minutes.
 An `ipSource` can have the following keys:
 
 | Key                     | Description                                                                                                                                                        | Example                               |
-| :---------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
+|:------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------|
 | url                     | URL to fetch IPv4 address                                                                                                                                          | `https://ipecho.net`                  |
 | requestBody             | Additional request body to send to the `url`                                                                                                                       |                                       |
 | requestHeaders          | Additional request headers to send to the `url`. The key will be passed as http header and the value will be passed as headers value                               | `Accept: application/json`            |
 | requestHeadersSecretRef | Link to a `secret` with additional http headers. All secret keys will be passed as http header and the corresponding secret values will be passed as headers value | See example below                     |
 | requestMethod           | HTTP request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                          | `GET`                                 |
-| responseTextRegex       | If the IPv4 address must be extracted from the http response. Uses the default golang regex engine.                                                                | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
+| responseRegex           | If the IPv4 address must be extracted from the http response. Uses the default golang regex engine.                                                                | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
 | responseJSONPath        | JSONPath to extract IPv4 address. Uses the kubectl jsonpath library.                                                                                               | `'{.ip}'`                             |
 
-!!! warning "responseTextRegex"
+!!! warning "responseRegex"
     Be aware that the http request will fetch the **complete html document** and not what you see in your browser!
 
 !!! note
-    If neither `responseJSONPath` nor `responseTextRegex` is set, cloudflare-operator will try to parse the **complete html document** as an IPv4 address.
+    If neither `responseJSONPath` nor `responseRegex` is set, cloudflare-operator will try to parse the **complete html document** as an IPv4 address.
 
 Examples:
 
@@ -202,7 +202,7 @@ spec:
   type: dynamic
   IpSources:
     - url: https://ipecho.net
-      responseTextRegex: \d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}
+      responseRegex: \d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}
     - url: https://api.ipify.org?format=json
       responseJSONPath: '{.ip}'
     - url: https://checkip.amazonaws.com
