@@ -379,4 +379,4 @@ The `DNSRecord` controller reconciles itself in the given interval if an error o
 | `Zone` object not ready                              | 5s       |
 | Fetching zones from Cloudflare                       | 30s      |
 | Fetching DNS records from Cloudflare                 | 30s      |
-| referenced `IP` object (`spec.ipRef.name`) not found | 30s      |
+| Referenced `IP` object (`spec.ipRef.name`) not found | 30s      |
