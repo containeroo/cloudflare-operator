@@ -145,7 +145,7 @@ The `IP` object has two purposes:
 
 2. **Dynamic DNS**
 
-    If the `type` is set to `dynamic`, cloudflare-operator will fetch your IPv4 address in a specified interval (`spec.interval`).
+    If `type` is set to `dynamic`, cloudflare-operator will fetch your IPv4 address at the specified interval (`spec.interval`).
 
 ### Type static
 
