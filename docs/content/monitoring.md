@@ -1,18 +1,18 @@
 # Monitoring with Prometheus
 
-## prerequisites
+## Prerequisites
 
 - [Prometheus](https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus) - collects metrics from the cloudflare-operator controllers and Kubernetes API
 - [Grafana](https://github.com/grafana/helm-charts/tree/main/charts/grafana) dashboards - displays cloudflare-operator stats
 - [kube-state-metrics](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-state-metrics) - generates metrics about the state of the Kubernetes objects
 
-The easiest way to deploy all necessary applications is to use [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack).
+The easiest way to deploy all necessary components is to use [kube-prometheus-stack](https://github.com/prometheus-community/helm-charts/tree/main/charts/kube-prometheus-stack).
 
-## Install cloudflare-operator Grafana dashboard
+## Install cloudflare-operator Grafana Dashboard
 
-Note that the cloudflare-operator expose the `/metrics` endpoint on port `8080`. When using Prometheus Operator you need a `PodMonitor` object to configure scraping for the controllers.
+Note that the cloudflare-operator exposes the `/metrics` endpoint on port `8080`. When using Prometheus Operator you need a `PodMonitor` object to configure scraping for the controller.
 
-Apply the `config/manifests/prometheus/monitor.yaml` containing the `PodMonitor` and create a configmap with the cloudflare-operator dashboard:
+Apply the `config/manifests/prometheus/monitor.yaml` containing the `PodMonitor` and create a ConfigMap with the cloudflare-operator dashboard:
 
 ```bash
 # Create a podmonitor
@@ -30,7 +30,7 @@ kubectl label configmap grafana-dashboard-cloudflare-operator grafana_dashboard=
 
 ## Metrics
 
-For each `cf.containeroo.ch` kind, the controllers expose a gauge metric to track the Ready condition status.
+For each `cf.containeroo.ch` kind, the controller exposes a gauge metric to track the status condition.
 
 Ready status metrics:
 
