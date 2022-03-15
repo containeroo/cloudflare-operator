@@ -147,9 +147,9 @@ The `IP` object has two purposes:
 
     If `type` is set to `dynamic`, cloudflare-operator will fetch your IPv4 address at the specified interval (`spec.interval`).
 
-### Type static
+### Type Static
 
-A `IP` object with type `static` will update Cloudflare DNS records in the given interval (`DNSRecord.spec.interval`) with its `address`.
+An `IP` object with type `static` will update Cloudflare DNS records at the given interval (`DNSRecord.spec.interval`) with its `address`.
 
 Example:
 
