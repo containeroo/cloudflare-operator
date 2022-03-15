@@ -58,5 +58,6 @@ nav:
   - 'Installation': installation.md
   - 'Upgrade Notes': upgrade_notes.md
   - 'Operations': operations.md
+  - 'Monitoring': monitoring.md
   - 'API Reference': api_reference.md
   - 'Roadmap': roadmap.md

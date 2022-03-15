@@ -158,7 +158,7 @@ kubectl get dnsrecords \
 
 ## Metrics
 
-When installing cloudflare-operator with helm, set the following values to enable metrics:
+When installing cloudflare-operator with helm, set the following values to enable metrics and Prometheus rules:
 
 ```yaml
 metrics:
