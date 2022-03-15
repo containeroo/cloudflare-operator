@@ -60,7 +60,7 @@
   "fiscalYearStartMonth": 0,
   "graphTooltip": 0,
   "id": null,
-  "iteration": 1647016181413,
+  "iteration": 1647340997775,
   "links": [],
   "liveNow": false,
   "panels": [
@@ -123,7 +123,7 @@
           "fields": "",
           "values": false
         },
-        "textMode": "auto"
+        "textMode": "value"
       },
       "pluginVersion": "8.3.6",
       "targets": [
@@ -132,7 +132,6 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "exemplar": true,
           "expr": "cloudflare_operator_account_status",
           "interval": "",
           "legendFormat": "",
@@ -171,8 +170,12 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "green",
+                "color": "blue",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
               }
             ]
           }
@@ -301,8 +304,12 @@
             "mode": "absolute",
             "steps": [
               {
-                "color": "red",
+                "color": "blue",
                 "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
               }
             ]
           }
@@ -323,7 +330,7 @@
         "orientation": "auto",
         "reduceOptions": {
           "calcs": [
-            "lastNotNull"
+            "last"
           ],
           "fields": "",
           "values": false
@@ -481,7 +488,6 @@
             "renameByName": {
               "Value": "Status",
               "Value (last)": "Status",
-              "Value (lastNotNull)": "Status",
               "name": "Name",
               "zone_name": "Zone name"
             }
@@ -575,7 +581,6 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "exemplar": false,
           "expr": "cloudflare_operator_ip_status",
           "format": "table",
           "instant": false,
@@ -839,6 +844,6 @@
   "timezone": "",
   "title": "cloudflare-operator",
   "uid": "z0UxTsL7z",
-  "version": 4,
+  "version": 2,
   "weekStart": ""
 }
