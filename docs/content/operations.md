@@ -142,18 +142,18 @@ In the `status.message` you can see the error. The `Phase` is also set to `Faile
 
 ### Remove Finalizers From All DNSRecords
 
-If you want to delete all `DNSRecords` at once, you can issue the following command:
+If you want to remove all finalizers from all`DNSRecords` at once, you can issue the following command:
 
 ```bash
 kubectl get dnsrecords \
         --all-namespaces \
         --no-headers \
         --output=custom-columns='namespace:.metadata.namespace,name:.metadata.name' | \
-  xargs -n 2 -I{} \
+  xargs -n 2 \
     kubectl patch dnsrecords.cf.containeroo.ch \
-            --namespace {} \
             --patch '{"metadata":{"finalizers":null}}' \
-            --type merge
+            --type merge \
+            --namespace
 ```
 
 ## Metrics
@@ -176,3 +176,5 @@ cloudflare_operator_dns_record_status
 cloudflare_operator_ip_status
 cloudflare_operator_zone_status
 ```
+
+There is also a Grafana dashboard. You can learn more [here](/monitoring.md).
