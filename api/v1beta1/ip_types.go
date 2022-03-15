@@ -17,8 +17,35 @@ limitations under the License.
 package v1beta1
 
 import (
+	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
+
+type IPSpecIPSources struct {
+	// URL of the IP source (e.g. https://api.hetzner.cloud/v1/servers/12345)
+	// +optional
+	URL string `json:"url,omitempty"`
+	// RequestBody to be sent to the URL
+	// +optional
+	RequestBody string `json:"requestBody,omitempty"`
+	// RequestHeaders to be sent to the URL
+	// +optional
+	RequestHeaders map[string]string `json:"requestHeaders,omitempty"`
+	// RequestHeadersSecretRef is a secret reference to the headers to be sent to the URL (e.g. for authentication)
+	// where the key is the header name and the value is the header value
+	// +optional
+	RequestHeadersSecretRef v1.SecretReference `json:"requestHeadersSecretRef,omitempty"`
+	// RequestMethod defines the HTTP method to be used
+	// +kubebuilder:validation:Enum=GET;POST;PUT;DELETE
+	// +kubebuilder:default=GET
+	RequestMethod string `json:"requestMethod,omitempty"`
+	// ResponseJSONPath defines the JSON path to the value to be used as IP
+	// +optional
+	ResponseJSONPath string `json:"responseJSONPath,omitempty"`
+	// ResponseTextRegex defines the regular expression to be used to extract the IP from the response
+	// +optional
+	ResponseTextRegex string `json:"responseTextRegex,omitempty"`
+}
 
 // IPSpec defines the desired state of IP
 type IPSpec struct {
@@ -33,9 +60,9 @@ type IPSpec struct {
 	// Interval at which a dynamic IP should be checked
 	// +optional
 	Interval *metav1.Duration `json:"interval,omitempty"`
-	// List of services that return the public IP address
+	// IPSources can be configured to get an IP from an external source (e.g. an API or public IP echo service)
 	// +optional
-	DynamicIPSources []string `json:"dynamicIPSources,omitempty"`
+	IPSources []IPSpecIPSources `json:"ipSources,omitempty"`
 }
 
 // IPStatus defines the observed state of IP

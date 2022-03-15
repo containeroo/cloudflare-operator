@@ -140,6 +140,22 @@ status:
 
 In the `status.message` you can see the error. The `Phase` is also set to `Failed`.
 
+### Remove Finalizers From All DNSRecords
+
+If you want to remove all finalizers from all`DNSRecords` at once, you can issue the following command:
+
+```bash
+kubectl get dnsrecords \
+        --all-namespaces \
+        --no-headers \
+        --output=custom-columns='namespace:.metadata.namespace,name:.metadata.name' | \
+  xargs -n 2 \
+    kubectl patch dnsrecords.cf.containeroo.ch \
+            --patch '{"metadata":{"finalizers":null}}' \
+            --type merge \
+            --namespace
+```
+
 ## Metrics
 
 When installing cloudflare-operator with helm, set the following values to enable metrics and Prometheus rules:
@@ -161,4 +177,4 @@ cloudflare_operator_ip_status
 cloudflare_operator_zone_status
 ```
 
-You can find a Grafana dashboard [here](ttps://raw.githubusercontent.com/containeroo/cloudflare-operator/master/config/manifests/grafana/dashboards/overview.json).
+There is also a Grafana dashboard. You can learn more [here](/monitoring.md).

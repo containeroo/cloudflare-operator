@@ -75,7 +75,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	err = r.List(ctx, zones)
 	if err != nil {
 		log.Error(err, "Failed to list Zone resources")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	var dnsRecordZone cfv1beta1.Zone
@@ -92,7 +92,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 5}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	if dnsRecordZone.Status.Phase != "Active" {
@@ -136,7 +136,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{Name: instance.Spec.Name})
 	if err != nil {
 		log.Error(err, "Failed to get DNS records from Cloudflare")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	if instance.Spec.Content == "" && instance.Spec.IPRef.Name == "" {
@@ -157,7 +157,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
 		instance.Spec.Content = ip.Spec.Address
 		err = r.Update(ctx, instance)
@@ -190,7 +190,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
 		instance.Status.Phase = "Created"
 		instance.Status.RecordID = resp.Result.ID
@@ -222,7 +222,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
 		if !reflect.DeepEqual(instance.Status, cfv1beta1.DNSRecordStatus{Phase: "Created", RecordID: existingRecord.ID, Message: ""}) {
 			instance.Status.Phase = "Created"
