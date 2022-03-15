@@ -164,7 +164,7 @@ spec:
   address: 142.251.36.35
 ```
 
-### Type dynamic
+### Type Dynamic
 
 An `IP` object with type `dynamic` will fetch an IPv4 address from the defined `.spec.IpSources[*].url` in the given interval (`.spec.interval`).  
 If more than one `IpSources` are configured, cloudflare-operator shuffle the list with `IpSources` and try to fetch a valid IPv4 address, until the first response is valid. If none of the `IpSources` return a valid IPv4 address, cloudflare-operator will set the status of the `IP` object as `failed`.
