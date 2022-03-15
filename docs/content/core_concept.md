@@ -125,7 +125,7 @@ spec:
 
 ### Self-Healing
 
-The `Zone` controller reconcile itself in the given interval if an error occurs. See following table:
+The `Zone` controller reconcile itself at the given interval if an error occurs. See following table:
 
 | error                                                | interval |
 | :--------------------------------------------------- | :------- |
