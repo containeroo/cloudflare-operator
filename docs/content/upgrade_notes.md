@@ -9,7 +9,7 @@ You have to delete all `IP` objects before updating and re-create them according
 kubectl delete ip --all
 ```
 
-New `ip.containeroo.ch` CRD specification can be found [here](/docs/content/core_concept.md#IP).
+New `ips.cf.containeroo.ch` CRD specification can be found [here](/docs/content/core_concept.md#IP).
 
 If you have create a `IP` object to sync your external IPv4 address and not set `dynamicIPSources`, you have to delete your object and re-create a new `IP` object.
 
