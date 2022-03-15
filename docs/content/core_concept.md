@@ -91,7 +91,7 @@ If cloudflare-operator should only manage some zones, you can specify them in th
 
 ### Self-Healing
 
-The `Account` controller reconciles itself in the given interval if an error occurs. See the following table:
+The `Account` controller reconciles itself at the given interval if an error occurs. See the following table:
 
 | error                                                 | interval |
 | :---------------------------------------------------- | :------- |
