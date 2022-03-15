@@ -47,7 +47,7 @@ metadata:
 spec:
   type: dynamic
   interval: 5m
-  sources:
+  ipSources:
     - url: https://ifconfig.me/ip
     - url: https://ipecho.net/plain
     - url: https://myip.is/ip/
@@ -173,7 +173,7 @@ metadata:
   name: hetzner-ipv4
 spec:
   type: dynamic
-  sources:
+  ipSources:
     - url: https://api.hetzner.cloud/v1/servers
       responseJSONPath: '{.servers[0].public_net.ipv4.ip}'
       requestHeadersSecretRef:
