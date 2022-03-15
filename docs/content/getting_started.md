@@ -146,7 +146,7 @@ Now your blog will be routed through Cloudflare.
 !!! tip "Bonus tip"
     If you have multiple cloud services accessible with the same IP, you can also create an `IP` object and link this with `ipRef.name`, so you only have to change the IP address of your cloud instance once in the `IP` object.
 
-If your cloud provider has a API returning the public IPv4 address of your instance, you can also create a `IP` object with type `dynamic` and reference it in the `DNSRecord`.
+If your cloud provider has an API returning the public IPv4 address of your instance, you can also create an `IP` object with type `dynamic` and reference it in the `DNSRecord`.
 
 Create a `secret` with your provider API credentials:
 
