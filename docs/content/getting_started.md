@@ -183,7 +183,7 @@ spec:
 EOF
 ```
 
-Create a DNSRecord with a reference to the `IP` object created above:
+Create a `DNSRecord` with a reference to the `IP` object created above:
 
 ```bash
 kubectl apply -f - << EOF
