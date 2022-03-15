@@ -172,15 +172,15 @@ Default `interval` is set to 5 minutes.
 
 An `ipSource` can have the following keys:
 
-| Key                     | Description                                                                                                                                                          | Example                               |
-| :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
-| url                     | URL to fetch IPv4 address                                                                                                                                            | `https://ipecho.net`                  |
-| requestBody             | Additional request body to send to the `url`                                                                                                                         |                                       |
-| requestHeaders          | Additional request headers to send to the `url`. The key will be passed as http header and the value will be passed as headers value                                 | `Accept: application/json`            |
+| Key                     | Description                                                                                                                                                        | Example                               |
+| :---------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
+| url                     | URL to fetch IPv4 address                                                                                                                                          | `https://ipecho.net`                  |
+| requestBody             | Additional request body to send to the `url`                                                                                                                       |                                       |
+| requestHeaders          | Additional request headers to send to the `url`. The key will be passed as http header and the value will be passed as headers value                               | `Accept: application/json`            |
 | requestHeadersSecretRef | Link to a `secret` with additional http headers. All secret keys will be passed as http header and the corresponding secret values will be passed as headers value | See example below                     |
-| requestMethod           | HTTP request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                                 | `GET`                                 |
-| responseTextRegex       | If the IPv4 address must be extracted from the http response. Uses the default golang regex engine.                                                                  | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
-| responseJSONPath        | JSONPath to extract IPv4 address. Uses the kubectl jsonpath library.                                                                                                  | `'{.ip}'`                             |
+| requestMethod           | HTTP request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                          | `GET`                                 |
+| responseTextRegex       | If the IPv4 address must be extracted from the http response. Uses the default golang regex engine.                                                                | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
+| responseJSONPath        | JSONPath to extract IPv4 address. Uses the kubectl jsonpath library.                                                                                               | `'{.ip}'`                             |
 
 !!! warning "responseTextRegex"
     Be aware that the http request will fetch the **complete html document** and not what you see in your browser!
@@ -251,10 +251,10 @@ spec:
 
 The `IP` controller reconciles itself at the given interval if an error occurs. See the following table:
 
-| Error                                                                       | Interval |
-| :-------------------------------------------------------------------------- | :------- |
+| Error                                                                      | Interval |
+| :------------------------------------------------------------------------- | :------- |
 | None of the provided `.spec.IpSources[*].urls` return a valid IPv4 address | 60s      |
-| Fetching `DNSRecord` objects                                                | 30s      |
+| Fetching `DNSRecord` objects                                               | 30s      |
 
 ## Ingress
 
@@ -371,12 +371,12 @@ spec:
 
 The `DNSRecord` controller reconciles itself at the given interval if an error occurs. See the following table:
 
-| Error                                                | Interval |
-| :--------------------------------------------------- | :------- |
+| Error                                                     | Interval |
+| :-------------------------------------------------------- | :------- |
 | `apiKey` in secret from `Account.spec.secretRef` is empty | 5s       |
-| Fetching zones from Cloudflare                       | 30s      |
-| `Zone.name` in Cloudflare not found                  | 30s      |
-| `Zone` object not ready                              | 5s       |
-| Fetching zones from Cloudflare                       | 30s      |
-| Fetching DNS records from Cloudflare                 | 30s      |
-| Referenced `IP` object (`spec.ipRef.name`) not found | 30s      |
+| Fetching zones from Cloudflare                            | 30s      |
+| `Zone.name` in Cloudflare not found                       | 30s      |
+| `Zone` object not ready                                   | 5s       |
+| Fetching zones from Cloudflare                            | 30s      |
+| Fetching DNS records from Cloudflare                      | 30s      |
+| Referenced `IP` object (`spec.ipRef.name`) not found      | 30s      |
