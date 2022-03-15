@@ -166,27 +166,27 @@ spec:
 
 ### Type Dynamic
 
-An `IP` object with type `dynamic` will fetch an IPv4 address from the defined `.spec.IpSources[*].url` in the given interval (`.spec.interval`).  
-If more than one `IpSources` are configured, cloudflare-operator shuffle the list with `IpSources` and try to fetch a valid IPv4 address, until the first response is valid. If none of the `IpSources` return a valid IPv4 address, cloudflare-operator will set the status of the `IP` object as `failed`.
+An `IP` object with type `dynamic` will fetch an IPv4 address from the defined `.spec.ipSources[*].url` at the given interval (`.spec.interval`).  
+If more than one `ipSources` are configured, cloudflare-operator shuffles the list with `ipSources` and tries to fetch a valid IPv4 address, until the response is valid. If none of the `ipSources` returns a valid IPv4 address, cloudflare-operator will set the status of the `IP` object to `failed`.
 Default `interval` is set to 5 minutes.  
 
-A `source` can have following keys:
+An `ipSource` can have the following keys:
 
-| key                     | description                                                                                                                                                          | example                               |
+| Key                     | Description                                                                                                                                                          | Example                               |
 | :---------------------- | :------------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
 | url                     | URL to fetch IPv4 address                                                                                                                                            | `https://ipecho.net`                  |
 | requestBody             | Additional request body to send to the `url`                                                                                                                         |                                       |
 | requestHeaders          | Additional request headers to send to the `url`. The key will be passed as http header and the value will be passed as headers value                                 | `Accept: application/json`            |
-| requestHeadersSecretRef | link to a `secret` with additional http headers. All secret's key will be passed as http header and the corresponding secret's value will be passed as headers value | see example below                     |
-| requestMethod           | request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                                 | `GET`                                 |
+| requestHeadersSecretRef | Link to a `secret` with additional http headers. All secret keys will be passed as http header and the corresponding secret values will be passed as headers value | See example below                     |
+| requestMethod           | HTTP request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                                 | `GET`                                 |
 | responseTextRegex       | If the IPv4 address must be extracted from the http response. Uses the default golang regex engine.                                                                  | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
-| responseJSONPath        | jsonpath to extract Ipv4 address. Uses the kubectl jsonpath library                                                                                                  | `'{.ip}'`                             |
+| responseJSONPath        | JSONPath to extract IPv4 address. Uses the kubectl jsonpath library.                                                                                                  | `'{.ip}'`                             |
 
 !!! warning "responseTextRegex"
     Be aware that the http request will fetch the **complete html document** and not what you see in your browser!
 
 !!! note
-    If neither `responseJSONPath` nor `responseTextRegex` is set, cloudflare-operator will try to parse the **complete html document** as IPv4 address.
+    If neither `responseJSONPath` nor `responseTextRegex` is set, cloudflare-operator will try to parse the **complete html document** as an IPv4 address.
 
 Examples:
 
@@ -210,7 +210,7 @@ spec:
 ```
 
 !!! info
-    Because more than one `source` is set, cloudflare-operator shuffle the list with `IpSources` and try to fetch a valid IPv4 address, until the first response is valid. If none of the `IpSources` return a valid IPv4 address, cloudflare-operator will set the status of the `IP` object as `failed`.
+    Because more than one `source` is set, cloudflare-operator shuffles the list with `ipSources` and tries to fetch a valid IPv4 address, until the response is valid. If none of the `ipSources` returns a valid IPv4 address, cloudflare-operator will set the status of the `IP` object to `failed`.
 
 **Fetch your external IPv4 from a cloud provider**
 
@@ -228,7 +228,7 @@ stringData:
   Authorization: Bearer TOKEN123
 ```
 
-Create a IP object which reference to the secret created above
+Create an `IP` object which references the secret created above.
 
 ```yaml hl_lines="12"
 ---
@@ -249,12 +249,12 @@ spec:
 
 ### Self-Healing
 
-The `IP` controller reconcile itself in the given interval if an error occurs. See following table:
+The `IP` controller reconciles itself at the given interval if an error occurs. See the following table:
 
-| error                                                                       | interval |
+| Error                                                                       | Interval |
 | :-------------------------------------------------------------------------- | :------- |
-| none of the provided `.spec.IpSources[*].url`'s return a valid IPv4 address | 60s      |
-| fetching `DNSRecord` objects                                                | 30s      |
+| None of the provided `.spec.IpSources[*].urls` return a valid IPv4 address | 60s      |
+| Fetching `DNSRecord` objects                                                | 30s      |
 
 ## Ingress
 
@@ -312,9 +312,9 @@ spec:
 
 ### self-healing
 
-The `Ingress` controller reconcile itself in the given interval if an error occurs. See following table:
+The `Ingress` controller reconciles itself at the given interval if an error occurs. See the following table:
 
-| error                        | interval |
+| Error                        | Interval |
 | :--------------------------- | :------- |
 | fetching `DNSRecord` objects | 30s      |
 
@@ -369,11 +369,11 @@ spec:
 
 ### self-healing
 
-The `DNSRecord` controller reconciles itself in the given interval if an error occurs. See the following table:
+The `DNSRecord` controller reconciles itself at the given interval if an error occurs. See the following table:
 
-| error                                                | interval |
+| Error                                                | Interval |
 | :--------------------------------------------------- | :------- |
-| `apiKey` in secret from `Account.secretRef` is empty | 5s       |
+| `apiKey` in secret from `Account.spec.secretRef` is empty | 5s       |
 | Fetching zones from Cloudflare                       | 30s      |
 | `Zone.name` in Cloudflare not found                  | 30s      |
 | `Zone` object not ready                              | 5s       |
