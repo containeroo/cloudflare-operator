@@ -17,6 +17,7 @@ Example:
 
 ```bash
 kubectl apply -f - << EOF
+---
 apiVersion: cf.containeroo.ch/v1beta1
 kind: IP
 metadata:
