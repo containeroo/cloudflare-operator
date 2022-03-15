@@ -42,9 +42,9 @@ type IPSpecIPSources struct {
 	// ResponseJSONPath defines the JSON path to the value to be used as IP
 	// +optional
 	ResponseJSONPath string `json:"responseJSONPath,omitempty"`
-	// ResponseTextRegex defines the regular expression to be used to extract the IP from the response
+	// ResponseRegex defines the regular expression to be used to extract the IP from the response
 	// +optional
-	ResponseTextRegex string `json:"responseTextRegex,omitempty"`
+	ResponseRegex string `json:"responseRegex,omitempty"`
 }
 
 // IPSpec defines the desired state of IP

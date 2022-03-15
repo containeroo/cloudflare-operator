@@ -139,20 +139,20 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			})
 		}
 
-		ipSourceError := true
+		var ipSourceError string
 		for _, source := range instance.Spec.IPSources {
 			response, err := r.getIPSource(ctx, source, log)
 			if err != nil {
-				log.Error(err, "Failed to process source %s", source.URL)
+				ipSourceError = err.Error()
 				continue
 			}
 			instance.Spec.Address = response
-			ipSourceError = false
+			ipSourceError = ""
 			break
 		}
 
-		if ipSourceError {
-			err := r.markFailed(instance, ctx, "Failed to get IP from any source")
+		if ipSourceError != "" {
+			err := r.markFailed(instance, ctx, ipSourceError)
 			if err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
@@ -288,21 +288,21 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 		extractedIP = strings.TrimSpace(buf.String())
 	}
 
-	if source.ResponseTextRegex != "" {
-		re, err := regexp.Compile(source.ResponseTextRegex)
+	if source.ResponseRegex != "" {
+		re, err := regexp.Compile(source.ResponseRegex)
 		if err != nil {
-			return "", fmt.Errorf("failed to compile regex %s: %s", source.ResponseTextRegex, err)
+			return "", fmt.Errorf("failed to compile regex %s: %s", source.ResponseRegex, err)
 		}
 		match := re.FindStringSubmatch(strings.TrimSpace(string(response)))
 		if len(match) == 0 {
-			return "", fmt.Errorf("failed to extract IP from %s: %s", source.URL, string(response))
+			return "", fmt.Errorf("failed to extract IP from %s. regex returned no matches", source.URL)
 		}
 
 		extractedIP = strings.TrimSpace(match[len(match)-1])
 	}
 
 	if net.ParseIP(extractedIP) == nil {
-		return "", fmt.Errorf("failed to extract IP from %s: %s", source.URL, string(response))
+		return "", fmt.Errorf("ip from source %s is invalid: %s", source.URL, extractedIP)
 	}
 
 	return extractedIP, nil

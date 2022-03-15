@@ -93,9 +93,9 @@ spec:
                       description: ResponseJSONPath defines the JSON path to the value
                         to be used as IP
                       type: string
-                    responseTextRegex:
-                      description: ResponseTextRegex defines the regular expression
-                        to be used to extract the IP from the response
+                    responseRegex:
+                      description: ResponseRegex defines the regular expression to
+                        be used to extract the IP from the response
                       type: string
                     url:
                       description: URL of the IP source (e.g. https://api.hetzner.cloud/v1/servers/12345)
