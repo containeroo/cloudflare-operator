@@ -93,7 +93,7 @@ If cloudflare-operator should only manage some zones, you can specify them in th
 
 The `Account` controller reconciles itself at the given interval if an error occurs. See the following table:
 
-| error                                                 | interval |
+| Error                                                 | Interval |
 | :---------------------------------------------------- | :------- |
 | referenced secret (`secretRef`) not found             | 30s      |
 | `apiKey` in referenced secret (`secretRef`) not found | 30s      |
@@ -127,7 +127,7 @@ spec:
 
 The `Zone` controller reconcile itself at the given interval if an error occurs. See following table:
 
-| error                                                | interval |
+| Error                                                | Interval |
 | :--------------------------------------------------- | :------- |
 | `apiKey` in secret from `Account.secretRef` is empty | 5s       |
 | fetching zones from Cloudflare                       | 30s      |
