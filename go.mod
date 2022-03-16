@@ -4,7 +4,7 @@ go 1.16
 
 require (
 	cloud.google.com/go v0.99.0 // indirect
-	github.com/cloudflare/cloudflare-go v0.34.0
+	github.com/cloudflare/cloudflare-go v0.35.1
 	github.com/fsnotify/fsnotify v1.5.1 // indirect
 	github.com/go-logr/logr v0.4.0
 	github.com/prometheus/client_golang v1.12.1
