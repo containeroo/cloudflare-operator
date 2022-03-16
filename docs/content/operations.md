@@ -177,4 +177,4 @@ cloudflare_operator_ip_status
 cloudflare_operator_zone_status
 ```
 
-There is also a Grafana dashboard. You can learn more [here](/monitoring.md).
+There is also a Grafana dashboard. You can learn more [here](/monitoring).
