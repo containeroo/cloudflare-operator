@@ -200,7 +200,7 @@ metadata:
   name: external-ipv4
 spec:
   type: dynamic
-  IpSources:
+  ipSources:
     - url: https://ipecho.net
       responseRegex: \d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}
     - url: https://api.ipify.org?format=json
@@ -210,7 +210,7 @@ spec:
 ```
 
 !!! info
-    Because more than one `source` is set, cloudflare-operator shuffles the list with `ipSources` and tries to fetch a valid IPv4 address, until the response is valid. If none of the `ipSources` returns a valid IPv4 address, cloudflare-operator will set the status of the `IP` object to `failed`.
+    Because more than one `ipSource` is set, cloudflare-operator shuffles the list with `ipSources` and tries to fetch a valid IPv4 address, until the response is valid. If none of the `ipSources` returns a valid IPv4 address, cloudflare-operator will set the status of the `IP` object to `failed`.
 
 **Fetch your external IPv4 from a cloud provider**
 
@@ -238,7 +238,7 @@ metadata:
   name: hetzner-ipv4
 spec:
   type: dynamic
-  IpSources:
+  ipSources:
     - url: https://api.hetzner.cloud/v1/servers
       responseJSONPath: '{.servers[0].public_net.ipv4.ip}'
       requestHeadersSecretRef:
@@ -253,7 +253,7 @@ The `IP` controller reconciles itself at the given interval if an error occurs. 
 
 | Error                                                                      | Interval |
 | :------------------------------------------------------------------------- | :------- |
-| None of the provided `.spec.IpSources[*].urls` return a valid IPv4 address | 60s      |
+| None of the provided `.spec.ipSources[*].urls` return a valid IPv4 address | 60s      |
 | Fetching `DNSRecord` objects                                               | 30s      |
 
 ## Ingress
