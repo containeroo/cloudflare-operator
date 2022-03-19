@@ -25,7 +25,7 @@ metadata:
 spec:
   type: dynamic
   interval: 5m
-  sources:
+  ipSources:
     - url: https://ifconfig.me/ip
     - url: https://ipecho.net/plain
     - url: https://myip.is/ip/
