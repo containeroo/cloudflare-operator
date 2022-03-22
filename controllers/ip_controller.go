@@ -227,8 +227,10 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 	}
 
 	httpClient := &http.Client{}
-	req, err := http.NewRequest(source.RequestMethod, source.URL,
-		io.Reader(bytes.NewBuffer([]byte(source.RequestBody))))
+	req, err := http.NewRequest(source.RequestMethod, source.URL, io.Reader(bytes.NewBuffer([]byte(source.RequestBody))))
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %s", err)
+	}
 
 	for key, value := range source.RequestHeaders {
 		req.Header.Add(key, value)
