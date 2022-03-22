@@ -1,5 +1,11 @@
 {
   "extends": [
     "config:base"
+  ],
+  "packageRules": [
+    {
+      "matchPackageNames": ["k8s.io/client-go"],
+      "allowedVersions": "< 1.0.0"
+    }
   ]
 }
