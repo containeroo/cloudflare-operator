@@ -8,9 +8,15 @@ on:
       - master
     paths-ignore:
       - docs/**
+      - .github/**
   pull_request:
+    paths-ignore:
+      - docs/**
+      - .github/**
+
 permissions:
   contents: read
+
 jobs:
   golangci:
     name: lint
