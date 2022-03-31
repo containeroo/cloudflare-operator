@@ -3,6 +3,7 @@
     "config:base"
   ],
   "labels": ["dependencies"],
+  "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
       "matchPackageNames": ["k8s.io/client-go"],
