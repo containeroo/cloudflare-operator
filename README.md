@@ -1,4 +1,4 @@
-# cloudflare-operator Documentation
+# cloudflare-operator
 
 The goal of cloudflare-operator is to manage Cloudflare DNS records using Kubernetes objects.
 
