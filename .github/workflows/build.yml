@@ -45,7 +45,7 @@ jobs:
       - name: Generate CRDs
         run: make kustomize && make crd && git reset --hard
       - name: Run GoReleaser
-        uses: goreleaser/goreleaser-action@v2
+        uses: goreleaser/goreleaser-action@v3
         if: success() && startsWith(github.ref, 'refs/tags/')
         with:
           version: latest
