@@ -5,7 +5,7 @@ go 1.18
 require (
 	github.com/cloudflare/cloudflare-go v0.38.0
 	github.com/go-logr/logr v1.2.3
-	github.com/prometheus/client_golang v1.12.1
+	github.com/prometheus/client_golang v1.12.2
 	k8s.io/api v0.23.6
 	k8s.io/apimachinery v0.23.6
 	k8s.io/client-go v0.23.6
