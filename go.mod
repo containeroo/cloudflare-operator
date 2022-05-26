@@ -6,9 +6,9 @@ require (
 	github.com/cloudflare/cloudflare-go v0.40.0
 	github.com/go-logr/logr v1.2.3
 	github.com/prometheus/client_golang v1.12.2
-	k8s.io/api v0.24.0
-	k8s.io/apimachinery v0.24.0
-	k8s.io/client-go v0.24.0
+	k8s.io/api v0.24.1
+	k8s.io/apimachinery v0.24.1
+	k8s.io/client-go v0.24.1
 	sigs.k8s.io/controller-runtime v0.12.1
 )
 
