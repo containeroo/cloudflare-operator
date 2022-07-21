@@ -36,8 +36,8 @@ type DNSRecordSpec struct {
 	// Reference to an IP object
 	// +optional
 	IPRef DNSRecordSpecIPRef `json:"ipRef,omitempty"`
-	// Type of DNS record (A, CNAME)
-	// +kubebuilder:validation:Enum=A;CNAME
+	// Type of DNS record (A, AAAA, CNAME)
+	// +kubebuilder:validation:Enum=A;AAAA;CNAME
 	// +kubebuilder:default=A
 	// +optional
 	Type string `json:"type,omitempty"`

@@ -148,7 +148,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	if instance.Spec.Type == "A" && instance.Spec.IPRef.Name != "" {
+	if (instance.Spec.Type == "A" || instance.Spec.Type == "AAAA") && instance.Spec.IPRef.Name != "" {
 		ip := &cfv1beta1.IP{}
 		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IPRef.Name}, ip)
 		if err != nil {
