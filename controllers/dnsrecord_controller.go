@@ -133,7 +133,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	dnsRecordFailureCounter.WithLabelValues(instance.Namespace, instance.Name, instance.Spec.Name).Set(0)
 
-	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{Name: instance.Spec.Name})
+	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{Name: instance.Spec.Name, Type: instance.Spec.Type})
 	if err != nil {
 		log.Error(err, "Failed to get DNS records from Cloudflare")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err

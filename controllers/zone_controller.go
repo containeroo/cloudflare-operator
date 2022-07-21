@@ -141,7 +141,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		found := false
 		for _, dnsRecord := range dnsRecords.Items {
-			if dnsRecord.Spec.Name == cfDnsRecord.Name {
+			if dnsRecord.Spec.Name == cfDnsRecord.Name && dnsRecord.Spec.Type == cfDnsRecord.Type {
 				found = true
 				break
 			}
