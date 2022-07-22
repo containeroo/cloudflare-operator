@@ -94,10 +94,11 @@ spec:
                       type: string
                     responseRegex:
                       description: ResponseRegex defines the regular expression to
-                        be used to extract the IP from the response
+                        be used to extract the IP from the response or a JSON path
+                        result
                       type: string
                     url:
-                      description: URL of the IP source (e.g. https://api.hetzner.cloud/v1/servers/12345)
+                      description: URL of the IP source (e.g. https://checkip.amazonaws.com)
                       type: string
                   type: object
                 type: array

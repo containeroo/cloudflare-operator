@@ -270,8 +270,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 		return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, err)
 	}
 
-	var extractedIP string
-	extractedIP = strings.TrimSpace(string(response))
+	extractedIP := string(response)
 	if source.ResponseJSONPath != "" {
 		var jsonResponse map[string]interface{}
 		err := json.Unmarshal(response, &jsonResponse)
@@ -287,7 +286,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 			return "", fmt.Errorf("failed to extract IP from %s: %s", source.URL, err)
 		}
 
-		extractedIP = strings.TrimSpace(buf.String())
+		extractedIP = buf.String()
 	}
 
 	if source.ResponseRegex != "" {
@@ -295,19 +294,18 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 		if err != nil {
 			return "", fmt.Errorf("failed to compile regex %s: %s", source.ResponseRegex, err)
 		}
-		match := re.FindStringSubmatch(strings.TrimSpace(string(response)))
+		match := re.FindStringSubmatch(extractedIP)
 		if len(match) == 0 {
 			return "", fmt.Errorf("failed to extract IP from %s. regex returned no matches", source.URL)
 		}
-
-		extractedIP = strings.TrimSpace(match[len(match)-1])
+		extractedIP = match[len(match)-1]
 	}
 
 	if net.ParseIP(extractedIP) == nil {
 		return "", fmt.Errorf("ip from source %s is invalid: %s", source.URL, extractedIP)
 	}
 
-	return extractedIP, nil
+	return strings.TrimSpace(extractedIP), nil
 }
 
 // markFailed marks the reconciled object as failed
