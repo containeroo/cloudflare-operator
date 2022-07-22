@@ -294,11 +294,12 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 		if err != nil {
 			return "", fmt.Errorf("failed to compile regex %s: %s", source.ResponseRegex, err)
 		}
-		match := re.FindStringSubmatch(extractedIP)
-		if len(match) == 0 {
+		extractedIPBytes := []byte(extractedIP)
+		match := re.Find(extractedIPBytes)
+		if match == nil {
 			return "", fmt.Errorf("failed to extract IP from %s. regex returned no matches", source.URL)
 		}
-		extractedIP = match[len(match)-1]
+		extractedIP = string(match)
 	}
 
 	if net.ParseIP(extractedIP) == nil {
