@@ -22,7 +22,7 @@ import (
 )
 
 type IPSpecIPSources struct {
-	// URL of the IP source (e.g. https://api.hetzner.cloud/v1/servers/12345)
+	// URL of the IP source (e.g. https://checkip.amazonaws.com)
 	// +optional
 	URL string `json:"url,omitempty"`
 	// RequestBody to be sent to the URL
@@ -42,7 +42,7 @@ type IPSpecIPSources struct {
 	// ResponseJSONPath defines the JSON path to the value to be used as IP
 	// +optional
 	ResponseJSONPath string `json:"responseJSONPath,omitempty"`
-	// ResponseRegex defines the regular expression to be used to extract the IP from the response
+	// ResponseRegex defines the regular expression to be used to extract the IP from the response or a JSON path result
 	// +optional
 	ResponseRegex string `json:"responseRegex,omitempty"`
 }
