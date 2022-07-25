@@ -21,26 +21,27 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
-	"github.com/go-logr/logr"
 	"io"
 	"io/ioutil"
+	"math/rand"
+	"net"
+	"net/http"
+	"net/url"
+	"strings"
+	"time"
+
+	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
+	"github.com/go-logr/logr"
+	"github.com/rwtodd/Go.Sed/sed"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/jsonpath"
-	"math/rand"
-	"net"
-	"net/http"
-	"net/url"
-	"regexp"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
-	"strings"
-	"time"
 )
 
 // IPReconciler reconciles a IP object
@@ -290,16 +291,14 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 	}
 
 	if source.ResponseRegex != "" {
-		re, err := regexp.Compile(source.ResponseRegex)
+		engine, err := sed.NewQuiet(strings.NewReader(source.ResponseRegex))
 		if err != nil {
 			return "", fmt.Errorf("failed to compile regex %s: %s", source.ResponseRegex, err)
 		}
-		extractedIPBytes := []byte(extractedIP)
-		match := re.Find(extractedIPBytes)
-		if match == nil {
+		extractedIP, err := engine.RunString(extractedIP)
+		if extractedIP == "" {
 			return "", fmt.Errorf("failed to extract IP from %s. regex returned no matches", source.URL)
 		}
-		extractedIP = string(match)
 	}
 
 	if net.ParseIP(extractedIP) == nil {
