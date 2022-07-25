@@ -187,7 +187,7 @@ An `ipSource` can have the following keys:
 | requestHeadersSecretRef | Link to a `secret` with additional http headers. All secret keys will be passed as http header and the corresponding secret values will be passed as headers value | See example below                     |
 | requestMethod           | HTTP request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                          | `GET`                                 |
 | responseJSONPath        | JSONPath to extract ip address. Uses the kubectl jsonpath library.                                                                                                 | `'{.ip}'`                             |
-| responseRegex           | If the ip address must be extracted from the http response or from the JSONPath result. Uses the default golang regex engine.                                      | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
+| responseRegex           | If the ip address must be extracted from the http response or from the JSONPath result. Uses the [go.sed](https://github.com/rwtodd/Go.Sed) regex engine.                                      | `s/.*(\\d{1,3}.\\d{1,3}.\\d{1,3}.\\d{1,3}).*/$1/p` |
 
 !!! warning "responseRegex"
     Be aware that the http request will fetch the **complete html document** and not what you see in your browser!
@@ -209,7 +209,7 @@ spec:
   type: dynamic
   ipSources:
     - url: https://ipecho.net
-      responseRegex: \d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}
+      responseRegex: s/.*(\\d{1,3}.\\d{1,3}.\\d{1,3}.\\d{1,3}).*/$1/p
     - url: https://api.ipify.org?format=json
       responseJSONPath: '{.ip}'
     - url: https://checkip.amazonaws.com
