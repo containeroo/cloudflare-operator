@@ -133,10 +133,18 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	dnsRecordFailureCounter.WithLabelValues(instance.Namespace, instance.Name, instance.Spec.Name).Set(0)
 
-	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{Name: instance.Spec.Name, Type: instance.Spec.Type})
+	existingRecords, err := r.Cf.DNSRecords(ctx, dnsRecordZoneId, cloudflare.DNSRecord{})
 	if err != nil {
 		log.Error(err, "Failed to get DNS records from Cloudflare")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+	}
+
+	var existingRecord cloudflare.DNSRecord
+	for _, record := range existingRecords {
+		if record.ID != instance.Status.RecordID {
+			continue
+		}
+		existingRecord = record
 	}
 
 	if instance.Spec.Content == "" && instance.Spec.IPRef.Name == "" {
@@ -176,7 +184,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	if existingRecords == nil {
+	if existingRecord.ID == "" {
 		resp, err := r.Cf.CreateDNSRecord(ctx, dnsRecordZoneId, cloudflare.DNSRecord{
 			Name:    instance.Spec.Name,
 			Type:    instance.Spec.Type,
@@ -203,7 +211,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 	}
 
-	existingRecord := existingRecords[0]
 	if existingRecord.Name != instance.Spec.Name ||
 		existingRecord.Type != instance.Spec.Type ||
 		existingRecord.Content != instance.Spec.Content ||
