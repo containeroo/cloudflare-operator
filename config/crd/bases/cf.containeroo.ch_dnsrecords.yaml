@@ -55,7 +55,7 @@ spec:
             description: DNSRecordSpec defines the desired state of DNSRecord
             properties:
               content:
-                description: Content of the DNS record (e.g. 144.231.20.1)
+                description: DNS record content (e.g. 127.0.0.1)
                 type: string
               interval:
                 default: 5m
@@ -69,21 +69,24 @@ spec:
                     type: string
                 type: object
               name:
-                description: Name of the DNS record (e.g. app.example.com)
+                description: DNS record name (e.g. example.com)
+                maxLength: 255
                 type: string
               proxied:
                 default: true
-                description: Proxied indicates whether the DNS record should be proxied
+                description: Whether the record is receiving the performance and security
+                  benefits of Cloudflare
                 type: boolean
               ttl:
                 default: 1
-                description: TTL of the DNS record (e.g. 300, 1 for automatic)
+                description: Time to live, in seconds, of the DNS record. Must be
+                  between 60 and 86400, or 1 for 'automatic' (e.g. 3600)
                 maximum: 86400
                 minimum: 1
                 type: integer
               type:
                 default: A
-                description: Type of DNS record (A, AAAA, CNAME)
+                description: DNS record type (one of A, AAAA, CNAME)
                 enum:
                 - A
                 - AAAA
