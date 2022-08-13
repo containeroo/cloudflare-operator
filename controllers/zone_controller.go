@@ -135,7 +135,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		if !strings.HasSuffix(cfDnsRecord.Name, instance.Spec.Name) {
 			continue
 		}
-		if cfDnsRecord.Type != "A" && cfDnsRecord.Type != "AAAA" && cfDnsRecord.Type != "CNAME" {
+		if strings.HasPrefix(cfDnsRecord.Name, "_acme-challenge") {
 			continue
 		}
 

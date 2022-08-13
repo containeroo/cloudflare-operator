@@ -186,11 +186,13 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if existingRecord.ID == "" {
 		resp, err := r.Cf.CreateDNSRecord(ctx, dnsRecordZoneId, cloudflare.DNSRecord{
-			Name:    instance.Spec.Name,
-			Type:    instance.Spec.Type,
-			Content: instance.Spec.Content,
-			TTL:     instance.Spec.TTL,
-			Proxied: instance.Spec.Proxied,
+			Name:     instance.Spec.Name,
+			Type:     instance.Spec.Type,
+			Content:  instance.Spec.Content,
+			TTL:      instance.Spec.TTL,
+			Proxied:  instance.Spec.Proxied,
+			Priority: instance.Spec.Priority,
+			Data:     instance.Spec.Data,
 		})
 		if err != nil {
 			err := r.markFailed(instance, ctx, err.Error())
@@ -215,13 +217,17 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		existingRecord.Type != instance.Spec.Type ||
 		existingRecord.Content != instance.Spec.Content ||
 		existingRecord.TTL != instance.Spec.TTL ||
-		*existingRecord.Proxied != *instance.Spec.Proxied {
+		*existingRecord.Proxied != *instance.Spec.Proxied ||
+		existingRecord.Priority != instance.Spec.Priority ||
+		!reflect.DeepEqual(existingRecord.Data, instance.Spec.Data) {
 		err := r.Cf.UpdateDNSRecord(ctx, dnsRecordZoneId, existingRecord.ID, cloudflare.DNSRecord{
-			Name:    instance.Spec.Name,
-			Type:    instance.Spec.Type,
-			Content: instance.Spec.Content,
-			TTL:     instance.Spec.TTL,
-			Proxied: instance.Spec.Proxied,
+			Name:     instance.Spec.Name,
+			Type:     instance.Spec.Type,
+			Content:  instance.Spec.Content,
+			TTL:      instance.Spec.TTL,
+			Proxied:  instance.Spec.Proxied,
+			Priority: instance.Spec.Priority,
+			Data:     instance.Spec.Data,
 		})
 		if err != nil {
 			err := r.markFailed(instance, ctx, err.Error())

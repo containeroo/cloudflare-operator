@@ -57,6 +57,11 @@ spec:
               content:
                 description: DNS record content (e.g. 127.0.0.1)
                 type: string
+              data:
+                additionalProperties:
+                  type: string
+                description: Key-value pairs for additional DNS record configuration
+                type: object
               interval:
                 default: 5m
                 description: Interval to check DNSRecord
@@ -72,6 +77,13 @@ spec:
                 description: DNS record name (e.g. example.com)
                 maxLength: 255
                 type: string
+              priority:
+                description: Required for MX, SRV and URI records; unused by other
+                  record types. Records with lower priorities are preferred (e.g.
+                  10)
+                maximum: 65535
+                minimum: 0
+                type: integer
               proxied:
                 default: true
                 description: Whether the record is receiving the performance and security
@@ -86,11 +98,27 @@ spec:
                 type: integer
               type:
                 default: A
-                description: DNS record type (one of A, AAAA, CNAME)
+                description: DNS record type (A, AAAA, CNAME, HTTPS, TXT, SRV, LOC,
+                  MX, NS, CERT, DNSKEY, DS, NAPTR, SMIMEA, SSHFP, SVCB, TLSA, URI)
                 enum:
                 - A
                 - AAAA
                 - CNAME
+                - HTTPS
+                - TXT
+                - SRV
+                - LOC
+                - MX
+                - NS
+                - CERT
+                - DNSKEY
+                - DS
+                - NAPTR
+                - SMIMEA
+                - SSHFP
+                - SVCB
+                - TLSA
+                - URI
                 type: string
             required:
             - name
