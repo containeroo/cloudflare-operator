@@ -2,7 +2,7 @@
 
 set -o errexit
 
-command -v jq >/dev/null 2>&1 || { echo >&2 "'yq' is not installed"; exit 1; }
+command -v jq >/dev/null 2>&1 || { echo >&2 "'jq' is not installed"; exit 1; }
 
 [[ -z "${CLOUDFLARE_ZONE_ID}" ]] && { echo >&2 "CLOUDFLARE_ZONE_ID is not set!"; exit 1; }
 [[ -z "${CLOUDFLARE_BEARER_TOKEN}" ]] && { echo >&2 "CLOUDFLARE_BEARER_TOKEN is not set!"; exit 1; }
