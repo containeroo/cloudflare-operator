@@ -2,6 +2,9 @@
 
 This tutorial shows you how to start using cloudflare-operator.
 
+!!! error "BE CAREFUL"
+    Because cloudflare-operator should be the single source of truth, __ALL__ existing `A`, `AAAA` and `CNAME` DNS Records in the given Cloudflare Zone will be __ DELETED__ if there is no corresponding `DNSRecord` object in Kubernetes.
+
 ## Preparation
 
 Create a secret with your Cloudflare global API Key. The key containing the API key must be named `apiKey`.

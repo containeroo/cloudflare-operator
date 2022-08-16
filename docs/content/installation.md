@@ -19,13 +19,13 @@ This repository is the only supported source of containeroo charts.
 helm repo add containeroo https://charts.containeroo.ch
 ```
 
-2. Update your local Helm chart repository cache:
+1. Update your local Helm chart repository cache:
 
 ```bash
 helm repo update
 ```
 
-3. Install CustomResourceDefinitions
+1. Install CustomResourceDefinitions
 
 cloudflare-operator requires a number of CRD resources, which must be installed manually using `kubectl`.
 
@@ -35,7 +35,14 @@ Installing CRDs with kubectl:
 kubectl apply -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.3.2/crds.yaml
 ```
 
-4. Install cloudflare-operator
+!!! error "PROCEED WITH CAUTION"
+    Because cloudflare-operator should be the single source of truth, __ALL__ existing `A`, `AAAA` and `CNAME` DNS Records in the given Cloudflare Zone will be __ DELETED__ if there is no corresponding `DNSRecord` object in Kubernetes.
+
+1. Create preexisting `DNSRecords`
+
+See [operations](operations.md#existing-cloudflare-dns-records)
+
+1. Install cloudflare-operator
 
 To install the cloudflare-operator Helm chart, use the Helm install command as described below.
 
