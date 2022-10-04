@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"github.com/go-logr/logr"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -213,13 +214,17 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 	}
 
+	if !reflect.DeepEqual(existingRecord.Data, instance.Spec.Data) {
+		fmt.Println("difference found in data")
+	}
+
 	if existingRecord.Name != instance.Spec.Name ||
 		existingRecord.Type != instance.Spec.Type ||
 		existingRecord.Content != instance.Spec.Content ||
 		existingRecord.TTL != instance.Spec.TTL ||
 		*existingRecord.Proxied != *instance.Spec.Proxied ||
-		existingRecord.Priority != instance.Spec.Priority ||
-		!reflect.DeepEqual(existingRecord.Data, instance.Spec.Data) {
+		existingRecord.Priority != instance.Spec.Priority || // this doesn't work
+		!reflect.DeepEqual(existingRecord.Data, instance.Spec.Data) { // this doesn't work
 		err := r.Cf.UpdateDNSRecord(ctx, dnsRecordZoneId, existingRecord.ID, cloudflare.DNSRecord{
 			Name:     instance.Spec.Name,
 			Type:     instance.Spec.Type,

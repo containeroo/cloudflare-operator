@@ -226,8 +226,8 @@ func (in *DNSRecordSpec) DeepCopyInto(out *DNSRecordSpec) {
 		*out = new(bool)
 		**out = **in
 	}
-	if in.TTL != nil {
-		in, out := &in.TTL, &out.TTL
+	if in.Priority != nil {
+		in, out := &in.Priority, &out.Priority
 		*out = new(uint16)
 		**out = **in
 	}

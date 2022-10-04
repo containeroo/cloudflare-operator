@@ -136,6 +136,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			continue
 		}
 		if strings.HasPrefix(cfDnsRecord.Name, "_acme-challenge") {
+			log.Info("Skipping acme challenge record", "name", cfDnsRecord.Name)
 			continue
 		}
 
