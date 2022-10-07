@@ -186,8 +186,8 @@ An `ipSource` can have the following keys:
 | requestHeaders          | Additional request headers to send to the `url`. The key will be passed as http header and the value will be passed as headers value                               | `Accept: application/json`            |
 | requestHeadersSecretRef | Link to a `secret` with additional http headers. All secret keys will be passed as http header and the corresponding secret values will be passed as headers value | See example below                     |
 | requestMethod           | HTTP request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                          | `GET`                                 |
-| responseJSONPath        | JSONPath to extract ip address. Uses the kubectl jsonpath library.                                                                                                 | `'{.ip}'`                             |
-| responseRegex           | If the ip address must be extracted from the http response or from the JSONPath result. Uses the default golang regex engine.                                      | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
+| responseJSONPath        | JSONPath to extract IP address. Uses the kubectl jsonpath library.                                                                                                 | `'{.ip}'`                             |
+| responseRegex           | If the IP address must be extracted from the http response or from the JSONPath result. Uses the default golang regex engine.                                      | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
 
 !!! warning "responseRegex"
     Be aware that the http request will fetch the **complete html document** and not what you see in your browser!
@@ -197,7 +197,7 @@ An `ipSource` can have the following keys:
 
 Examples:
 
-**Fetch your external ip address from three "IP" providers**
+**Fetch your external IP address from three "IP" providers**
 
 ```yaml
 ---
@@ -217,7 +217,7 @@ spec:
 ```
 
 !!! info
-    Because more than one `ipSource` is set, cloudflare-operator shuffles the list with `ipSources` and tries to fetch a valid ip address, until the response is valid. If none of the `ipSources` returns a valid ip address, cloudflare-operator will set the status of the `IP` object to `failed`.
+    Because more than one `ipSource` is set, cloudflare-operator shuffles the list with `ipSources` and tries to fetch a valid IP address, until the response is valid. If none of the `ipSources` returns a valid IP address, cloudflare-operator will set the status of the `IP` object to `failed`.
 
 **Fetch your external address frome one "IP" provider**
 
@@ -235,9 +235,9 @@ spec:
 ```
 
 !!! info
-    Because only one `ipSource` is set, cloudflare-operator will fail if the response is not a valid ip address and set the status of the `IP` object to `failed`.
+    Because only one `ipSource` is set, cloudflare-operator will fail if the response is not a valid IP address and set the status of the `IP` object to `failed`.
 
-**Fetch your external ip address from a cloud provider**
+**Fetch your external IP address from a cloud provider**
 
 Create a secret with your provider API credentials:
 
@@ -268,28 +268,6 @@ spec:
   ipSources:
     - url: https://api.hetzner.cloud/v1/servers
       responseJSONPath: '{.servers[0].public_net.ipv4.ip}'
-      requestHeadersSecretRef:
-        name: hetzner-bearer-token
-        namespace: default
-  interval: 5m
-```
-
-** IPv6 address**
-
-After getting the IP address from the "IP" provider, cloudflare-operator will try to extract the IPv6 address from value from `responseJSONPath`.
-
-```yaml hl_lines="13"
----
-apiVersion: cf.containeroo.ch/v1beta1
-kind: IP
-metadata:
-  name: hetzner-ipv6
-spec:
-  type: dynamic
-  ipSources:
-    - url: https://api.hetzner.cloud/v1/servers
-      responseJSONPath: '{.servers[0].public_net.ipv6.ip}'
-      responseRegex: (([0-9a-fA-F]{1,4}:){7,7}[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,7}:|([0-9a-fA-F]{1,4}:){1,6}:[0-9a-fA-F]{1,4}|([0-9a-fA-F]{1,4}:){1,5}(:[0-9a-fA-F]{1,4}){1,2}|([0-9a-fA-F]{1,4}:){1,4}(:[0-9a-fA-F]{1,4}){1,3}|([0-9a-fA-F]{1,4}:){1,3}(:[0-9a-fA-F]{1,4}){1,4}|([0-9a-fA-F]{1,4}:){1,2}(:[0-9a-fA-F]{1,4}){1,5}|[0-9a-fA-F]{1,4}:((:[0-9a-fA-F]{1,4}){1,6})|:((:[0-9a-fA-F]{1,4}){1,7}|:)|fe80:(:[0-9a-fA-F]{0,4}){0,4}%[0-9a-zA-Z]{1,}|::(ffff(:0{1,4}){0,1}:){0,1}((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])|([0-9a-fA-F]{1,4}:){1,4}:((25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9])\.){3,3}(25[0-5]|(2[0-4]|1{0,1}[0-9]){0,1}[0-9]))
       requestHeadersSecretRef:
         name: hetzner-bearer-token
         namespace: default
