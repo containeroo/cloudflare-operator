@@ -12,7 +12,7 @@ A Cloudflare DNS record has the following fields:
 
 ### Type
 
-Cloudflare can handle multiple types. At the moment cloudflare-operator only supports `A` and `CNAME` records.
+Cloudflare can handle multiple types. At the moment cloudflare-operator only supports `A`, `AAAA` and `CNAME` records.
 
 **A**
 
@@ -20,6 +20,13 @@ An `A` record must point to a valid IPv4 address (e.g. `172.4.20.69`).
 
 !!! info "cloudflare-operator use case"
     Let cloudflare-operator create an `A` record for your root domain (e.g. `example.com`).
+
+**AAAA**
+
+An `AAAA` record must point to a valid IPv6 address (e.g. `2606:4700:4700:0:0:0:0:6400`).
+
+!!! info "cloudflare-operator use case"
+    Let cloudflare-operator create an `AAAA` record for your root domain (e.g. `example.com`).
 
 **CNAME**
 
@@ -173,14 +180,14 @@ Default `interval` is set to 5 minutes.
 An `ipSource` can have the following keys:
 
 | Key                     | Description                                                                                                                                                        | Example                               |
-|:------------------------|:-------------------------------------------------------------------------------------------------------------------------------------------------------------------|:--------------------------------------|
+| :---------------------- | :----------------------------------------------------------------------------------------------------------------------------------------------------------------- | :------------------------------------ |
 | url                     | URL to fetch IPv4 address                                                                                                                                          | `https://ipecho.net`                  |
 | requestBody             | Additional request body to send to the `url`                                                                                                                       |                                       |
 | requestHeaders          | Additional request headers to send to the `url`. The key will be passed as http header and the value will be passed as headers value                               | `Accept: application/json`            |
 | requestHeadersSecretRef | Link to a `secret` with additional http headers. All secret keys will be passed as http header and the corresponding secret values will be passed as headers value | See example below                     |
 | requestMethod           | HTTP request method. Possible values are `GET`, `POST`, `PUT` or `DELETE`                                                                                          | `GET`                                 |
-| responseRegex           | If the IPv4 address must be extracted from the http response. Uses the default golang regex engine.                                                                | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
-| responseJSONPath        | JSONPath to extract IPv4 address. Uses the kubectl jsonpath library.                                                                                               | `'{.ip}'`                             |
+| responseJSONPath        | JSONPath to extract IP address. Uses the kubectl jsonpath library.                                                                                                 | `'{.ip}'`                             |
+| responseRegex           | If the IP address must be extracted from the http response or from the JSONPath result. Uses the default golang regex engine.                                      | `\d{1,3}\.\d{1,3}.\.\d{1,3}\.\d{1,3}` |
 
 !!! warning "responseRegex"
     Be aware that the http request will fetch the **complete html document** and not what you see in your browser!
@@ -190,7 +197,7 @@ An `ipSource` can have the following keys:
 
 Examples:
 
-**Fetch your external IPv4 address from three "IP" providers**
+**Fetch your external IP address from three "IP" providers**
 
 ```yaml
 ---
@@ -210,9 +217,27 @@ spec:
 ```
 
 !!! info
-    Because more than one `ipSource` is set, cloudflare-operator shuffles the list with `ipSources` and tries to fetch a valid IPv4 address, until the response is valid. If none of the `ipSources` returns a valid IPv4 address, cloudflare-operator will set the status of the `IP` object to `failed`.
+    Because more than one `ipSource` is set, cloudflare-operator shuffles the list with `ipSources` and tries to fetch a valid IP address, until the response is valid. If none of the `ipSources` returns a valid IP address, cloudflare-operator will set the status of the `IP` object to `failed`.
 
-**Fetch your external IPv4 from a cloud provider**
+**Fetch your external address frome one "IP" provider**
+
+```yaml
+---
+apiVersion: cf.containeroo.ch/v1beta1
+kind: IP
+metadata:
+  name: external-ipv6
+spec:
+  type: dynamic
+  ipSources:
+    - url: http://ip6only.me
+  interval: 5m
+```
+
+!!! info
+    Because only one `ipSource` is set, cloudflare-operator will fail if the response is not a valid IP address and set the status of the `IP` object to `failed`.
+
+**Fetch your external IP address from a cloud provider**
 
 Create a secret with your provider API credentials:
 
@@ -229,6 +254,8 @@ stringData:
 ```
 
 Create an `IP` object which references the secret created above.
+
+**IPv4 address**
 
 ```yaml hl_lines="12"
 ---
