@@ -3,7 +3,7 @@
 This tutorial shows you how to start using cloudflare-operator.
 
 !!! error "BE CAREFUL"
-    Because cloudflare-operator should be the single source of truth, __ALL__ existing `A`, `AAAA` and `CNAME` DNS Records in the given Cloudflare Zone will be __ DELETED__ if there is no corresponding `DNSRecord` object in Kubernetes.
+    Because cloudflare-operator should be the single source of truth, __ALL__ existing `A`, `AAAA` and `CNAME` DNS records in the given Cloudflare zone will be __ DELETED__ if there is no corresponding `DNSRecord` object in Kubernetes.
 
 ## Preparation
 

@@ -181,28 +181,28 @@ There is also a Grafana dashboard. You can learn more [here](/monitoring).
 
 ## Existing Cloudflare DNS Records
 
-In `hack/fetch_dns_records.sh` is a helper script to fetch all Cloudflare DNS Records for a given Cloudflare Zone (`CLOUDFLARE_ZONE_ID`) and outputs cloudflare-operator `DNSRecords` objects.
+In `hack/fetch_dns_records.sh` is a helper script to fetch all Cloudflare DNS records for a given Cloudflare zone (`CLOUDFLARE_ZONE_ID`) and outputs cloudflare-operator `DNSRecord` objects.
 
-set mandatory variables:
+Set environment variables:
 
 ```bash
 export CLOUDFLARE_ZONE_ID=""
 export CLOUDFLARE_BEARER_TOKEN=""
 ```
 
-run script and write output to a file:
+Run script and write output to a file:
 
 ```bash
 bash hack/fetch_dns_records.sh > dns_records.yaml
 ```
 
-check if everything is looking good:
+Verify script output:
 
 ```bash
 cat dns_records.yaml
 ```
 
-create `DNSRecords`:
+Create `DNSRecords`:
 
 ```bash
 kubectl apply -f dns_records.yaml

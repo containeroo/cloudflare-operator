@@ -36,11 +36,11 @@ kubectl apply -f https://github.com/containeroo/cloudflare-operator/releases/dow
 ```
 
 !!! error "PROCEED WITH CAUTION"
-    Because cloudflare-operator should be the single source of truth, __ALL__ existing `A`, `AAAA` and `CNAME` DNS Records in the given Cloudflare Zone will be __ DELETED__ if there is no corresponding `DNSRecord` object in Kubernetes.
+    Because cloudflare-operator should be the single source of truth, __ALL__ existing `A`, `AAAA` and `CNAME` DNS records in the given Cloudflare zone will be __ DELETED__ if there is no corresponding `DNSRecord` object in Kubernetes.
 
 1. Create preexisting `DNSRecords`
 
-See [operations](operations.md#existing-cloudflare-dns-records)
+There is a script available to convert preexisting Cloudflare DNS records to Kubernetes `DNSRecord` objects. Learn more [here](operations.md#existing-cloudflare-dns-records).
 
 1. Install cloudflare-operator
 
