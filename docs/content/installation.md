@@ -35,6 +35,9 @@ Installing CRDs with kubectl:
 kubectl apply -f https://github.com/containeroo/cloudflare-operator/releases/download/v0.3.2/crds.yaml
 ```
 
+!!! error "PROCEED WITH CAUTION"
+    Because cloudflare-operator should be the single source of truth, __ALL__ existing `A`, `AAAA` and `CNAME` DNS records in the given Cloudflare zone will be __ DELETED__ if there is no corresponding `DNSRecord` object in Kubernetes.
+
 4. Install cloudflare-operator
 
 To install the cloudflare-operator Helm chart, use the Helm install command as described below.
