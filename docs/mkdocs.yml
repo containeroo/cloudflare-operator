@@ -57,7 +57,9 @@ nav:
   - 'Getting Started': getting_started.md
   - 'Installation': installation.md
   - 'Upgrade Notes': upgrade_notes.md
-  - 'Operations': operations.md
+  - 'Operations':
+    - 'Operations': operations.md
+    - 'Fetch IP from Kubernetes': fech_ip_from_kubernetes.md
   - 'Monitoring': monitoring.md
   - 'API Reference': api_reference.md
   - 'Roadmap': roadmap.md

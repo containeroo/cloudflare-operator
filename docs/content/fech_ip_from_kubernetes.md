@@ -1,5 +1,9 @@
-## Update IP from service.status.loadBalancer.ingress.[0].ip
-Add kubectl sidecar container to be able to send requests into kubernetes API.
+# Fetch IP From Kubernetes Object
+
+To fetch IP addresses from other Kubernetes objects, such as services or Istio gateways, you can add a kubectl sidecar to the operator pod.
+
+Enable the kubectl sidecar in your helm values:
+
 ```yaml
 sidecars:
   - name: proxy
@@ -7,7 +11,7 @@ sidecars:
     args: ["proxy","--port=8858"]
 ```
 
-Add additional permissions for this sidecar to be able to get service resource.
+Also in the helm values, add additional permissions for this sidecar to be able to get service resource.
 
 ```yaml
 clusterRole:
@@ -21,7 +25,7 @@ clusterRole:
     - list
 ```
 
-Now add IP object
+Now add the IP object:
 
 ```yaml
 ---
