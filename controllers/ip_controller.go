@@ -24,7 +24,6 @@ import (
 	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
 	"github.com/go-logr/logr"
 	"io"
-	"io/ioutil"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -265,7 +264,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 	if resp.StatusCode != 200 {
 		return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, resp.Status)
 	}
-	response, err := ioutil.ReadAll(resp.Body)
+	response, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, err)
 	}
