@@ -28,24 +28,25 @@ type DNSRecordSpecIPRef struct {
 
 // DNSRecordSpec defines the desired state of DNSRecord
 type DNSRecordSpec struct {
-	// Name of the DNS record (e.g. app.example.com)
+	// DNS record name (e.g. example.com)
+	// +kubebuilder:validation:MaxLength=255
 	Name string `json:"name"`
-	// Content of the DNS record (e.g. 144.231.20.1)
+	// DNS record content (e.g. 127.0.0.1)
 	// +optional
 	Content string `json:"content,omitempty"`
 	// Reference to an IP object
 	// +optional
 	IPRef DNSRecordSpecIPRef `json:"ipRef,omitempty"`
-	// Type of DNS record (A, AAAA, CNAME)
+	// DNS record type (A, AAAA, CNAME)
 	// +kubebuilder:validation:Enum=A;AAAA;CNAME
 	// +kubebuilder:default=A
 	// +optional
 	Type string `json:"type,omitempty"`
-	// Proxied indicates whether the DNS record should be proxied
+	// Whether the record is receiving the performance and security benefits of Cloudflare
 	// +kubebuilder:default=true
 	// +optional
 	Proxied *bool `json:"proxied,omitempty"`
-	// TTL of the DNS record (e.g. 300, 1 for automatic)
+	// Time to live, in seconds, of the DNS record. Must be between 60 and 86400, or 1 for 'automatic' (e.g. 3600)
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=86400
 	// +kubebuilder:default=1
