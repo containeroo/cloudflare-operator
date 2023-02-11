@@ -18,11 +18,12 @@ package controllers
 
 import (
 	"context"
+	"strings"
+	"time"
+
 	"github.com/cloudflare/cloudflare-go"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"strings"
-	"time"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -121,7 +122,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	cfDnsRecords, err := r.Cf.DNSRecords(ctx, instance.Spec.ID, cloudflare.DNSRecord{})
+	cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(instance.Spec.ID), cloudflare.ListDNSRecordsParams{})
 	if err != nil {
 		err := r.markFailed(instance, ctx, err.Error())
 		if err != nil {
@@ -147,7 +148,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			}
 		}
 		if !found {
-			err = r.Cf.DeleteDNSRecord(ctx, instance.Spec.ID, cfDnsRecord.ID)
+			err = r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(instance.Spec.ID), cfDnsRecord.ID)
 			if err != nil {
 				err := r.markFailed(instance, ctx, err.Error())
 				if err != nil {
