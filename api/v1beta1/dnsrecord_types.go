@@ -60,13 +60,8 @@ type DNSRecordSpec struct {
 
 // DNSRecordStatus defines the observed state of DNSRecord
 type DNSRecordStatus struct {
-	// Phase of the DNS record
-	// +kubebuilder:validation:Enum=Created;Pending;Failed
-	// +optional
-	Phase string `json:"phase,omitempty"`
-	// Message if the DNS record failed
-	// +optional
-	Message string `json:"message,omitempty"`
+	// Conditions contains the different condition statuses for the DNSRecord object.
+	Conditions []metav1.Condition `json:"conditions"`
 	// Cloudflare DNS record ID
 	// +optional
 	RecordID string `json:"recordID,omitempty"`
@@ -81,7 +76,7 @@ type DNSRecordStatus struct {
 // +kubebuilder:printcolumn:name="Content",type="string",JSONPath=".spec.content"
 // +kubebuilder:printcolumn:name="Proxied",type="boolean",JSONPath=".spec.proxied"
 // +kubebuilder:printcolumn:name="TTL",type="integer",JSONPath=".spec.ttl"
-// +kubebuilder:printcolumn:name="Status",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type == "Ready")].status`
 type DNSRecord struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

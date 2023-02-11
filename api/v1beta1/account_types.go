@@ -52,13 +52,8 @@ type AccountStatusZones struct {
 
 // AccountStatus defines the observed state of Account
 type AccountStatus struct {
-	// Phase of the Account
-	// +kubebuilder:validation:Enum=Active;Failed
-	// +optional
-	Phase string `json:"phase,omitempty"`
-	// Message if the Account authentication failed
-	// +optional
-	Message string `json:"message,omitempty"`
+	// Conditions contains the different condition statuses for the Account object.
+	Conditions []metav1.Condition `json:"conditions"`
 	// Zones contains all the zones of the Account
 	// +optional
 	Zones []AccountStatusZones `json:"zones,omitempty"`
@@ -70,7 +65,7 @@ type AccountStatus struct {
 
 // Account is the Schema for the accounts API
 // +kubebuilder:printcolumn:name="Email",type="string",JSONPath=".spec.email"
-// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type == "Ready")].status`
 type Account struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
