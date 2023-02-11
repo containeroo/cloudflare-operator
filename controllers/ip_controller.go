@@ -34,6 +34,7 @@ import (
 	"github.com/go-logr/logr"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/util/jsonpath"
@@ -196,9 +197,13 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	if instance.Status.Phase != "Ready" || instance.Status.Message != "" {
-		instance.Status.Phase = "Ready"
-		instance.Status.Message = ""
+	if condition := apimeta.FindStatusCondition(instance.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
+		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  "True",
+			Reason:  "Ready",
+			Message: "IP is ready",
+		})
 		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update IP resource")
@@ -238,8 +243,10 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 
 	if source.RequestHeadersSecretRef.Name != "" {
 		secret := &v1.Secret{}
-		err := r.Get(ctx, client.ObjectKey{Name: source.RequestHeadersSecretRef.Name,
-			Namespace: source.RequestHeadersSecretRef.Namespace}, secret)
+		err := r.Get(ctx, client.ObjectKey{
+			Name:      source.RequestHeadersSecretRef.Name,
+			Namespace: source.RequestHeadersSecretRef.Namespace,
+		}, secret)
 		if err != nil {
 			return "", fmt.Errorf("failed to get secret %s: %s", source.RequestHeadersSecretRef.Name, err)
 		}
@@ -312,8 +319,12 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 // markFailed marks the reconciled object as failed
 func (r *IPReconciler) markFailed(instance *cfv1beta1.IP, ctx context.Context, message string) error {
 	ipFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(1)
-	instance.Status.Phase = "Failed"
-	instance.Status.Message = message
+	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		Type:    "Ready",
+		Status:  "False",
+		Reason:  "Failed",
+		Message: message,
+	})
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return err
 	}

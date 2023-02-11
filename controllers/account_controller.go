@@ -26,6 +26,7 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -188,9 +189,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					ID:       zone.ID,
 					Interval: instance.Spec.Interval,
 				},
-				Status: cfv1beta1.ZoneStatus{
-					Phase: "Pending",
-				},
 			}
 			err = r.Create(ctx, z)
 			if err != nil {
@@ -201,14 +199,18 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	if instance.Status.Phase != "Active" || instance.Status.Message != "" {
-		instance.Status.Phase = "Active"
-		instance.Status.Message = ""
-		err := r.Status().Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update Account status")
-			return ctrl.Result{}, err
-		}
+	if condition := apimeta.FindStatusCondition(instance.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
+		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  "True",
+			Reason:  "Ready",
+			Message: "Account is ready",
+		})
+	}
+	err = r.Status().Update(ctx, instance)
+	if err != nil {
+		log.Error(err, "Failed to update Account status")
+		return ctrl.Result{}, err
 	}
 
 	statusChanged := false
@@ -267,8 +269,12 @@ func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // markFailed marks the reconciled object as failed
 func (r *AccountReconciler) markFailed(instance *cfv1beta1.Account, ctx context.Context, message string) error {
 	accountFailureCounter.WithLabelValues(instance.Name).Set(1)
-	instance.Status.Phase = "Failed"
-	instance.Status.Message = message
+	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		Type:    "Ready",
+		Status:  "False",
+		Reason:  "Failed",
+		Message: message,
+	})
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return err
 	}
