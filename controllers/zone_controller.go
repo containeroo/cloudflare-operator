@@ -23,6 +23,8 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	"k8s.io/apimachinery/pkg/api/errors"
+	apimeta "k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -85,8 +87,12 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(0)
 
 	if r.Cf.APIKey == "" {
-		instance.Status.Phase = "Pending"
-		instance.Status.Message = "Cloudflare account not ready"
+		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  "False",
+			Reason:  "NotReady",
+			Message: "Cloudflare account is not yet ready",
+		})
 		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Zone status")
@@ -105,9 +111,13 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	if instance.Status.Phase != "Active" {
-		instance.Status.Phase = "Active"
-		instance.Status.Message = ""
+	if condition := apimeta.FindStatusCondition(instance.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
+		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+			Type:    "Ready",
+			Status:  "True",
+			Reason:  "Ready",
+			Message: "Zone is ready",
+		})
 		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Zone status")
@@ -172,8 +182,12 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // markFailed marks the reconciled object as failed
 func (r *ZoneReconciler) markFailed(instance *cfv1beta1.Zone, ctx context.Context, message string) error {
 	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(1)
-	instance.Status.Phase = "Failed"
-	instance.Status.Message = message
+	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		Type:    "Ready",
+		Status:  "False",
+		Reason:  "Failed",
+		Message: message,
+	})
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return err
 	}

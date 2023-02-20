@@ -34,13 +34,8 @@ type ZoneSpec struct {
 
 // ZoneStatus defines the observed state of Zone
 type ZoneStatus struct {
-	// Phase of the Zone
-	// +kubebuilder:validation:Enum=Active;Pending;Failed
-	// +optional
-	Phase string `json:"phase,omitempty"`
-	// Message if the Zone failed
-	// +optional
-	Message string `json:"message,omitempty"`
+	// Conditions contains the different condition statuses for the Zone object.
+	Conditions []metav1.Condition `json:"conditions"`
 }
 
 // +kubebuilder:object:root=true
@@ -50,7 +45,7 @@ type ZoneStatus struct {
 // Zone is the Schema for the zones API
 // +kubebuilder:printcolumn:name="Zone Name",type="string",JSONPath=".spec.name"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".spec.id"
-// +kubebuilder:printcolumn:name="Phase",type="string",JSONPath=".status.phase"
+// +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type == "Ready")].status`
 type Zone struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
