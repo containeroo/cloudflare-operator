@@ -35,6 +35,7 @@ type ZoneSpec struct {
 // ZoneStatus defines the observed state of Zone
 type ZoneStatus struct {
 	// Conditions contains the different condition statuses for the Zone object.
+	// +optional
 	Conditions []metav1.Condition `json:"conditions"`
 }
 

@@ -61,6 +61,7 @@ type DNSRecordSpec struct {
 // DNSRecordStatus defines the observed state of DNSRecord
 type DNSRecordStatus struct {
 	// Conditions contains the different condition statuses for the DNSRecord object.
+	// +optional
 	Conditions []metav1.Condition `json:"conditions"`
 	// Cloudflare DNS record ID
 	// +optional
