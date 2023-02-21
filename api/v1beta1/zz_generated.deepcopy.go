@@ -22,6 +22,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -231,6 +232,16 @@ func (in *DNSRecordSpec) DeepCopyInto(out *DNSRecordSpec) {
 	if in.Proxied != nil {
 		in, out := &in.Proxied, &out.Proxied
 		*out = new(bool)
+		**out = **in
+	}
+	if in.Data != nil {
+		in, out := &in.Data, &out.Data
+		*out = new(apiextensionsv1.JSON)
+		(*in).DeepCopyInto(*out)
+	}
+	if in.Priority != nil {
+		in, out := &in.Priority, &out.Priority
+		*out = new(uint16)
 		**out = **in
 	}
 	out.Interval = in.Interval

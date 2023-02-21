@@ -17,6 +17,7 @@ limitations under the License.
 package v1beta1
 
 import (
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -37,8 +38,7 @@ type DNSRecordSpec struct {
 	// Reference to an IP object
 	// +optional
 	IPRef DNSRecordSpecIPRef `json:"ipRef,omitempty"`
-	// DNS record type (A, AAAA, CNAME)
-	// +kubebuilder:validation:Enum=A;AAAA;CNAME
+	// DNS record type
 	// +kubebuilder:default=A
 	// +optional
 	Type string `json:"type,omitempty"`
@@ -52,6 +52,14 @@ type DNSRecordSpec struct {
 	// +kubebuilder:default=1
 	// +optional
 	TTL int `json:"ttl,omitempty"`
+	// Data holds arbitrary key-value pairs used for SRV and LOC records
+	// +optional
+	Data *apiextensionsv1.JSON `json:"data,omitempty"`
+	// Required for MX, SRV and URI records; unused by other record types. Records with lower priorities are preferred.
+	// +kubebuilder:validation:Minimum=0
+	// +kubebuilder:validation:Maximum=65535
+	// +optional
+	Priority *uint16 `json:"priority,omitempty"`
 	// Interval to check DNSRecord
 	// +kubebuilder:default="5m"
 	// +optional

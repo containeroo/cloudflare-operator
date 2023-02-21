@@ -57,6 +57,10 @@ spec:
               content:
                 description: DNS record content (e.g. 127.0.0.1)
                 type: string
+              data:
+                description: Data holds arbitrary key-value pairs used for SRV and
+                  LOC records
+                x-kubernetes-preserve-unknown-fields: true
               interval:
                 default: 5m
                 description: Interval to check DNSRecord
@@ -72,6 +76,12 @@ spec:
                 description: DNS record name (e.g. example.com)
                 maxLength: 255
                 type: string
+              priority:
+                description: Required for MX, SRV and URI records; unused by other
+                  record types. Records with lower priorities are preferred.
+                maximum: 65535
+                minimum: 0
+                type: integer
               proxied:
                 default: true
                 description: Whether the record is receiving the performance and security
@@ -86,11 +96,7 @@ spec:
                 type: integer
               type:
                 default: A
-                description: DNS record type (A, AAAA, CNAME)
-                enum:
-                - A
-                - AAAA
-                - CNAME
+                description: DNS record type
                 type: string
             required:
             - name
