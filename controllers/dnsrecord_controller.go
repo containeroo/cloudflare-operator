@@ -147,8 +147,8 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if instance.Status.RecordID != "" {
 		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), instance.Status.RecordID)
-		if err != nil {
-			log.Error(err, "Failed to get DNS records from Cloudflare")
+		if err != nil && err.Error() != "Record does not exist. (81044)" {
+			log.Error(err, "Failed to get DNS record from Cloudflare")
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
 	}
