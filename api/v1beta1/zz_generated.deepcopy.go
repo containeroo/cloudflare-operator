@@ -22,7 +22,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 )
@@ -236,8 +235,10 @@ func (in *DNSRecordSpec) DeepCopyInto(out *DNSRecordSpec) {
 	}
 	if in.Data != nil {
 		in, out := &in.Data, &out.Data
-		*out = new(apiextensionsv1.JSON)
-		(*in).DeepCopyInto(*out)
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
 	}
 	if in.Priority != nil {
 		in, out := &in.Priority, &out.Priority

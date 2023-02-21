@@ -17,7 +17,6 @@ limitations under the License.
 package v1beta1
 
 import (
-	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -54,7 +53,7 @@ type DNSRecordSpec struct {
 	TTL int `json:"ttl,omitempty"`
 	// Data holds arbitrary key-value pairs used for SRV and LOC records
 	// +optional
-	Data *apiextensionsv1.JSON `json:"data,omitempty"`
+	Data map[string]string `json:"data,omitempty"`
 	// Required for MX, SRV and URI records; unused by other record types. Records with lower priorities are preferred.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535

@@ -153,15 +153,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	if instance.Spec.Content == "" && instance.Spec.IPRef.Name == "" {
-		err := r.markFailed(instance, ctx, "No content or IP reference provided")
-		if err != nil {
-			log.Error(err, "Failed to update DNSRecord status")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
-	}
-
 	if (instance.Spec.Type == "A" || instance.Spec.Type == "AAAA") && instance.Spec.IPRef.Name != "" {
 		ip := &cfv1beta1.IP{}
 		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IPRef.Name}, ip)
@@ -192,11 +183,13 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if existingRecord.ID == "" {
 		resp, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.CreateDNSRecordParams{
-			Name:    instance.Spec.Name,
-			Type:    instance.Spec.Type,
-			Content: instance.Spec.Content,
-			TTL:     instance.Spec.TTL,
-			Proxied: instance.Spec.Proxied,
+			Name:     instance.Spec.Name,
+			Type:     instance.Spec.Type,
+			Content:  instance.Spec.Content,
+			TTL:      instance.Spec.TTL,
+			Proxied:  instance.Spec.Proxied,
+			Priority: instance.Spec.Priority,
+			Data:     instance.Spec.Data,
 		})
 		if err != nil {
 			err := r.markFailed(instance, ctx, err.Error())
@@ -225,14 +218,18 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		existingRecord.Type != instance.Spec.Type ||
 		existingRecord.Content != instance.Spec.Content ||
 		existingRecord.TTL != instance.Spec.TTL ||
-		*existingRecord.Proxied != *instance.Spec.Proxied {
+		*existingRecord.Proxied != *instance.Spec.Proxied ||
+		!comparePriority(existingRecord.Priority, instance.Spec.Priority) ||
+		!compareData(existingRecord.Data, instance.Spec.Data) {
 		err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.UpdateDNSRecordParams{
-			ID:      existingRecord.ID,
-			Name:    instance.Spec.Name,
-			Type:    instance.Spec.Type,
-			Content: instance.Spec.Content,
-			TTL:     instance.Spec.TTL,
-			Proxied: instance.Spec.Proxied,
+			ID:       existingRecord.ID,
+			Name:     instance.Spec.Name,
+			Type:     instance.Spec.Type,
+			Content:  instance.Spec.Content,
+			TTL:      instance.Spec.TTL,
+			Proxied:  instance.Spec.Proxied,
+			Priority: instance.Spec.Priority,
+			Data:     instance.Spec.Data,
 		})
 		if err != nil {
 			err := r.markFailed(instance, ctx, err.Error())
@@ -306,4 +303,42 @@ func (r *DNSRecordReconciler) markFailed(instance *cfv1beta1.DNSRecord, ctx cont
 		return err
 	}
 	return nil
+}
+
+// comparePriority compares the priority nil safe
+func comparePriority(a, b *uint16) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	return *a == *b
+}
+
+// compareData compares the data nil safe
+func compareData(a interface{}, b map[string]string) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	am, ok := a.(map[string]interface{})
+	if !ok {
+		return false
+	}
+	if len(am) != len(b) {
+		return false
+	}
+	for k, v := range am {
+		vv, ok := v.(string)
+		if !ok {
+			return false
+		}
+		if vv != b[k] {
+			return false
+		}
+	}
+	return true
 }
