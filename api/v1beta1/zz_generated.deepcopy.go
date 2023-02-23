@@ -233,6 +233,18 @@ func (in *DNSRecordSpec) DeepCopyInto(out *DNSRecordSpec) {
 		*out = new(bool)
 		**out = **in
 	}
+	if in.Data != nil {
+		in, out := &in.Data, &out.Data
+		*out = make(map[string]string, len(*in))
+		for key, val := range *in {
+			(*out)[key] = val
+		}
+	}
+	if in.Priority != nil {
+		in, out := &in.Priority, &out.Priority
+		*out = new(uint16)
+		**out = **in
+	}
 	out.Interval = in.Interval
 }
 
