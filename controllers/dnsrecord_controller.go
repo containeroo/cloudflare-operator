@@ -18,6 +18,8 @@ package controllers
 
 import (
 	"context"
+	"fmt"
+	"reflect"
 	"strings"
 	"time"
 
@@ -214,13 +216,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 	}
 
-	if existingRecord.Name != instance.Spec.Name ||
-		existingRecord.Type != instance.Spec.Type ||
-		existingRecord.Content != instance.Spec.Content ||
-		existingRecord.TTL != instance.Spec.TTL ||
-		*existingRecord.Proxied != *instance.Spec.Proxied ||
-		!comparePriority(existingRecord.Priority, instance.Spec.Priority) ||
-		!compareData(existingRecord.Data, instance.Spec.Data) {
+	if !compareDNSRecord(instance.Spec, existingRecord) {
 		err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.UpdateDNSRecordParams{
 			ID:       existingRecord.ID,
 			Name:     instance.Spec.Name,
@@ -324,21 +320,59 @@ func compareData(a interface{}, b map[string]string) bool {
 	if a == nil || b == nil {
 		return false
 	}
-	am, ok := a.(map[string]interface{})
+	aa, ok := a.(map[string]interface{})
 	if !ok {
 		return false
 	}
-	if len(am) != len(b) {
+	if len(aa) != len(b) {
 		return false
 	}
-	for k, v := range am {
-		vv, ok := v.(string)
-		if !ok {
-			return false
-		}
-		if vv != b[k] {
-			return false
+	ab := convertData(aa)
+	return reflect.DeepEqual(ab, b)
+}
+
+// compareDNSRecord compares the DNS record to the instance
+func compareDNSRecord(instance cfv1beta1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
+	var isEqual bool = true
+
+	if instance.Name != existingRecord.Name {
+		isEqual = false
+	}
+	if instance.Type != existingRecord.Type {
+		isEqual = false
+	}
+	if instance.Type != "SRV" && instance.Type != "LOC" {
+		if instance.Content != existingRecord.Content {
+			isEqual = false
 		}
 	}
-	return true
+	if instance.TTL != existingRecord.TTL {
+		isEqual = false
+	}
+	if *instance.Proxied != *existingRecord.Proxied {
+		isEqual = false
+	}
+	if !comparePriority(instance.Priority, existingRecord.Priority) {
+		isEqual = false
+	}
+	if !compareData(existingRecord.Data, instance.Data) {
+		isEqual = false
+	}
+	return isEqual
+}
+
+// convertData converts the data from an interface{} to a map[string]string
+func convertData(data interface{}) map[string]string {
+	if data == nil {
+		return nil
+	}
+	m, ok := data.(map[string]interface{})
+	if !ok {
+		return nil
+	}
+	result := make(map[string]string)
+	for k, v := range m {
+		result[k] = fmt.Sprintf("%v", v)
+	}
+	return result
 }
