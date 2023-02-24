@@ -81,9 +81,9 @@ type DNSRecordStatus struct {
 // DNSRecord is the Schema for the dnsrecords API
 // +kubebuilder:printcolumn:name="Record Name",type="string",JSONPath=".spec.name"
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
-// +kubebuilder:printcolumn:name="Content",type="string",JSONPath=".spec.content"
-// +kubebuilder:printcolumn:name="Proxied",type="boolean",JSONPath=".spec.proxied"
-// +kubebuilder:printcolumn:name="TTL",type="integer",JSONPath=".spec.ttl"
+// +kubebuilder:printcolumn:name="Content",type="string",JSONPath=".spec.content",priority=1
+// +kubebuilder:printcolumn:name="Proxied",type="boolean",JSONPath=".spec.proxied",priority=1
+// +kubebuilder:printcolumn:name="TTL",type="integer",JSONPath=".spec.ttl",priority=1
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type == "Ready")].status`
 type DNSRecord struct {
 	metav1.TypeMeta   `json:",inline"`

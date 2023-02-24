@@ -24,12 +24,15 @@ spec:
       type: string
     - jsonPath: .spec.content
       name: Content
+      priority: 1
       type: string
     - jsonPath: .spec.proxied
       name: Proxied
+      priority: 1
       type: boolean
     - jsonPath: .spec.ttl
       name: TTL
+      priority: 1
       type: integer
     - jsonPath: .status.conditions[?(@.type == "Ready")].status
       name: Ready
