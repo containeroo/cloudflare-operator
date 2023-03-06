@@ -32,12 +32,12 @@ import (
 
 	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
 	"github.com/go-logr/logr"
+	"github.com/itchyny/gojq"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/util/jsonpath"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -278,35 +278,37 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 	}
 
 	extractedIP := string(response)
-	if source.ResponseJSONPath != "" {
-		var jsonResponse map[string]interface{}
+	if source.ResponseJQFilter != "" {
+		var jsonResponse interface{}
 		err := json.Unmarshal(response, &jsonResponse)
 		if err != nil {
 			return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, err)
 		}
-		j := jsonpath.New("jsonpath")
-		buf := new(bytes.Buffer)
-		if err := j.Parse(source.ResponseJSONPath); err != nil {
-			return "", fmt.Errorf("failed to parse jsonpath %s: %s", source.ResponseJSONPath, err)
+		jq, err := gojq.Parse(source.ResponseJQFilter)
+		if err != nil {
+			return "", fmt.Errorf("failed to parse jq filter %s: %s", source.ResponseJQFilter, err)
 		}
-		if err := j.Execute(buf, jsonResponse); err != nil {
-			return "", fmt.Errorf("failed to extract IP from %s: %s", source.URL, err)
+		iter := jq.Run(jsonResponse)
+		result, ok := iter.Next()
+		if !ok {
+			return "", fmt.Errorf("failed to extract IP from %s. jq returned no results", source.URL)
 		}
-
-		extractedIP = buf.String()
+		extractedIP = fmt.Sprintf("%v", result)
 	}
 
-	if source.ResponseRegex != "" {
-		re, err := regexp.Compile(source.ResponseRegex)
+	if source.PostProcessingRegex != "" {
+		re, err := regexp.Compile(source.PostProcessingRegex)
 		if err != nil {
-			return "", fmt.Errorf("failed to compile regex %s: %s", source.ResponseRegex, err)
+			return "", fmt.Errorf("failed to compile regex %s: %s", source.PostProcessingRegex, err)
 		}
-		extractedIPBytes := []byte(extractedIP)
-		match := re.Find(extractedIPBytes)
+		match := re.FindStringSubmatch(extractedIP)
 		if match == nil {
 			return "", fmt.Errorf("failed to extract IP from %s. regex returned no matches", source.URL)
 		}
-		extractedIP = string(match)
+		if len(match) < 2 {
+			return "", fmt.Errorf("failed to extract IP from %s. regex returned no matches", source.URL)
+		}
+		extractedIP = match[1]
 	}
 
 	if net.ParseIP(extractedIP) == nil {

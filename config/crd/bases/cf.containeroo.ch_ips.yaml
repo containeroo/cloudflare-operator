@@ -56,6 +56,11 @@ spec:
                   source (e.g. an API or public IP echo service)
                 items:
                   properties:
+                    postProcessingRegex:
+                      description: PostProcessingRegex defines the regular expression
+                        to be used to extract the IP from the response or a JQ filter
+                        result
+                      type: string
                     requestBody:
                       description: RequestBody to be sent to the URL
                       type: string
@@ -89,14 +94,9 @@ spec:
                       - PUT
                       - DELETE
                       type: string
-                    responseJSONPath:
-                      description: ResponseJSONPath defines the JSON path to the value
-                        to be used as IP
-                      type: string
-                    responseRegex:
-                      description: ResponseRegex defines the regular expression to
-                        be used to extract the IP from the response or a JSON path
-                        result
+                    responseJQFilter:
+                      description: ResponseJQFilter applies a JQ filter to the response
+                        to extract the IP
                       type: string
                     url:
                       description: URL of the IP source (e.g. https://checkip.amazonaws.com)
