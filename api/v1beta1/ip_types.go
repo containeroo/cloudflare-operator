@@ -39,12 +39,12 @@ type IPSpecIPSources struct {
 	// +kubebuilder:validation:Enum=GET;POST;PUT;DELETE
 	// +kubebuilder:default=GET
 	RequestMethod string `json:"requestMethod,omitempty"`
-	// ResponseJSONPath defines the JSON path to the value to be used as IP
+	// ResponseJQFilter applies a JQ filter to the response to extract the IP
 	// +optional
-	ResponseJSONPath string `json:"responseJSONPath,omitempty"`
-	// ResponseRegex defines the regular expression to be used to extract the IP from the response or a JSON path result
+	ResponseJQFilter string `json:"responseJQFilter,omitempty"`
+	// PostProcessingRegex defines the regular expression to be used to extract the IP from the response or a JQ filter result
 	// +optional
-	ResponseRegex string `json:"responseRegex,omitempty"`
+	PostProcessingRegex string `json:"postProcessingRegex,omitempty"`
 }
 
 // IPSpec defines the desired state of IP
