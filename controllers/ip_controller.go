@@ -19,6 +19,7 @@ package controllers
 import (
 	"bytes"
 	"context"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -231,7 +232,10 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 		return "", fmt.Errorf("failed to parse URL %s: %s", source.URL, err)
 	}
 
-	httpClient := &http.Client{}
+	tr := http.Transport{
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: source.InsecureSkipVerify},
+	}
+	httpClient := &http.Client{Transport: &tr}
 	req, err := http.NewRequest(source.RequestMethod, source.URL, io.Reader(bytes.NewBuffer([]byte(source.RequestBody))))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %s", err)
