@@ -56,6 +56,10 @@ spec:
                   source (e.g. an API or public IP echo service)
                 items:
                   properties:
+                    insecureSkipVerify:
+                      description: InsecureSkipVerify defines whether to skip TLS
+                        certificate verification
+                      type: boolean
                     postProcessingRegex:
                       description: PostProcessingRegex defines the regular expression
                         to be used to extract the IP from the response or a JQ filter

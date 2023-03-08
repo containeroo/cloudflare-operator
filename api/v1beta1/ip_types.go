@@ -45,6 +45,9 @@ type IPSpecIPSources struct {
 	// PostProcessingRegex defines the regular expression to be used to extract the IP from the response or a JQ filter result
 	// +optional
 	PostProcessingRegex string `json:"postProcessingRegex,omitempty"`
+	// InsecureSkipVerify defines whether to skip TLS certificate verification
+	// +optional
+	InsecureSkipVerify bool `json:"insecureSkipVerify,omitempty"`
 }
 
 // IPSpec defines the desired state of IP
