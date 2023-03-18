@@ -26,3 +26,4 @@ testbin/*
 
 dist/
 crds.yaml
+api-ref.html
