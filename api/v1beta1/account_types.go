@@ -21,17 +21,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type AccountSpecGlobalAPIKey struct {
-	// Secret name containing the API key (key must be named "apiKey")
+type AccountSpecApiToken struct {
+	// Secret containing the API token (key must be named "apiToken")
 	SecretRef v1.SecretReference `json:"secretRef"`
 }
 
 // AccountSpec defines the desired state of Account
 type AccountSpec struct {
-	// Email of the Cloudflare account
-	Email string `json:"email"`
-	// Global API key of the Cloudflare account
-	GlobalAPIKey AccountSpecGlobalAPIKey `json:"globalAPIKey"`
+	// Cloudflare API token
+	ApiToken AccountSpecApiToken `json:"apiToken"`
 	// Interval to check account status
 	// +kubebuilder:default="5m"
 	// +optional
@@ -65,7 +63,6 @@ type AccountStatus struct {
 // +kubebuilder:resource:scope=Cluster
 
 // Account is the Schema for the accounts API
-// +kubebuilder:printcolumn:name="Email",type="string",JSONPath=".spec.email"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type == "Ready")].status`
 type Account struct {
 	metav1.TypeMeta   `json:",inline"`

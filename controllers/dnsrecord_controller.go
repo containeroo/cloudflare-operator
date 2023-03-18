@@ -64,7 +64,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if r.Cf.APIKey == "" {
+	if r.Cf.APIToken == "" {
 		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:    "Ready",
 			Status:  "False",
