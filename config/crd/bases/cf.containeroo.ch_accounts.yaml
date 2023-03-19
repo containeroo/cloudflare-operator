@@ -16,9 +16,6 @@ spec:
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.email
-      name: Email
-      type: string
     - jsonPath: .status.conditions[?(@.type == "Ready")].status
       name: Ready
       type: string
@@ -42,15 +39,12 @@ spec:
           spec:
             description: AccountSpec defines the desired state of Account
             properties:
-              email:
-                description: Email of the Cloudflare account
-                type: string
-              globalAPIKey:
-                description: Global API key of the Cloudflare account
+              apiToken:
+                description: Cloudflare API token
                 properties:
                   secretRef:
-                    description: Secret name containing the API key (key must be named
-                      "apiKey")
+                    description: Secret containing the API token (key must be named
+                      "apiToken")
                     properties:
                       name:
                         description: name is unique within a namespace to reference
@@ -75,8 +69,7 @@ spec:
                   type: string
                 type: array
             required:
-            - email
-            - globalAPIKey
+            - apiToken
             type: object
           status:
             description: AccountStatus defines the observed state of Account

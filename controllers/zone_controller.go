@@ -86,7 +86,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(0)
 
-	if r.Cf.APIKey == "" {
+	if r.Cf.APIToken == "" {
 		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:    "Ready",
 			Status:  "False",

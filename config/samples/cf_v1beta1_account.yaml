@@ -3,8 +3,7 @@ kind: Account
 metadata:
   name: account-sample
 spec:
-  email: mail@example.com
-  globalAPIKey:
+  apiToken:
     secretRef:
-      name: global-api-key-sample
+      name: api-token-sample
       namespace: default
