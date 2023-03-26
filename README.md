@@ -18,7 +18,7 @@ cloudflare-operator is based on a set of Kubernetes API extensions ("custom reso
 
 ## Where do I start?
 
-Following [this](https://docs.cf.containeroo.ch/getting_started/) guide will just take a couple of minutes to complete. After installing the cloudflare-operator helm chart and adding some annotation to your ingresses, cloudflare-operator will take care of your Cloudflare DNS records.
+Following [this](https://containeroo.ch/docs/cloudflare-operator) guide will just take a couple of minutes to complete. After installing the cloudflare-operator helm chart and adding some annotation to your ingresses, cloudflare-operator will take care of your Cloudflare DNS records.
 
 ## More detail on what’s in cloudflare-operator
 
