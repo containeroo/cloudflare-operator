@@ -4,7 +4,7 @@ go 1.19
 
 require (
 	github.com/cloudflare/cloudflare-go v0.63.0
-	github.com/go-logr/logr v1.2.3
+	github.com/go-logr/logr v1.2.4
 	github.com/itchyny/gojq v0.12.12
 	github.com/prometheus/client_golang v1.14.0
 	k8s.io/api v0.26.3
