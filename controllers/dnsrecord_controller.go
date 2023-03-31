@@ -184,7 +184,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if existingRecord.ID == "" {
-		resp, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.CreateDNSRecordParams{
+		newDNSRecord, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.CreateDNSRecordParams{
 			Name:     instance.Spec.Name,
 			Type:     instance.Spec.Type,
 			Content:  instance.Spec.Content,
@@ -207,7 +207,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Reason:  "Ready",
 			Message: "DNS record created",
 		})
-		instance.Status.RecordID = resp.Result.ID
+		instance.Status.RecordID = newDNSRecord.ID
 		err = r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
@@ -217,7 +217,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if !compareDNSRecord(instance.Spec, existingRecord) {
-		err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.UpdateDNSRecordParams{
+		_, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.UpdateDNSRecordParams{
 			ID:       existingRecord.ID,
 			Name:     instance.Spec.Name,
 			Type:     instance.Spec.Type,
