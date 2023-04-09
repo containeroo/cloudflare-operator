@@ -79,31 +79,27 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: time.Second * 5}, err
 	}
 
-	zones := &cfv1beta1.ZoneList{}
-	err = r.List(ctx, zones)
+	zone := &cfv1beta1.Zone{}
+	lastDot := strings.LastIndex(instance.Spec.Name, ".")
+	secondLastDot := strings.LastIndex(instance.Spec.Name[:lastDot], ".")
+	zoneName := instance.Spec.Name[secondLastDot+1:]
+	zoneName = strings.ReplaceAll(zoneName, ".", "-")
+
+	err = r.Get(ctx, client.ObjectKey{Name: zoneName}, zone)
 	if err != nil {
-		log.Error(err, "Failed to list Zone resources")
+		if errors.IsNotFound(err) {
+			err := r.markFailed(instance, ctx, "Zone not found")
+			if err != nil {
+				log.Error(err, "Failed to update DNSRecord status")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		}
+		log.Error(err, "Failed to get Zone resource")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	var dnsRecordZone cfv1beta1.Zone
-	for _, zone := range zones.Items {
-		if strings.HasSuffix(instance.Spec.Name, zone.Spec.Name) {
-			dnsRecordZone = zone
-			break
-		}
-	}
-
-	if dnsRecordZone.Name == "" {
-		err := r.markFailed(instance, ctx, "Zone not found")
-		if err != nil {
-			log.Error(err, "Failed to update DNSRecord status")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-
-	if condition := apimeta.FindStatusCondition(dnsRecordZone.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
+	if condition := apimeta.FindStatusCondition(zone.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
 		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 			Type:    "Ready",
 			Status:  "False",
@@ -118,8 +114,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
-	dnsRecordZoneId := dnsRecordZone.Spec.ID
-
 	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
 		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
 		err := r.Update(ctx, instance)
@@ -131,7 +125,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if instance.GetDeletionTimestamp() != nil {
 		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
-			r.finalizeDNSRecord(ctx, dnsRecordZoneId, log, instance)
+			r.finalizeDNSRecord(ctx, zone.Spec.ID, log, instance)
 			dnsRecordFailureCounter.DeleteLabelValues(instance.Namespace, instance.Name, instance.Spec.Name)
 		}
 
@@ -148,7 +142,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var existingRecord cloudflare.DNSRecord
 
 	if instance.Status.RecordID != "" {
-		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), instance.Status.RecordID)
+		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), instance.Status.RecordID)
 		if err != nil && err.Error() != "Record does not exist. (81044)" {
 			log.Error(err, "Failed to get DNS record from Cloudflare")
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
@@ -184,7 +178,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if existingRecord.ID == "" {
-		newDNSRecord, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.CreateDNSRecordParams{
+		newDNSRecord, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.CreateDNSRecordParams{
 			Name:     instance.Spec.Name,
 			Type:     instance.Spec.Type,
 			Content:  instance.Spec.Content,
@@ -217,7 +211,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if !compareDNSRecord(instance.Spec, existingRecord) {
-		_, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), cloudflare.UpdateDNSRecordParams{
+		_, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.UpdateDNSRecordParams{
 			ID:       existingRecord.ID,
 			Name:     instance.Spec.Name,
 			Type:     instance.Spec.Type,
