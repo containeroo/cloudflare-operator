@@ -165,7 +165,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			}
 		}
 		if !found {
-			trueVar := true
 			z := &cfv1beta1.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: strings.ReplaceAll(zone.Name, ".", "-"),
@@ -179,8 +178,8 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 							Kind:               "Account",
 							Name:               instance.Name,
 							UID:                instance.UID,
-							Controller:         &trueVar,
-							BlockOwnerDeletion: &trueVar,
+							Controller:         newTrue(),
+							BlockOwnerDeletion: newTrue(),
 						},
 					},
 				},

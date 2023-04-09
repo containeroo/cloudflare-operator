@@ -78,8 +78,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	trueVar := true
-
 	dnsRecordSpec := cfv1beta1.DNSRecordSpec{}
 
 	if content, ok := instance.Annotations["cf.containeroo.ch/content"]; ok {
@@ -98,14 +96,13 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if proxied, ok := instance.Annotations["cf.containeroo.ch/proxied"]; ok {
 		switch proxied {
 		case "true":
-			dnsRecordSpec.Proxied = &trueVar
+			dnsRecordSpec.Proxied = newTrue()
 		case "false":
-			falseVar := false
-			dnsRecordSpec.Proxied = &falseVar
+			dnsRecordSpec.Proxied = newFalse()
 		}
 	}
 	if dnsRecordSpec.Proxied == nil {
-		dnsRecordSpec.Proxied = &trueVar
+		dnsRecordSpec.Proxied = newTrue()
 	}
 
 	if ttl, ok := instance.Annotations["cf.containeroo.ch/ttl"]; ok {
@@ -163,8 +160,8 @@ rules:
 						Kind:               "Ingress",
 						Name:               instance.Name,
 						UID:                instance.UID,
-						Controller:         &trueVar,
-						BlockOwnerDeletion: &trueVar,
+						Controller:         newTrue(),
+						BlockOwnerDeletion: newTrue(),
 					},
 				},
 			},
