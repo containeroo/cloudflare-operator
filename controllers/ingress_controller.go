@@ -25,6 +25,7 @@ import (
 
 	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -48,31 +49,36 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	instance := &networkingv1.Ingress{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
-		log.Error(err, "Failed to fetch Ingress")
-		return ctrl.Result{}, client.IgnoreNotFound(err)
+		if errors.IsNotFound(err) {
+			log.Info("Ingress resource not found. Ignoring since object must be deleted.")
+			return ctrl.Result{}, nil
+		}
+		log.Error(err, "Failed to get Ingress resource")
+		return ctrl.Result{}, err
 	}
 
 	dnsRecords := &cfv1beta1.DNSRecordList{}
-	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
+	err = r.List(
+		ctx,
+		dnsRecords,
+		client.InNamespace(instance.Namespace),
+		client.MatchingFields{"metadata.ownerReferences.uid": string(instance.UID)})
 	if err != nil {
 		log.Error(err, "Failed to fetch DNSRecord")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
-		for _, dnsRecord := range dnsRecords.Items {
-			for _, ownerRef := range dnsRecord.OwnerReferences {
-				if ownerRef.UID != instance.UID {
-					continue
-				}
+		if len(dnsRecords.Items) > 0 {
+			for _, dnsRecord := range dnsRecords.Items {
 				err := r.Delete(ctx, &dnsRecord)
 				if err != nil {
 					log.Error(err, "Failed to delete DNSRecord")
 					return ctrl.Result{RequeueAfter: time.Second * 30}, err
 				}
 				log.Info("Deleted DNSRecord, because it was owned by an Ingress that is being ignored", "DNSRecord", dnsRecord.Name)
-				return ctrl.Result{}, err
 			}
+			return ctrl.Result{}, err
 		}
 		log.Info("Ingress has ignore annotation, skipping reconciliation", "ingress", instance.Name)
 		return ctrl.Result{}, nil
@@ -117,8 +123,8 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		dnsRecordSpec.TTL = 1
 	}
 
-	if type_, ok := instance.Annotations["cf.containeroo.ch/type"]; ok {
-		dnsRecordSpec.Type = type_
+	if recordType, ok := instance.Annotations["cf.containeroo.ch/type"]; ok {
+		dnsRecordSpec.Type = recordType
 	}
 	if dnsRecordSpec.Type == "" {
 		dnsRecordSpec.Type = "A"
@@ -136,12 +142,19 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		dnsRecordSpec.Interval.Duration = time.Minute * 5
 	}
 
-rules:
+	dnsRecordMap := make(map[string]cfv1beta1.DNSRecord)
+	for _, dnsRecord := range dnsRecords.Items {
+		dnsRecordMap[dnsRecord.Spec.Name] = dnsRecord
+	}
+
+	ingressRuleMap := make(map[string]struct{})
 	for _, rule := range instance.Spec.Rules {
-		for _, dnsRecord := range dnsRecords.Items {
-			if dnsRecord.Spec.Name == rule.Host {
-				continue rules
-			}
+		if rule.Host == "" {
+			continue
+		}
+		ingressRuleMap[rule.Host] = struct{}{}
+		if _, found := dnsRecordMap[rule.Host]; found {
+			continue
 		}
 
 		dnsRecordSpec.Name = rule.Host
@@ -177,29 +190,52 @@ rules:
 	}
 
 	for _, rule := range instance.Spec.Rules {
-		for _, dnsRecord := range dnsRecords.Items {
-			if dnsRecord.Spec.Name != rule.Host {
-				continue
-			}
-			dnsRecordSpec.Name = rule.Host
-			if reflect.DeepEqual(dnsRecord.Spec, dnsRecordSpec) {
-				continue
-			}
-			log.Info("Updating DNSRecord", "name", dnsRecord.Name)
-			dnsRecord.Spec = dnsRecordSpec
-			err := r.Update(ctx, &dnsRecord)
-			if err != nil {
-				log.Error(err, "Failed to update DNSRecord")
-				return ctrl.Result{}, err
-			}
+		dnsRecord, exists := dnsRecordMap[rule.Host]
+		if !exists {
+			continue
+		}
+
+		dnsRecordSpec.Name = rule.Host
+		if reflect.DeepEqual(dnsRecord.Spec, dnsRecordSpec) {
+			continue
+		}
+
+		log.Info("Updating DNSRecord", "name", dnsRecord.Name)
+		dnsRecord.Spec = dnsRecordSpec
+		err := r.Update(ctx, &dnsRecord)
+		if err != nil {
+			log.Error(err, "Failed to update DNSRecord")
+			return ctrl.Result{}, err
 		}
 	}
 
-	return ctrl.Result{RequeueAfter: dnsRecordSpec.Interval.Duration}, nil
+	for _, dnsRecord := range dnsRecords.Items {
+		if _, found := ingressRuleMap[dnsRecord.Spec.Name]; found {
+			continue
+		}
+		log.Info("Deleting DNSRecord", "name", dnsRecord.Name)
+		err := r.Delete(ctx, &dnsRecord)
+		if err != nil {
+			log.Error(err, "Failed to delete DNSRecord")
+		}
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &cfv1beta1.DNSRecord{}, "metadata.ownerReferences.uid", func(rawObj client.Object) []string {
+		ownerReferences := rawObj.GetOwnerReferences()
+		var ownerUIDs []string
+		for _, ownerReference := range ownerReferences {
+			ownerUIDs = append(ownerUIDs, string(ownerReference.UID))
+		}
+
+		return ownerUIDs
+	}); err != nil {
+		return err
+	}
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
 		Complete(r)
