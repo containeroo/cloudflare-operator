@@ -141,17 +141,14 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	operatorManagedZones := []cfv1beta1.AccountStatusZones{}
 	for _, cfZone := range cfZones {
-		if len(userDefinedManagedZoneMap) == 0 {
+		_, found := userDefinedManagedZoneMap[strings.ToLower(cfZone.Name)]
+		if len(userDefinedManagedZoneMap) == 0 || found {
 			operatorManagedZones = append(operatorManagedZones, cfv1beta1.AccountStatusZones{Name: cfZone.Name, ID: cfZone.ID})
-		} else {
-			if _, found := userDefinedManagedZoneMap[strings.ToLower(cfZone.Name)]; found {
-				operatorManagedZones = append(operatorManagedZones, cfv1beta1.AccountStatusZones{Name: cfZone.Name, ID: cfZone.ID})
-			}
 		}
 	}
 
 	zones := &cfv1beta1.ZoneList{}
-	err = r.List(ctx, zones, client.InNamespace(instance.Namespace))
+	err = r.List(ctx, zones)
 	if err != nil {
 		err := r.markFailed(instance, ctx, "Failed to list zones")
 		if err != nil {

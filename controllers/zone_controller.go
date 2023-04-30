@@ -126,7 +126,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	dnsRecords := &cfv1beta1.DNSRecordList{}
-	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
+	err = r.List(ctx, dnsRecords)
 	if err != nil {
 		log.Error(err, "Failed to list DNSRecord resources")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err

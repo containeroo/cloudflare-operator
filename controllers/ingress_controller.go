@@ -105,6 +105,9 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			dnsRecordSpec.Proxied = newTrue()
 		case "false":
 			dnsRecordSpec.Proxied = newFalse()
+		default:
+			dnsRecordSpec.Proxied = newTrue()
+			log.Error(err, "Failed to parse proxied annotation, defaulting to true", "proxied", proxied, "ingress", instance.Name)
 		}
 	}
 	if dnsRecordSpec.Proxied == nil {
