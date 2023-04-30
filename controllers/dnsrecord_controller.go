@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/go-logr/logr"
+	"golang.org/x/net/publicsuffix"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -79,12 +80,10 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{RequeueAfter: time.Second * 5}, err
 	}
 
-	zone := &cfv1beta1.Zone{}
-	lastDot := strings.LastIndex(instance.Spec.Name, ".")
-	secondLastDot := strings.LastIndex(instance.Spec.Name[:lastDot], ".")
-	zoneName := instance.Spec.Name[secondLastDot+1:]
+	zoneName, _ := publicsuffix.EffectiveTLDPlusOne(instance.Spec.Name)
 	zoneName = strings.ReplaceAll(zoneName, ".", "-")
 
+	zone := &cfv1beta1.Zone{}
 	err = r.Get(ctx, client.ObjectKey{Name: zoneName}, zone)
 	if err != nil {
 		if errors.IsNotFound(err) {
