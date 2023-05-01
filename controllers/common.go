@@ -17,3 +17,15 @@ limitations under the License.
 package controllers
 
 const cloudflareOperatorFinalizer = "cf.containeroo.ch/finalizer"
+
+// newTrue creates a pointer to a true bool
+func newTrue() *bool {
+	b := true
+	return &b
+}
+
+// newFalse creates a pointer to a false bool
+func newFalse() *bool {
+	b := false
+	return &b
+}

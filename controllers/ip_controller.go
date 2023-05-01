@@ -178,7 +178,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	dnsRecords := &cfv1beta1.DNSRecordList{}
-	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
+	err = r.List(ctx, dnsRecords)
 	if err != nil {
 		log.Error(err, "Failed to list DNSRecords")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err

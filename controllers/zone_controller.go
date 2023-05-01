@@ -126,7 +126,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	dnsRecords := &cfv1beta1.DNSRecordList{}
-	err = r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace))
+	err = r.List(ctx, dnsRecords)
 	if err != nil {
 		log.Error(err, "Failed to list DNSRecord resources")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
@@ -142,22 +142,17 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
+	dnsRecordMap := make(map[string]struct{})
+	for _, dnsRecord := range dnsRecords.Items {
+		dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
+	}
+
 	for _, cfDnsRecord := range cfDnsRecords {
-		if !strings.HasSuffix(cfDnsRecord.Name, instance.Spec.Name) {
-			continue
-		}
 		if cfDnsRecord.Type == "TXT" && strings.HasPrefix(cfDnsRecord.Content, "_acme-challenge") {
 			continue
 		}
 
-		found := false
-		for _, dnsRecord := range dnsRecords.Items {
-			if dnsRecord.Status.RecordID == cfDnsRecord.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
+		if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
 			err = r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(instance.Spec.ID), cfDnsRecord.ID)
 			if err != nil {
 				err := r.markFailed(instance, ctx, err.Error())

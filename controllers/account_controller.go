@@ -18,6 +18,7 @@ package controllers
 
 import (
 	"context"
+	"reflect"
 	"strings"
 	"time"
 
@@ -121,7 +122,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 	*r.Cf = *cf
 
-	zones, err := r.Cf.ListZones(ctx)
+	cfZones, err := r.Cf.ListZones(ctx)
 	if err != nil {
 		err := r.markFailed(instance, ctx, err.Error())
 		if err != nil {
@@ -131,22 +132,23 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	var managedZones []cloudflare.Zone
+	userDefinedManagedZoneMap := make(map[string]struct{})
 	if len(instance.Spec.ManagedZones) != 0 {
-		for _, zone := range zones {
-			for _, managedZone := range instance.Spec.ManagedZones {
-				if !strings.EqualFold(zone.Name, managedZone) {
-					continue
-				}
-				managedZones = append(managedZones, cloudflare.Zone{Name: zone.Name, ID: zone.ID})
-			}
+		for _, managedZone := range instance.Spec.ManagedZones {
+			userDefinedManagedZoneMap[strings.ToLower(managedZone)] = struct{}{}
 		}
-	} else {
-		managedZones = zones
 	}
 
-	zonesList := &cfv1beta1.ZoneList{}
-	err = r.List(ctx, zonesList, client.InNamespace(instance.Namespace))
+	operatorManagedZones := []cfv1beta1.AccountStatusZones{}
+	for _, cfZone := range cfZones {
+		_, found := userDefinedManagedZoneMap[strings.ToLower(cfZone.Name)]
+		if len(userDefinedManagedZoneMap) == 0 || found {
+			operatorManagedZones = append(operatorManagedZones, cfv1beta1.AccountStatusZones{Name: cfZone.Name, ID: cfZone.ID})
+		}
+	}
+
+	zones := &cfv1beta1.ZoneList{}
+	err = r.List(ctx, zones)
 	if err != nil {
 		err := r.markFailed(instance, ctx, "Failed to list zones")
 		if err != nil {
@@ -156,19 +158,18 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	for _, zone := range managedZones {
-		found := false
-		for _, z := range zonesList.Items {
-			if z.Spec.ID == zone.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			trueVar := true
+	zoneMap := make(map[string]struct{})
+	for _, zone := range zones.Items {
+		zoneMap[zone.Spec.ID] = struct{}{}
+	}
+
+	operatorManagedZoneMap := make(map[string]struct{})
+	for _, operatorManagedZone := range operatorManagedZones {
+		operatorManagedZoneMap[operatorManagedZone.ID] = struct{}{}
+		if _, found := zoneMap[operatorManagedZone.ID]; !found {
 			z := &cfv1beta1.Zone{
 				ObjectMeta: metav1.ObjectMeta{
-					Name: strings.ReplaceAll(zone.Name, ".", "-"),
+					Name: strings.ReplaceAll(operatorManagedZone.Name, ".", "-"),
 					Labels: map[string]string{
 						"app.kubernetes.io/managed-by": "cloudflare-operator",
 						"app.kubernetes.io/created-by": "cloudflare-operator",
@@ -179,23 +180,23 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 							Kind:               "Account",
 							Name:               instance.Name,
 							UID:                instance.UID,
-							Controller:         &trueVar,
-							BlockOwnerDeletion: &trueVar,
+							Controller:         newTrue(),
+							BlockOwnerDeletion: newTrue(),
 						},
 					},
 				},
 				Spec: cfv1beta1.ZoneSpec{
-					Name:     zone.Name,
-					ID:       zone.ID,
+					Name:     operatorManagedZone.Name,
+					ID:       operatorManagedZone.ID,
 					Interval: instance.Spec.Interval,
 				},
 			}
 			err = r.Create(ctx, z)
 			if err != nil {
-				log.Error(err, "Failed to create Zone resource", "Zone.Name", zone.Name, "Zone.ID", zone.ID)
+				log.Error(err, "Failed to create Zone resource", "Zone.Name", operatorManagedZone.Name, "Zone.ID", operatorManagedZone.ID)
 				continue
 			}
-			log.Info("Created Zone resource", "Zone.Name", zone.Name, "Zone.ID", zone.ID)
+			log.Info("Created Zone resource", "Zone.Name", operatorManagedZone.Name, "Zone.ID", operatorManagedZone.ID)
 		}
 	}
 
@@ -213,24 +214,8 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	statusChanged := false
-	for _, zone := range managedZones {
-		found := false
-		for _, z := range instance.Status.Zones {
-			if z.ID == zone.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
-			statusChanged = true
-			instance.Status.Zones = append(instance.Status.Zones, cfv1beta1.AccountStatusZones{
-				ID:   zone.ID,
-				Name: zone.Name,
-			})
-		}
-	}
-	if statusChanged {
+	if !reflect.DeepEqual(instance.Status.Zones, operatorManagedZones) {
+		instance.Status.Zones = operatorManagedZones
 		err := r.Status().Update(ctx, instance)
 		if err != nil {
 			log.Error(err, "Failed to update Account status")
@@ -238,15 +223,8 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	for _, z := range zonesList.Items {
-		found := false
-		for _, zone := range managedZones {
-			if z.Spec.ID == zone.ID {
-				found = true
-				break
-			}
-		}
-		if !found {
+	for _, z := range zones.Items {
+		if _, found := operatorManagedZoneMap[z.Spec.ID]; !found {
 			err = r.Delete(ctx, &z)
 			if err != nil {
 				log.Error(err, "Failed to delete Zone resource", "Zone.Name", z.Name)
