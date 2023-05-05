@@ -6,7 +6,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.66.0
 	github.com/go-logr/logr v1.2.4
 	github.com/itchyny/gojq v0.12.12
-	github.com/prometheus/client_golang v1.15.0
+	github.com/prometheus/client_golang v1.15.1
 	golang.org/x/net v0.9.0
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3
