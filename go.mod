@@ -3,7 +3,7 @@ module github.com/containeroo/cloudflare-operator
 go 1.19
 
 require (
-	github.com/cloudflare/cloudflare-go v0.69.0
+	github.com/cloudflare/cloudflare-go v0.70.0
 	github.com/go-logr/logr v1.2.4
 	github.com/itchyny/gojq v0.12.13
 	github.com/prometheus/client_golang v1.16.0
@@ -34,7 +34,7 @@ require (
 	github.com/google/gofuzz v1.1.0 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/hashicorp/go-cleanhttp v0.5.2 // indirect
-	github.com/hashicorp/go-retryablehttp v0.7.3 // indirect
+	github.com/hashicorp/go-retryablehttp v0.7.4 // indirect
 	github.com/imdario/mergo v0.3.12 // indirect
 	github.com/itchyny/timefmt-go v0.1.5 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
