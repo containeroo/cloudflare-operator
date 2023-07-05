@@ -8,8 +8,8 @@ github.com/census-instrumentation/opencensus-proto v0.2.1/go.mod h1:f6KPmirojxKA
 github.com/cespare/xxhash/v2 v2.2.0 h1:DC2CZ1Ep5Y4k3ZQ899DldepgrayRUGE6BBZ/cd9Cj44=
 github.com/cespare/xxhash/v2 v2.2.0/go.mod h1:VGX0DQ3Q6kWi7AoAeZDth3/j3BFtOZR5XLFGgcrjCOs=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
-github.com/cloudflare/cloudflare-go v0.70.0 h1:4opGbUygM8DjirUuaz23jn3akuAcnOCEx+0nQtQEcFo=
-github.com/cloudflare/cloudflare-go v0.70.0/go.mod h1:VW6GuazkaZ4xEDkFt24lkXQUsE8q7BiGqDniC2s8WEM=
+github.com/cloudflare/cloudflare-go v0.72.0 h1:khsJV4IE3I7U8eK9CUreGnxQm16MEFN5d0xPJfPnA+0=
+github.com/cloudflare/cloudflare-go v0.72.0/go.mod h1:VW6GuazkaZ4xEDkFt24lkXQUsE8q7BiGqDniC2s8WEM=
 github.com/creack/pty v1.1.9/go.mod h1:oKZEueFk5CKHvIhNR5MUki03XCEU+Q6VDXinZuGJ33E=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=
 github.com/davecgh/go-spew v1.1.1 h1:vj9j/u1bqnvCEfJOwUhtlOARqs3+rkHYY13jYWTU97c=
