@@ -58,6 +58,6 @@ jobs:
         if: success() && startsWith(github.ref, 'refs/tags/')
         with:
           version: latest
-          args: release --release-notes .github/release-notes.md --clean
+          args: release --release-notes .github/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
