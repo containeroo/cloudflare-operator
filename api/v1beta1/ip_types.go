@@ -18,6 +18,7 @@ package v1beta1
 
 import (
 	v1 "k8s.io/api/core/v1"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -30,7 +31,7 @@ type IPSpecIPSources struct {
 	RequestBody string `json:"requestBody,omitempty"`
 	// RequestHeaders to be sent to the URL
 	// +optional
-	RequestHeaders map[string]string `json:"requestHeaders,omitempty"`
+	RequestHeaders *apiextensionsv1.JSON `json:"requestHeaders,omitempty"`
 	// RequestHeadersSecretRef is a secret reference to the headers to be sent to the URL (e.g. for authentication)
 	// where the key is the header name and the value is the header value
 	// +optional

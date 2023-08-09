@@ -18,13 +18,14 @@ package controllers
 
 import (
 	"context"
-	"fmt"
+	"encoding/json"
 	"reflect"
 	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
 	"golang.org/x/net/publicsuffix"
+	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -306,22 +307,19 @@ func comparePriority(a, b *uint16) bool {
 }
 
 // compareData compares the data nil safe
-func compareData(a interface{}, b map[string]string) bool {
+func compareData(a interface{}, b *apiextensionsv1.JSON) bool {
 	if a == nil && b == nil {
 		return true
 	}
 	if a == nil || b == nil {
 		return false
 	}
-	aa, ok := a.(map[string]interface{})
-	if !ok {
+	var bb interface{}
+	err := json.Unmarshal(b.Raw, &bb)
+	if err != nil {
 		return false
 	}
-	if len(aa) != len(b) {
-		return false
-	}
-	ab := convertData(aa)
-	return reflect.DeepEqual(ab, b)
+	return reflect.DeepEqual(a, bb)
 }
 
 // compareDNSRecord compares the DNS record to the instance
@@ -334,7 +332,7 @@ func compareDNSRecord(instance cfv1beta1.DNSRecordSpec, existingRecord cloudflar
 	if instance.Type != existingRecord.Type {
 		isEqual = false
 	}
-	if instance.Type != "SRV" && instance.Type != "LOC" {
+	if instance.Type != "SRV" && instance.Type != "LOC" && instance.Type != "CAA" {
 		if instance.Content != existingRecord.Content {
 			isEqual = false
 		}
@@ -352,20 +350,4 @@ func compareDNSRecord(instance cfv1beta1.DNSRecordSpec, existingRecord cloudflar
 		isEqual = false
 	}
 	return isEqual
-}
-
-// convertData converts the data from an interface{} to a map[string]string
-func convertData(data interface{}) map[string]string {
-	if data == nil {
-		return nil
-	}
-	m, ok := data.(map[string]interface{})
-	if !ok {
-		return nil
-	}
-	result := make(map[string]string)
-	for k, v := range m {
-		result[k] = fmt.Sprintf("%v", v)
-	}
-	return result
 }
