@@ -14,10 +14,10 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -35,7 +35,7 @@ type IPSpecIPSources struct {
 	// RequestHeadersSecretRef is a secret reference to the headers to be sent to the URL (e.g. for authentication)
 	// where the key is the header name and the value is the header value
 	// +optional
-	RequestHeadersSecretRef v1.SecretReference `json:"requestHeadersSecretRef,omitempty"`
+	RequestHeadersSecretRef corev1.SecretReference `json:"requestHeadersSecretRef,omitempty"`
 	// RequestMethod defines the HTTP method to be used
 	// +kubebuilder:validation:Enum=GET;POST;PUT;DELETE
 	// +kubebuilder:default=GET

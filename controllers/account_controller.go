@@ -25,7 +25,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
 	"github.com/cloudflare/cloudflare-go"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
-	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
+	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
 // AccountReconciler reconciles an Account object
@@ -55,7 +55,7 @@ type AccountReconciler struct {
 func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1beta1.Account{}
+	instance := &cfv1.Account{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -90,7 +90,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	accountFailureCounter.WithLabelValues(instance.Name).Set(0)
 
-	secret := &v1.Secret{}
+	secret := &corev1.Secret{}
 	err = r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.ApiToken.SecretRef.Namespace, Name: instance.Spec.ApiToken.SecretRef.Name}, secret)
 	if err != nil {
 		err := r.markFailed(instance, ctx, "Failed to get secret")
@@ -139,15 +139,15 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	operatorManagedZones := []cfv1beta1.AccountStatusZones{}
+	operatorManagedZones := []cfv1.AccountStatusZones{}
 	for _, cfZone := range cfZones {
 		_, found := userDefinedManagedZoneMap[strings.ToLower(cfZone.Name)]
 		if len(userDefinedManagedZoneMap) == 0 || found {
-			operatorManagedZones = append(operatorManagedZones, cfv1beta1.AccountStatusZones{Name: cfZone.Name, ID: cfZone.ID})
+			operatorManagedZones = append(operatorManagedZones, cfv1.AccountStatusZones{Name: cfZone.Name, ID: cfZone.ID})
 		}
 	}
 
-	zones := &cfv1beta1.ZoneList{}
+	zones := &cfv1.ZoneList{}
 	err = r.List(ctx, zones)
 	if err != nil {
 		err := r.markFailed(instance, ctx, "Failed to list zones")
@@ -167,7 +167,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	for _, operatorManagedZone := range operatorManagedZones {
 		operatorManagedZoneMap[operatorManagedZone.ID] = struct{}{}
 		if _, found := zoneMap[operatorManagedZone.ID]; !found {
-			z := &cfv1beta1.Zone{
+			z := &cfv1.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: strings.ReplaceAll(operatorManagedZone.Name, ".", "-"),
 					Labels: map[string]string{
@@ -176,7 +176,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "cloudflare-operator.io/v1beta1",
+							APIVersion:         "cloudflare-operator.io/v1",
 							Kind:               "Account",
 							Name:               instance.Name,
 							UID:                instance.UID,
@@ -185,7 +185,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 						},
 					},
 				},
-				Spec: cfv1beta1.ZoneSpec{
+				Spec: cfv1.ZoneSpec{
 					Name:     operatorManagedZone.Name,
 					ID:       operatorManagedZone.ID,
 					Interval: instance.Spec.Interval,
@@ -240,12 +240,12 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 // SetupWithManager sets up the controller with the Manager.
 func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1beta1.Account{}).
+		For(&cfv1.Account{}).
 		Complete(r)
 }
 
 // markFailed marks the reconciled object as failed
-func (r *AccountReconciler) markFailed(instance *cfv1beta1.Account, ctx context.Context, message string) error {
+func (r *AccountReconciler) markFailed(instance *cfv1.Account, ctx context.Context, message string) error {
 	accountFailureCounter.WithLabelValues(instance.Name).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:    "Ready",

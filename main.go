@@ -33,7 +33,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 
-	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
+	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/containeroo/cloudflare-operator/controllers"
 	// +kubebuilder:scaffold:imports
 )
@@ -46,7 +46,7 @@ var (
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
-	utilruntime.Must(cfv1beta1.AddToScheme(scheme))
+	utilruntime.Must(cfv1.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 

@@ -1,10 +1,10 @@
-apiVersion: cloudflare-operator.io/v1beta1
+apiVersion: cloudflare-operator.io/v1
 kind: IP
 metadata:
   name: ip-sample
 spec:
-  type: static  # or dynamic
-  address: 1.1.1.1  # will be automatically generated if type is dynamic
+  type: static # or dynamic
+  address: 1.1.1.1 # will be automatically generated if type is dynamic
   # list of services that return your public IP
   # ipSources:
   #   - url: https://ifconfig.me/ip
@@ -12,4 +12,4 @@ spec:
   #   - url: https://myip.is/ip/
   #   - url: https://checkip.amazonaws.com
   #   - url: https://api.ipify.org
-  interval: 1m  # only used if type is dynamic, interval to check if IP has changed
+  interval: 1m # only used if type is dynamic, interval to check if IP has changed

@@ -1,4 +1,4 @@
-apiVersion: cloudflare-operator.io/v1beta1
+apiVersion: cloudflare-operator.io/v1
 kind: Zone
 metadata:
   name: zone-sample

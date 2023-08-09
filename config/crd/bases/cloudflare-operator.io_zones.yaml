@@ -25,7 +25,7 @@ spec:
     - jsonPath: .status.conditions[?(@.type == "Ready")].status
       name: Ready
       type: string
-    name: v1beta1
+    name: v1
     schema:
       openAPIV3Schema:
         description: Zone is the Schema for the zones API

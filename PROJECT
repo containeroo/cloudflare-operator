@@ -13,8 +13,8 @@ resources:
   controller: true
   domain: cloudflare-operator.io
   kind: DNSRecord
-  path: github.com/containeroo/cloudflare-operator/api/v1beta1
-  version: v1beta1
+  path: github.com/containeroo/cloudflare-operator/api/v1
+  version: v1
 - controller: true
   domain: k8s.io
   group: networking
@@ -26,20 +26,20 @@ resources:
   controller: true
   domain: cloudflare-operator.io
   kind: IP
-  path: github.com/containeroo/cloudflare-operator/api/v1beta1
-  version: v1beta1
+  path: github.com/containeroo/cloudflare-operator/api/v1
+  version: v1
 - api:
     crdVersion: v1
   controller: true
   domain: cloudflare-operator.io
   kind: Account
-  path: github.com/containeroo/cloudflare-operator/api/v1beta1
-  version: v1beta1
+  path: github.com/containeroo/cloudflare-operator/api/v1
+  version: v1
 - api:
     crdVersion: v1
   controller: true
   domain: cloudflare-operator.io
   kind: Zone
-  path: github.com/containeroo/cloudflare-operator/api/v1beta1
-  version: v1beta1
+  path: github.com/containeroo/cloudflare-operator/api/v1
+  version: v1
 version: "3"
