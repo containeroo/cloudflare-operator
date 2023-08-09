@@ -27,3 +27,4 @@ testbin/*
 dist/
 crds.yaml
 api-ref.html
+.github/release-notes.md
