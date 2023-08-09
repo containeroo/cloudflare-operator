@@ -61,11 +61,9 @@ spec:
                 description: DNS record content (e.g. 127.0.0.1)
                 type: string
               data:
-                additionalProperties:
-                  type: string
-                description: Data holds arbitrary key-value pairs used for SRV and
-                  LOC records
-                type: object
+                description: Data holds arbitrary key-value pairs used to further
+                  configure the DNS record
+                x-kubernetes-preserve-unknown-fields: true
               interval:
                 default: 5m
                 description: Interval to check DNSRecord

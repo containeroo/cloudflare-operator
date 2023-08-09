@@ -69,10 +69,8 @@ spec:
                       description: RequestBody to be sent to the URL
                       type: string
                     requestHeaders:
-                      additionalProperties:
-                        type: string
                       description: RequestHeaders to be sent to the URL
-                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     requestHeadersSecretRef:
                       description: RequestHeadersSecretRef is a secret reference to
                         the headers to be sent to the URL (e.g. for authentication)

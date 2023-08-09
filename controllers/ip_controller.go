@@ -135,7 +135,6 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 
 		if len(instance.Spec.IPSources) > 1 {
-			rand.Seed(time.Now().UnixNano())
 			rand.Shuffle(len(instance.Spec.IPSources), func(i, j int) {
 				instance.Spec.IPSources[i], instance.Spec.IPSources[j] = instance.Spec.IPSources[j], instance.Spec.IPSources[i]
 			})
@@ -241,8 +240,16 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1beta1.IPSpecI
 		return "", fmt.Errorf("failed to create request: %s", err)
 	}
 
-	for key, value := range source.RequestHeaders {
-		req.Header.Add(key, value)
+	if source.RequestHeaders != nil {
+		var requestHeaders map[string]string
+		err = json.Unmarshal(source.RequestHeaders.Raw, &requestHeaders)
+		if err != nil {
+			return "", fmt.Errorf("failed to unmarshal request headers: %s", err)
+		}
+
+		for key, value := range requestHeaders {
+			req.Header.Add(key, value)
+		}
 	}
 
 	if source.RequestHeadersSecretRef.Name != "" {
