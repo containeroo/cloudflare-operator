@@ -5,30 +5,24 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: zones.cf.containeroo.ch
+  name: accounts.cloudflare-operator.io
 spec:
-  group: cf.containeroo.ch
+  group: cloudflare-operator.io
   names:
-    kind: Zone
-    listKind: ZoneList
-    plural: zones
-    singular: zone
+    kind: Account
+    listKind: AccountList
+    plural: accounts
+    singular: account
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.name
-      name: Zone Name
-      type: string
-    - jsonPath: .spec.id
-      name: ID
-      type: string
     - jsonPath: .status.conditions[?(@.type == "Ready")].status
       name: Ready
       type: string
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Zone is the Schema for the zones API
+        description: Account is the Schema for the accounts API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -43,28 +37,46 @@ spec:
           metadata:
             type: object
           spec:
-            description: ZoneSpec defines the desired state of Zone
+            description: AccountSpec defines the desired state of Account
             properties:
-              id:
-                description: ID of the zone
-                type: string
+              apiToken:
+                description: Cloudflare API token
+                properties:
+                  secretRef:
+                    description: Secret containing the API token (key must be named
+                      "apiToken")
+                    properties:
+                      name:
+                        description: name is unique within a namespace to reference
+                          a secret resource.
+                        type: string
+                      namespace:
+                        description: namespace defines the space within which the
+                          secret name must be unique.
+                        type: string
+                    type: object
+                    x-kubernetes-map-type: atomic
+                required:
+                - secretRef
+                type: object
               interval:
                 default: 5m
-                description: Interval to check zone status
+                description: Interval to check account status
                 type: string
-              name:
-                description: Name of the zone
-                type: string
+              managedZones:
+                description: List of zone names that should be managed by cloudflare-operator
+                items:
+                  type: string
+                type: array
             required:
-            - id
-            - name
+            - apiToken
             type: object
           status:
-            description: ZoneStatus defines the observed state of Zone
+            description: AccountStatus defines the observed state of Account
             properties:
               conditions:
                 description: Conditions contains the different condition statuses
-                  for the Zone object.
+                  for the Account object.
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -130,6 +142,18 @@ spec:
                   - reason
                   - status
                   - type
+                  type: object
+                type: array
+              zones:
+                description: Zones contains all the zones of the Account
+                items:
+                  properties:
+                    id:
+                      description: ID of the zone
+                      type: string
+                    name:
+                      description: Name of the zone
+                      type: string
                   type: object
                 type: array
             type: object

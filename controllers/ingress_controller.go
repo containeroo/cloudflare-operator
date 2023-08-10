@@ -68,7 +68,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	if instance.Annotations["cf.containeroo.ch/ignore"] == "true" {
+	if instance.Annotations["cloudflare-operator.io/ignore"] == "true" {
 		if len(dnsRecords.Items) > 0 {
 			for _, dnsRecord := range dnsRecords.Items {
 				err := r.Delete(ctx, &dnsRecord)
@@ -86,11 +86,11 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	dnsRecordSpec := cfv1beta1.DNSRecordSpec{}
 
-	if content, ok := instance.Annotations["cf.containeroo.ch/content"]; ok {
+	if content, ok := instance.Annotations["cloudflare-operator.io/content"]; ok {
 		dnsRecordSpec.Content = content
 	}
 
-	if ipRef, ok := instance.Annotations["cf.containeroo.ch/ip-ref"]; ok {
+	if ipRef, ok := instance.Annotations["cloudflare-operator.io/ip-ref"]; ok {
 		dnsRecordSpec.IPRef.Name = ipRef
 	}
 
@@ -99,7 +99,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	if proxied, ok := instance.Annotations["cf.containeroo.ch/proxied"]; ok {
+	if proxied, ok := instance.Annotations["cloudflare-operator.io/proxied"]; ok {
 		switch proxied {
 		case "true":
 			dnsRecordSpec.Proxied = newTrue()
@@ -114,7 +114,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		dnsRecordSpec.Proxied = newTrue()
 	}
 
-	if ttl, ok := instance.Annotations["cf.containeroo.ch/ttl"]; ok {
+	if ttl, ok := instance.Annotations["cloudflare-operator.io/ttl"]; ok {
 		ttlInt, _ := strconv.Atoi(ttl)
 		if *dnsRecordSpec.Proxied && ttlInt != 1 {
 			log.Info("DNSRecord is proxied and ttl is not 1, skipping reconciliation", "ingress", instance.Name)
@@ -126,14 +126,14 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		dnsRecordSpec.TTL = 1
 	}
 
-	if recordType, ok := instance.Annotations["cf.containeroo.ch/type"]; ok {
+	if recordType, ok := instance.Annotations["cloudflare-operator.io/type"]; ok {
 		dnsRecordSpec.Type = recordType
 	}
 	if dnsRecordSpec.Type == "" {
 		dnsRecordSpec.Type = "A"
 	}
 
-	if interval, ok := instance.Annotations["cf.containeroo.ch/interval"]; ok {
+	if interval, ok := instance.Annotations["cloudflare-operator.io/interval"]; ok {
 		intervalDuration, err := time.ParseDuration(interval)
 		if err != nil {
 			log.Error(err, "Failed to parse interval", "interval", interval, "ingress", instance.Name)

@@ -16,5 +16,5 @@ limitations under the License.
 
 // Package v1beta1 contains API Schema definitions for the source v1beta1 API group
 // +kubebuilder:object:generate=true
-// +groupName=cf.containeroo.ch
+// +groupName=cloudflare-operator.io
 package v1beta1

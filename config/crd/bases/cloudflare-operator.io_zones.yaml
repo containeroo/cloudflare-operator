@@ -5,22 +5,22 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: ips.cf.containeroo.ch
+  name: zones.cloudflare-operator.io
 spec:
-  group: cf.containeroo.ch
+  group: cloudflare-operator.io
   names:
-    kind: IP
-    listKind: IPList
-    plural: ips
-    singular: ip
+    kind: Zone
+    listKind: ZoneList
+    plural: zones
+    singular: zone
   scope: Cluster
   versions:
   - additionalPrinterColumns:
-    - jsonPath: .spec.address
-      name: Address
+    - jsonPath: .spec.name
+      name: Zone Name
       type: string
-    - jsonPath: .spec.type
-      name: Type
+    - jsonPath: .spec.id
+      name: ID
       type: string
     - jsonPath: .status.conditions[?(@.type == "Ready")].status
       name: Ready
@@ -28,7 +28,7 @@ spec:
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: IP is the Schema for the ips API
+        description: Zone is the Schema for the zones API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -43,82 +43,28 @@ spec:
           metadata:
             type: object
           spec:
-            description: IPSpec defines the desired state of IP
+            description: ZoneSpec defines the desired state of Zone
             properties:
-              address:
-                description: IP address (omit if type is dynamic)
+              id:
+                description: ID of the zone
                 type: string
               interval:
-                description: Interval at which a dynamic IP should be checked
+                default: 5m
+                description: Interval to check zone status
                 type: string
-              ipSources:
-                description: IPSources can be configured to get an IP from an external
-                  source (e.g. an API or public IP echo service)
-                items:
-                  properties:
-                    insecureSkipVerify:
-                      description: InsecureSkipVerify defines whether to skip TLS
-                        certificate verification
-                      type: boolean
-                    postProcessingRegex:
-                      description: PostProcessingRegex defines the regular expression
-                        to be used to extract the IP from the response or a JQ filter
-                        result
-                      type: string
-                    requestBody:
-                      description: RequestBody to be sent to the URL
-                      type: string
-                    requestHeaders:
-                      description: RequestHeaders to be sent to the URL
-                      x-kubernetes-preserve-unknown-fields: true
-                    requestHeadersSecretRef:
-                      description: RequestHeadersSecretRef is a secret reference to
-                        the headers to be sent to the URL (e.g. for authentication)
-                        where the key is the header name and the value is the header
-                        value
-                      properties:
-                        name:
-                          description: name is unique within a namespace to reference
-                            a secret resource.
-                          type: string
-                        namespace:
-                          description: namespace defines the space within which the
-                            secret name must be unique.
-                          type: string
-                      type: object
-                      x-kubernetes-map-type: atomic
-                    requestMethod:
-                      default: GET
-                      description: RequestMethod defines the HTTP method to be used
-                      enum:
-                      - GET
-                      - POST
-                      - PUT
-                      - DELETE
-                      type: string
-                    responseJQFilter:
-                      description: ResponseJQFilter applies a JQ filter to the response
-                        to extract the IP
-                      type: string
-                    url:
-                      description: URL of the IP source (e.g. https://checkip.amazonaws.com)
-                      type: string
-                  type: object
-                type: array
-              type:
-                default: static
-                description: IP address type (static or dynamic)
-                enum:
-                - static
-                - dynamic
+              name:
+                description: Name of the zone
                 type: string
+            required:
+            - id
+            - name
             type: object
           status:
-            description: IPStatus defines the observed state of IP
+            description: ZoneStatus defines the observed state of Zone
             properties:
               conditions:
                 description: Conditions contains the different condition statuses
-                  for the IP object.
+                  for the Zone object.
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -186,10 +132,6 @@ spec:
                   - type
                   type: object
                 type: array
-              lastObservedIP:
-                description: LastObservedIP contains the IP address observed at the
-                  last interval (used to determine whether the IP has changed)
-                type: string
             type: object
         type: object
     served: true

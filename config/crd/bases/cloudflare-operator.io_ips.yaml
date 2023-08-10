@@ -5,24 +5,30 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: accounts.cf.containeroo.ch
+  name: ips.cloudflare-operator.io
 spec:
-  group: cf.containeroo.ch
+  group: cloudflare-operator.io
   names:
-    kind: Account
-    listKind: AccountList
-    plural: accounts
-    singular: account
+    kind: IP
+    listKind: IPList
+    plural: ips
+    singular: ip
   scope: Cluster
   versions:
   - additionalPrinterColumns:
+    - jsonPath: .spec.address
+      name: Address
+      type: string
+    - jsonPath: .spec.type
+      name: Type
+      type: string
     - jsonPath: .status.conditions[?(@.type == "Ready")].status
       name: Ready
       type: string
     name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Account is the Schema for the accounts API
+        description: IP is the Schema for the ips API
         properties:
           apiVersion:
             description: 'APIVersion defines the versioned schema of this representation
@@ -37,46 +43,82 @@ spec:
           metadata:
             type: object
           spec:
-            description: AccountSpec defines the desired state of Account
+            description: IPSpec defines the desired state of IP
             properties:
-              apiToken:
-                description: Cloudflare API token
-                properties:
-                  secretRef:
-                    description: Secret containing the API token (key must be named
-                      "apiToken")
-                    properties:
-                      name:
-                        description: name is unique within a namespace to reference
-                          a secret resource.
-                        type: string
-                      namespace:
-                        description: namespace defines the space within which the
-                          secret name must be unique.
-                        type: string
-                    type: object
-                    x-kubernetes-map-type: atomic
-                required:
-                - secretRef
-                type: object
-              interval:
-                default: 5m
-                description: Interval to check account status
+              address:
+                description: IP address (omit if type is dynamic)
                 type: string
-              managedZones:
-                description: List of zone names that should be managed by cloudflare-operator
+              interval:
+                description: Interval at which a dynamic IP should be checked
+                type: string
+              ipSources:
+                description: IPSources can be configured to get an IP from an external
+                  source (e.g. an API or public IP echo service)
                 items:
-                  type: string
+                  properties:
+                    insecureSkipVerify:
+                      description: InsecureSkipVerify defines whether to skip TLS
+                        certificate verification
+                      type: boolean
+                    postProcessingRegex:
+                      description: PostProcessingRegex defines the regular expression
+                        to be used to extract the IP from the response or a JQ filter
+                        result
+                      type: string
+                    requestBody:
+                      description: RequestBody to be sent to the URL
+                      type: string
+                    requestHeaders:
+                      description: RequestHeaders to be sent to the URL
+                      x-kubernetes-preserve-unknown-fields: true
+                    requestHeadersSecretRef:
+                      description: RequestHeadersSecretRef is a secret reference to
+                        the headers to be sent to the URL (e.g. for authentication)
+                        where the key is the header name and the value is the header
+                        value
+                      properties:
+                        name:
+                          description: name is unique within a namespace to reference
+                            a secret resource.
+                          type: string
+                        namespace:
+                          description: namespace defines the space within which the
+                            secret name must be unique.
+                          type: string
+                      type: object
+                      x-kubernetes-map-type: atomic
+                    requestMethod:
+                      default: GET
+                      description: RequestMethod defines the HTTP method to be used
+                      enum:
+                      - GET
+                      - POST
+                      - PUT
+                      - DELETE
+                      type: string
+                    responseJQFilter:
+                      description: ResponseJQFilter applies a JQ filter to the response
+                        to extract the IP
+                      type: string
+                    url:
+                      description: URL of the IP source (e.g. https://checkip.amazonaws.com)
+                      type: string
+                  type: object
                 type: array
-            required:
-            - apiToken
+              type:
+                default: static
+                description: IP address type (static or dynamic)
+                enum:
+                - static
+                - dynamic
+                type: string
             type: object
           status:
-            description: AccountStatus defines the observed state of Account
+            description: IPStatus defines the observed state of IP
             properties:
               conditions:
                 description: Conditions contains the different condition statuses
-                  for the Account object.
+                  for the IP object.
                 items:
                   description: "Condition contains details for one aspect of the current
                     state of this API Resource. --- This struct is intended for direct
@@ -144,18 +186,10 @@ spec:
                   - type
                   type: object
                 type: array
-              zones:
-                description: Zones contains all the zones of the Account
-                items:
-                  properties:
-                    id:
-                      description: ID of the zone
-                      type: string
-                    name:
-                      description: Name of the zone
-                      type: string
-                  type: object
-                type: array
+              lastObservedIP:
+                description: LastObservedIP contains the IP address observed at the
+                  last interval (used to determine whether the IP has changed)
+                type: string
             type: object
         type: object
     served: true

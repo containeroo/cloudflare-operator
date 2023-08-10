@@ -2,10 +2,10 @@
 # since it depends on service name and namespace that are out of this kustomize package.
 # It should be run by config/default
 resources:
-- bases/cf.containeroo.ch_dnsrecords.yaml
-- bases/cf.containeroo.ch_ips.yaml
-- bases/cf.containeroo.ch_accounts.yaml
-- bases/cf.containeroo.ch_zones.yaml
+- bases/cloudflare-operator.io_dnsrecords.yaml
+- bases/cloudflare-operator.io_ips.yaml
+- bases/cloudflare-operator.io_accounts.yaml
+- bases/cloudflare-operator.io_zones.yaml
 #+kubebuilder:scaffold:crdkustomizeresource
 
 patchesStrategicMerge:

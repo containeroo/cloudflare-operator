@@ -5,9 +5,9 @@ metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.10.0
   creationTimestamp: null
-  name: dnsrecords.cf.containeroo.ch
+  name: dnsrecords.cloudflare-operator.io
 spec:
-  group: cf.containeroo.ch
+  group: cloudflare-operator.io
   names:
     kind: DNSRecord
     listKind: DNSRecordList
