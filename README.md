@@ -26,3 +26,15 @@ Features:
 
 - Add, update and delete Cloudflare DNS records
 - Update Cloudflare DNS records if your external IP address changes
+
+## Disclaimer
+
+This is not an official Cloudflare project. Use at your own risk.
+
+If you encounter any issues, please open an issue on GitHub.
+
+If everything works fine, please send your compliments to Cloudflare.
+
+If everthing does not work fine, please send your complaints to us :D
+
+Cloudflare is a registered trademark of Cloudflare, Inc.
