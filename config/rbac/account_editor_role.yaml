@@ -5,7 +5,7 @@ metadata:
   name: account-editor-role
 rules:
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - accounts
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - accounts/status
   verbs:

@@ -5,7 +5,7 @@ metadata:
   name: zone-viewer-role
 rules:
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - zones
   verbs:
@@ -13,7 +13,7 @@ rules:
   - list
   - watch
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - zones/status
   verbs:

@@ -51,9 +51,9 @@ type IPReconciler struct {
 	Scheme *runtime.Scheme
 }
 
-// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=ips/finalizers,verbs=update
+// +kubebuilder:rbac:groups=cloudflare-operator.io,resources=ips,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cloudflare-operator.io,resources=ips/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cloudflare-operator.io,resources=ips/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to

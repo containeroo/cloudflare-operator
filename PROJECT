@@ -1,4 +1,4 @@
-domain: containeroo.ch
+domain: cloudflare-operator.io
 layout:
 - go.kubebuilder.io/v3
 plugins:
@@ -11,8 +11,7 @@ resources:
     crdVersion: v1
     namespaced: true
   controller: true
-  domain: containeroo.ch
-  group: cf
+  domain: cloudflare-operator.io
   kind: DNSRecord
   path: github.com/containeroo/cloudflare-operator/api/v1beta1
   version: v1beta1
@@ -25,24 +24,21 @@ resources:
 - api:
     crdVersion: v1
   controller: true
-  domain: containeroo.ch
-  group: cf
+  domain: cloudflare-operator.io
   kind: IP
   path: github.com/containeroo/cloudflare-operator/api/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
   controller: true
-  domain: containeroo.ch
-  group: cf
+  domain: cloudflare-operator.io
   kind: Account
   path: github.com/containeroo/cloudflare-operator/api/v1beta1
   version: v1beta1
 - api:
     crdVersion: v1
   controller: true
-  domain: containeroo.ch
-  group: cf
+  domain: cloudflare-operator.io
   kind: Zone
   path: github.com/containeroo/cloudflare-operator/api/v1beta1
   version: v1beta1

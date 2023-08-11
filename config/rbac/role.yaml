@@ -6,7 +6,7 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - accounts
   verbs:
@@ -18,13 +18,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - accounts/finalizers
   verbs:
   - update
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - accounts/status
   verbs:
@@ -32,7 +32,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - dnsrecords
   verbs:
@@ -44,13 +44,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - dnsrecords/finalizers
   verbs:
   - update
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - dnsrecords/status
   verbs:
@@ -58,7 +58,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - ips
   verbs:
@@ -70,13 +70,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - ips/finalizers
   verbs:
   - update
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - ips/status
   verbs:
@@ -84,7 +84,7 @@ rules:
   - patch
   - update
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - zones
   verbs:
@@ -96,13 +96,13 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - zones/finalizers
   verbs:
   - update
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - zones/status
   verbs:

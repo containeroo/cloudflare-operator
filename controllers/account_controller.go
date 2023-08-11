@@ -45,9 +45,9 @@ type AccountReconciler struct {
 	Cf     *cloudflare.API
 }
 
-// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=cf.containeroo.ch,resources=accounts/finalizers,verbs=update
+// +kubebuilder:rbac:groups=cloudflare-operator.io,resources=accounts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=cloudflare-operator.io,resources=accounts/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=cloudflare-operator.io,resources=accounts/finalizers,verbs=update
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -176,7 +176,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
-							APIVersion:         "cf.containeroo.ch/v1beta1",
+							APIVersion:         "cloudflare-operator.io/v1beta1",
 							Kind:               "Account",
 							Name:               instance.Name,
 							UID:                instance.UID,

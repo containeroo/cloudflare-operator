@@ -5,7 +5,7 @@ metadata:
   name: dnsrecord-editor-role
 rules:
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - dnsrecords
   verbs:
@@ -17,7 +17,7 @@ rules:
   - update
   - watch
 - apiGroups:
-  - cf.containeroo.ch
+  - cloudflare-operator.io
   resources:
   - dnsrecords/status
   verbs:

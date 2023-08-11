@@ -16,7 +16,7 @@ limitations under the License.
 
 package controllers
 
-const cloudflareOperatorFinalizer = "cf.containeroo.ch/finalizer"
+const cloudflareOperatorFinalizer = "cloudflare-operator.io/finalizer"
 
 // newTrue creates a pointer to a true bool
 func newTrue() *bool {
