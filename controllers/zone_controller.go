@@ -32,7 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
-	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
+	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
 // ZoneReconciler reconciles a Zone object
@@ -51,7 +51,7 @@ type ZoneReconciler struct {
 func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1beta1.Zone{}
+	instance := &cfv1.Zone{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -125,7 +125,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	dnsRecords := &cfv1beta1.DNSRecordList{}
+	dnsRecords := &cfv1.DNSRecordList{}
 	err = r.List(ctx, dnsRecords)
 	if err != nil {
 		log.Error(err, "Failed to list DNSRecord resources")
@@ -170,12 +170,12 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // SetupWithManager sets up the controller with the Manager.
 func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1beta1.Zone{}).
+		For(&cfv1.Zone{}).
 		Complete(r)
 }
 
 // markFailed marks the reconciled object as failed
-func (r *ZoneReconciler) markFailed(instance *cfv1beta1.Zone, ctx context.Context, message string) error {
+func (r *ZoneReconciler) markFailed(instance *cfv1.Zone, ctx context.Context, message string) error {
 	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:    "Ready",

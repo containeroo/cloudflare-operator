@@ -23,7 +23,7 @@ import (
 	"strings"
 	"time"
 
-	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
+	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -57,7 +57,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	dnsRecords := &cfv1beta1.DNSRecordList{}
+	dnsRecords := &cfv1.DNSRecordList{}
 	err = r.List(
 		ctx,
 		dnsRecords,
@@ -84,7 +84,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	dnsRecordSpec := cfv1beta1.DNSRecordSpec{}
+	dnsRecordSpec := cfv1.DNSRecordSpec{}
 
 	if content, ok := instance.Annotations["cloudflare-operator.io/content"]; ok {
 		dnsRecordSpec.Content = content
@@ -145,7 +145,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		dnsRecordSpec.Interval.Duration = time.Minute * 5
 	}
 
-	dnsRecordMap := make(map[string]cfv1beta1.DNSRecord)
+	dnsRecordMap := make(map[string]cfv1.DNSRecord)
 	for _, dnsRecord := range dnsRecords.Items {
 		dnsRecordMap[dnsRecord.Spec.Name] = dnsRecord
 	}
@@ -162,7 +162,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 		dnsRecordSpec.Name = rule.Host
 
-		dnsRecord := &cfv1beta1.DNSRecord{
+		dnsRecord := &cfv1.DNSRecord{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      strings.ReplaceAll(rule.Host, ".", "-"),
 				Namespace: instance.Namespace,
@@ -228,7 +228,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &cfv1beta1.DNSRecord{}, "metadata.ownerReferences.uid", func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &cfv1.DNSRecord{}, "metadata.ownerReferences.uid", func(rawObj client.Object) []string {
 		ownerReferences := rawObj.GetOwnerReferences()
 		var ownerUIDs []string
 		for _, ownerReference := range ownerReferences {

@@ -14,16 +14,16 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package v1beta1
+package v1
 
 import (
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 type AccountSpecApiToken struct {
 	// Secret containing the API token (key must be named "apiToken")
-	SecretRef v1.SecretReference `json:"secretRef"`
+	SecretRef corev1.SecretReference `json:"secretRef"`
 }
 
 // AccountSpec defines the desired state of Account

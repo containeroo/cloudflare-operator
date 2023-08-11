@@ -36,7 +36,7 @@ import (
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudflare/cloudflare-go"
-	cfv1beta1 "github.com/containeroo/cloudflare-operator/api/v1beta1"
+	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
 // DNSRecordReconciler reconciles a DNSRecord object
@@ -55,7 +55,7 @@ type DNSRecordReconciler struct {
 func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1beta1.DNSRecord{}
+	instance := &cfv1.DNSRecord{}
 	err := r.Get(ctx, req.NamespacedName, instance)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -84,7 +84,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	zoneName, _ := publicsuffix.EffectiveTLDPlusOne(instance.Spec.Name)
 	zoneName = strings.ReplaceAll(zoneName, ".", "-")
 
-	zone := &cfv1beta1.Zone{}
+	zone := &cfv1.Zone{}
 	err = r.Get(ctx, client.ObjectKey{Name: zoneName}, zone)
 	if err != nil {
 		if errors.IsNotFound(err) {
@@ -150,7 +150,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if (instance.Spec.Type == "A" || instance.Spec.Type == "AAAA") && instance.Spec.IPRef.Name != "" {
-		ip := &cfv1beta1.IP{}
+		ip := &cfv1.IP{}
 		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IPRef.Name}, ip)
 		if err != nil {
 			err := r.markFailed(instance, ctx, "IP object not found")
@@ -268,12 +268,12 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1beta1.DNSRecord{}).
+		For(&cfv1.DNSRecord{}).
 		Complete(r)
 }
 
 // finalizeDNSRecord deletes the DNS record from cloudflare
-func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1beta1.DNSRecord) {
+func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1.DNSRecord) {
 	err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), d.Status.RecordID)
 	if err != nil {
 		log.Error(err, "Failed to delete DNS record in Cloudflare. Record may still exist in Cloudflare")
@@ -281,7 +281,7 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 }
 
 // markFailed marks the reconciled object as failed
-func (r *DNSRecordReconciler) markFailed(instance *cfv1beta1.DNSRecord, ctx context.Context, message string) error {
+func (r *DNSRecordReconciler) markFailed(instance *cfv1.DNSRecord, ctx context.Context, message string) error {
 	dnsRecordFailureCounter.WithLabelValues(instance.Namespace, instance.Name, instance.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:    "Ready",
@@ -323,7 +323,7 @@ func compareData(a interface{}, b *apiextensionsv1.JSON) bool {
 }
 
 // compareDNSRecord compares the DNS record to the instance
-func compareDNSRecord(instance cfv1beta1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
+func compareDNSRecord(instance cfv1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
 	var isEqual bool = true
 
 	if instance.Name != existingRecord.Name {

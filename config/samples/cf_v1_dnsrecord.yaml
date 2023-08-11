@@ -1,14 +1,14 @@
-apiVersion: cloudflare-operator.io/v1beta1
+apiVersion: cloudflare-operator.io/v1
 kind: DNSRecord
 metadata:
   name: dnsrecord-sample
 spec:
   name: example.com
   content: 1.1.1.1
-  type: A  # or CNAME
+  type: A # or CNAME
   # optionally, you can also reference an IP object
   # ipRef:
   #   name: ip-sample
-  proxied: true  # or false
-  ttl: 1  # for auto or between 120 and 86400
+  proxied: true # or false
+  ttl: 1 # for auto or between 120 and 86400
   interval: 5m
