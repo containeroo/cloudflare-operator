@@ -200,20 +200,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	if condition := apimeta.FindStatusCondition(instance.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
-		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    "Ready",
-			Status:  "True",
-			Reason:  "Ready",
-			Message: "Account is ready",
-		})
-	}
-	err = r.Status().Update(ctx, instance)
-	if err != nil {
-		log.Error(err, "Failed to update Account status")
-		return ctrl.Result{}, err
-	}
-
 	if !reflect.DeepEqual(instance.Status.Zones, operatorManagedZones) {
 		instance.Status.Zones = operatorManagedZones
 		err := r.Status().Update(ctx, instance)
@@ -234,6 +220,19 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
+	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             "True",
+		Reason:             "Ready",
+		Message:            "Account is ready",
+		ObservedGeneration: instance.Generation,
+	})
+	err = r.Status().Update(ctx, instance)
+	if err != nil {
+		log.Error(err, "Failed to update Account status")
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }
 
@@ -248,10 +247,11 @@ func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *AccountReconciler) markFailed(instance *cfv1.Account, ctx context.Context, message string) error {
 	accountFailureCounter.WithLabelValues(instance.Name).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-		Type:    "Ready",
-		Status:  "False",
-		Reason:  "Failed",
-		Message: message,
+		Type:               "Ready",
+		Status:             "False",
+		Reason:             "Failed",
+		Message:            message,
+		ObservedGeneration: instance.Generation,
 	})
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return err

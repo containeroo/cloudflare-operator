@@ -197,18 +197,17 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	if condition := apimeta.FindStatusCondition(instance.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
-		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    "Ready",
-			Status:  "True",
-			Reason:  "Ready",
-			Message: "IP is ready",
-		})
-		err := r.Status().Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update IP resource")
-			return ctrl.Result{}, err
-		}
+	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             "True",
+		Reason:             "Ready",
+		Message:            "IP is ready",
+		ObservedGeneration: instance.Generation,
+	})
+	err = r.Status().Update(ctx, instance)
+	if err != nil {
+		log.Error(err, "Failed to update IP resource")
+		return ctrl.Result{}, err
 	}
 
 	if instance.Spec.Type == "dynamic" {
@@ -333,10 +332,11 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1.IPSpecIPSour
 func (r *IPReconciler) markFailed(instance *cfv1.IP, ctx context.Context, message string) error {
 	ipFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-		Type:    "Ready",
-		Status:  "False",
-		Reason:  "Failed",
-		Message: message,
+		Type:               "Ready",
+		Status:             "False",
+		Reason:             "Failed",
+		Message:            message,
+		ObservedGeneration: instance.Generation,
 	})
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return err

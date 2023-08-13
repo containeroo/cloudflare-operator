@@ -88,10 +88,11 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	if r.Cf.APIToken == "" {
 		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    "Ready",
-			Status:  "False",
-			Reason:  "NotReady",
-			Message: "Cloudflare account is not yet ready",
+			Type:               "Ready",
+			Status:             "False",
+			Reason:             "NotReady",
+			Message:            "Cloudflare account is not yet ready",
+			ObservedGeneration: instance.Generation,
 		})
 		err := r.Status().Update(ctx, instance)
 		if err != nil {
@@ -109,20 +110,6 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-
-	if condition := apimeta.FindStatusCondition(instance.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
-		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-			Type:    "Ready",
-			Status:  "True",
-			Reason:  "Ready",
-			Message: "Zone is ready",
-		})
-		err := r.Status().Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update Zone status")
-			return ctrl.Result{}, err
-		}
 	}
 
 	dnsRecords := &cfv1.DNSRecordList{}
@@ -164,6 +151,19 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
+	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		Type:               "Ready",
+		Status:             "True",
+		Reason:             "Ready",
+		Message:            "Zone is ready",
+		ObservedGeneration: instance.Generation,
+	})
+	err = r.Status().Update(ctx, instance)
+	if err != nil {
+		log.Error(err, "Failed to update Zone status")
+		return ctrl.Result{}, err
+	}
+
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 }
 
@@ -178,10 +178,11 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *ZoneReconciler) markFailed(instance *cfv1.Zone, ctx context.Context, message string) error {
 	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
-		Type:    "Ready",
-		Status:  "False",
-		Reason:  "Failed",
-		Message: message,
+		Type:               "Ready",
+		Status:             "False",
+		Reason:             "Failed",
+		Message:            message,
+		ObservedGeneration: instance.Generation,
 	})
 	if err := r.Status().Update(ctx, instance); err != nil {
 		return err
