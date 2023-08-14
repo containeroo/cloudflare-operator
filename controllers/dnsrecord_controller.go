@@ -162,11 +162,13 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
-		instance.Spec.Content = ip.Spec.Address
-		err = r.Update(ctx, instance)
-		if err != nil {
-			log.Error(err, "Failed to update DNSRecord resource")
-			return ctrl.Result{}, err
+		if ip.Spec.Address != instance.Spec.Content {
+			instance.Spec.Content = ip.Spec.Address
+			err = r.Update(ctx, instance)
+			if err != nil {
+				log.Error(err, "Failed to update DNSRecord resource")
+				return ctrl.Result{}, err
+			}
 		}
 	}
 
