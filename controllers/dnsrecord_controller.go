@@ -121,7 +121,13 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if instance.GetDeletionTimestamp() != nil {
 		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
-			r.finalizeDNSRecord(ctx, zone.Spec.ID, log, instance)
+			if err := r.finalizeDNSRecord(ctx, zone.Spec.ID, log, instance); err != nil && err.Error() != "Record does not exist. (81044)" {
+				if err := r.markFailed(instance, ctx, err.Error()); err != nil {
+					log.Error(err, "Failed to update DNSRecord status")
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			}
 			dnsRecordFailureCounter.DeleteLabelValues(instance.Namespace, instance.Name, instance.Spec.Name)
 		}
 
@@ -260,10 +266,12 @@ func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 }
 
 // finalizeDNSRecord deletes the DNS record from cloudflare
-func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1.DNSRecord) {
+func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1.DNSRecord) error {
 	if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), d.Status.RecordID); err != nil {
 		log.Error(err, "Failed to delete DNS record in Cloudflare. Record may still exist in Cloudflare")
+		return err
 	}
+	return nil
 }
 
 // markFailed marks the reconciled object as failed
