@@ -52,8 +52,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	log := ctrllog.FromContext(ctx)
 
 	instance := &cfv1.Zone{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Zone resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
@@ -64,8 +63,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
 		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
+		if err := r.Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update Zone finalizer")
 			return ctrl.Result{}, err
 		}
@@ -77,8 +75,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
+		if err := r.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -94,18 +91,15 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 			Message:            "Cloudflare account is not yet ready",
 			ObservedGeneration: instance.Generation,
 		})
-		err := r.Status().Update(ctx, instance)
-		if err != nil {
+		if err := r.Status().Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 5}, err
+		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
-	_, err = r.Cf.ZoneDetails(ctx, instance.Spec.ID)
-	if err != nil {
-		err := r.markFailed(instance, ctx, err.Error())
-		if err != nil {
+	if _, err := r.Cf.ZoneDetails(ctx, instance.Spec.ID); err != nil {
+		if err := r.markFailed(instance, ctx, err.Error()); err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
 		}
@@ -113,16 +107,14 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	dnsRecords := &cfv1.DNSRecordList{}
-	err = r.List(ctx, dnsRecords)
-	if err != nil {
+	if err := r.List(ctx, dnsRecords); err != nil {
 		log.Error(err, "Failed to list DNSRecord resources")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
 	cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(instance.Spec.ID), cloudflare.ListDNSRecordsParams{})
 	if err != nil {
-		err := r.markFailed(instance, ctx, err.Error())
-		if err != nil {
+		if err := r.markFailed(instance, ctx, err.Error()); err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
 		}
@@ -140,10 +132,8 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 
 		if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
-			err = r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(instance.Spec.ID), cfDnsRecord.ID)
-			if err != nil {
-				err := r.markFailed(instance, ctx, err.Error())
-				if err != nil {
+			if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(instance.Spec.ID), cfDnsRecord.ID); err != nil {
+				if err := r.markFailed(instance, ctx, err.Error()); err != nil {
 					log.Error(err, "Failed to update Zone status")
 				}
 			}
@@ -158,8 +148,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		Message:            "Zone is ready",
 		ObservedGeneration: instance.Generation,
 	})
-	err = r.Status().Update(ctx, instance)
-	if err != nil {
+	if err := r.Status().Update(ctx, instance); err != nil {
 		log.Error(err, "Failed to update Zone status")
 		return ctrl.Result{}, err
 	}

@@ -56,8 +56,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	log := ctrllog.FromContext(ctx)
 
 	instance := &cfv1.Account{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Account resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
@@ -68,8 +67,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
 		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
+		if err := r.Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update Account finalizer")
 			return ctrl.Result{}, err
 		}
@@ -81,8 +79,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 
 		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
+		if err := r.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -91,10 +88,8 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	accountFailureCounter.WithLabelValues(instance.Name).Set(0)
 
 	secret := &corev1.Secret{}
-	err = r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.ApiToken.SecretRef.Namespace, Name: instance.Spec.ApiToken.SecretRef.Name}, secret)
-	if err != nil {
-		err := r.markFailed(instance, ctx, "Failed to get secret")
-		if err != nil {
+	if err := r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.ApiToken.SecretRef.Namespace, Name: instance.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
+		if err := r.markFailed(instance, ctx, "Failed to get secret"); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -103,18 +98,16 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	cfApiToken := string(secret.Data["apiToken"])
 	if cfApiToken == "" {
-		err := r.markFailed(instance, ctx, "Secret has no 'apiToken' key")
-		if err != nil {
+		if err := r.markFailed(instance, ctx, "Secret has no 'apiToken' key"); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
 	cf, err := cloudflare.NewWithAPIToken(cfApiToken)
 	if err != nil {
-		err := r.markFailed(instance, ctx, err.Error())
-		if err != nil {
+		if err := r.markFailed(instance, ctx, err.Error()); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -124,8 +117,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	cfZones, err := r.Cf.ListZones(ctx)
 	if err != nil {
-		err := r.markFailed(instance, ctx, err.Error())
-		if err != nil {
+		if err := r.markFailed(instance, ctx, err.Error()); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -148,10 +140,8 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	zones := &cfv1.ZoneList{}
-	err = r.List(ctx, zones)
-	if err != nil {
-		err := r.markFailed(instance, ctx, "Failed to list zones")
-		if err != nil {
+	if err := r.List(ctx, zones); err != nil {
+		if err := r.markFailed(instance, ctx, "Failed to list zones"); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -191,8 +181,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					Interval: instance.Spec.Interval,
 				},
 			}
-			err = r.Create(ctx, z)
-			if err != nil {
+			if err := r.Create(ctx, z); err != nil {
 				log.Error(err, "Failed to create Zone resource", "Zone.Name", operatorManagedZone.Name, "Zone.ID", operatorManagedZone.ID)
 				continue
 			}
@@ -202,8 +191,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if !reflect.DeepEqual(instance.Status.Zones, operatorManagedZones) {
 		instance.Status.Zones = operatorManagedZones
-		err := r.Status().Update(ctx, instance)
-		if err != nil {
+		if err := r.Status().Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -211,8 +199,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	for _, z := range zones.Items {
 		if _, found := operatorManagedZoneMap[z.Spec.ID]; !found {
-			err = r.Delete(ctx, &z)
-			if err != nil {
+			if err := r.Delete(ctx, &z); err != nil {
 				log.Error(err, "Failed to delete Zone resource", "Zone.Name", z.Name)
 				return ctrl.Result{}, err
 			}
@@ -227,8 +214,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		Message:            "Account is ready",
 		ObservedGeneration: instance.Generation,
 	})
-	err = r.Status().Update(ctx, instance)
-	if err != nil {
+	if err := r.Status().Update(ctx, instance); err != nil {
 		log.Error(err, "Failed to update Account status")
 		return ctrl.Result{}, err
 	}
