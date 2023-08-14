@@ -56,8 +56,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	log := ctrllog.FromContext(ctx)
 
 	instance := &cfv1.DNSRecord{}
-	err := r.Get(ctx, req.NamespacedName, instance)
-	if err != nil {
+	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("DNSRecord resource not found. Ignoring since object must be deleted.")
 			return ctrl.Result{}, nil
@@ -74,23 +73,20 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Message:            "Cloudflare account is not yet ready",
 			ObservedGeneration: instance.Generation,
 		})
-		err := r.Status().Update(ctx, instance)
-		if err != nil {
+		if err := r.Status().Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 5}, err
+		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
 	zoneName, _ := publicsuffix.EffectiveTLDPlusOne(instance.Spec.Name)
 	zoneName = strings.ReplaceAll(zoneName, ".", "-")
 
 	zone := &cfv1.Zone{}
-	err = r.Get(ctx, client.ObjectKey{Name: zoneName}, zone)
-	if err != nil {
+	if err := r.Get(ctx, client.ObjectKey{Name: zoneName}, zone); err != nil {
 		if errors.IsNotFound(err) {
-			err := r.markFailed(instance, ctx, "Zone not found")
-			if err != nil {
+			if err := r.markFailed(instance, ctx, "Zone not found"); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
@@ -108,8 +104,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Message:            "Zone is not yet ready",
 			ObservedGeneration: instance.Generation,
 		})
-		err := r.Status().Update(ctx, instance)
-		if err != nil {
+		if err := r.Status().Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
@@ -118,8 +113,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
 		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
+		if err := r.Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update DNSRecord finalizer")
 			return ctrl.Result{}, err
 		}
@@ -132,8 +126,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 
 		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
-		err := r.Update(ctx, instance)
-		if err != nil {
+		if err := r.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
@@ -144,6 +137,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	var existingRecord cloudflare.DNSRecord
 
 	if instance.Status.RecordID != "" {
+		var err error
 		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), instance.Status.RecordID)
 		if err != nil && err.Error() != "Record does not exist. (81044)" {
 			log.Error(err, "Failed to get DNS record from Cloudflare")
@@ -153,10 +147,8 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if (instance.Spec.Type == "A" || instance.Spec.Type == "AAAA") && instance.Spec.IPRef.Name != "" {
 		ip := &cfv1.IP{}
-		err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IPRef.Name}, ip)
-		if err != nil {
-			err := r.markFailed(instance, ctx, "IP object not found")
-			if err != nil {
+		if err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IPRef.Name}, ip); err != nil {
+			if err := r.markFailed(instance, ctx, "IP object not found"); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
@@ -164,8 +156,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 		if ip.Spec.Address != instance.Spec.Content {
 			instance.Spec.Content = ip.Spec.Address
-			err = r.Update(ctx, instance)
-			if err != nil {
+			if err := r.Update(ctx, instance); err != nil {
 				log.Error(err, "Failed to update DNSRecord resource")
 				return ctrl.Result{}, err
 			}
@@ -173,8 +164,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if *instance.Spec.Proxied && instance.Spec.TTL != 1 {
-		err := r.markFailed(instance, ctx, "TTL must be 1 when proxied")
-		if err != nil {
+		if err := r.markFailed(instance, ctx, "TTL must be 1 when proxied"); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
@@ -192,8 +182,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Data:     instance.Spec.Data,
 		})
 		if err != nil {
-			err := r.markFailed(instance, ctx, err.Error())
-			if err != nil {
+			if err := r.markFailed(instance, ctx, err.Error()); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
@@ -207,8 +196,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			ObservedGeneration: instance.Generation,
 		})
 		instance.Status.RecordID = newDNSRecord.ID
-		err = r.Status().Update(ctx, instance)
-		if err != nil {
+		if err := r.Status().Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
@@ -216,7 +204,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if !compareDNSRecord(instance.Spec, existingRecord) {
-		_, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.UpdateDNSRecordParams{
+		if _, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.UpdateDNSRecordParams{
 			ID:       existingRecord.ID,
 			Name:     instance.Spec.Name,
 			Type:     instance.Spec.Type,
@@ -225,10 +213,8 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Proxied:  instance.Spec.Proxied,
 			Priority: instance.Spec.Priority,
 			Data:     instance.Spec.Data,
-		})
-		if err != nil {
-			err := r.markFailed(instance, ctx, err.Error())
-			if err != nil {
+		}); err != nil {
+			if err := r.markFailed(instance, ctx, err.Error()); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
@@ -242,8 +228,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			ObservedGeneration: instance.Generation,
 		})
 		instance.Status.RecordID = existingRecord.ID
-		err = r.Status().Update(ctx, instance)
-		if err != nil {
+		if err := r.Status().Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
@@ -259,8 +244,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		ObservedGeneration: instance.Generation,
 	})
 	instance.Status.RecordID = existingRecord.ID
-	err = r.Status().Update(ctx, instance)
-	if err != nil {
+	if err := r.Status().Update(ctx, instance); err != nil {
 		log.Error(err, "Failed to update DNSRecord status")
 		return ctrl.Result{}, err
 	}
@@ -277,8 +261,7 @@ func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // finalizeDNSRecord deletes the DNS record from cloudflare
 func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZoneId string, log logr.Logger, d *cfv1.DNSRecord) {
-	err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), d.Status.RecordID)
-	if err != nil {
+	if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(dnsRecordZoneId), d.Status.RecordID); err != nil {
 		log.Error(err, "Failed to delete DNS record in Cloudflare. Record may still exist in Cloudflare")
 	}
 }
@@ -319,8 +302,7 @@ func compareData(a interface{}, b *apiextensionsv1.JSON) bool {
 		return false
 	}
 	var bb interface{}
-	err := json.Unmarshal(b.Raw, &bb)
-	if err != nil {
+	if err := json.Unmarshal(b.Raw, &bb); err != nil {
 		return false
 	}
 	return reflect.DeepEqual(a, bb)
