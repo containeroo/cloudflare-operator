@@ -105,15 +105,17 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
-	cf, err := cloudflare.NewWithAPIToken(cfApiToken)
-	if err != nil {
-		if err := r.markFailed(instance, ctx, err.Error()); err != nil {
-			log.Error(err, "Failed to update Account status")
-			return ctrl.Result{}, err
+	if r.Cf.APIToken != cfApiToken {
+		cf, err := cloudflare.NewWithAPIToken(cfApiToken)
+		if err != nil {
+			if err := r.markFailed(instance, ctx, err.Error()); err != nil {
+				log.Error(err, "Failed to update Account status")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		*r.Cf = *cf
 	}
-	*r.Cf = *cf
 
 	cfZones, err := r.Cf.ListZones(ctx)
 	if err != nil {
