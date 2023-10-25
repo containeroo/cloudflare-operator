@@ -127,7 +127,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	for _, cfDnsRecord := range cfDnsRecords {
-		if cfDnsRecord.Type == "TXT" && strings.HasPrefix(cfDnsRecord.Content, "_acme-challenge") {
+		if cfDnsRecord.Type == "TXT" && strings.HasPrefix(cfDnsRecord.Name, "_acme-challenge") {
 			continue
 		}
 
