@@ -112,6 +112,9 @@ spec:
                 - static
                 - dynamic
                 type: string
+                x-kubernetes-validations:
+                - message: IP type cannot be changed
+                  rule: self == oldSelf
             type: object
           status:
             description: IPStatus defines the observed state of IP

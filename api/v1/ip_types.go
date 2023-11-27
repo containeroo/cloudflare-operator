@@ -58,6 +58,7 @@ type IPSpec struct {
 	Address string `json:"address,omitempty"`
 	// IP address type (static or dynamic)
 	// +kubebuilder:validation:Enum=static;dynamic
+	// +kubebuilder:validation:XValidation:rule="self == oldSelf",message="IP type cannot be changed"
 	// +kubebuilder:default=static
 	// +optional
 	Type string `json:"type,omitempty"`
