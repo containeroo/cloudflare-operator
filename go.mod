@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/cloudflare/cloudflare-go v0.82.0
 	github.com/go-logr/logr v1.3.0
-	github.com/itchyny/gojq v0.12.13
+	github.com/itchyny/gojq v0.12.14
 	github.com/prometheus/client_golang v1.17.0
 	golang.org/x/net v0.19.0
 	k8s.io/api v0.28.4
