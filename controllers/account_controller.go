@@ -164,7 +164,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					Name: strings.ReplaceAll(operatorManagedZone.Name, ".", "-"),
 					Labels: map[string]string{
 						"app.kubernetes.io/managed-by": "cloudflare-operator",
-						"app.kubernetes.io/created-by": "cloudflare-operator",
 					},
 					OwnerReferences: []metav1.OwnerReference{
 						{
