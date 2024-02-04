@@ -161,7 +161,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Namespace: instance.Namespace,
 				Labels: map[string]string{
 					"app.kubernetes.io/managed-by": "cloudflare-operator",
-					"app.kubernetes.io/created-by": "cloudflare-operator",
 				},
 				OwnerReferences: []metav1.OwnerReference{
 					{
