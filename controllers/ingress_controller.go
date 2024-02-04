@@ -56,25 +56,14 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
+	if instance.Annotations["cloudflare-operator.io/content"] == "" && instance.Annotations["cloudflare-operator.io/ip-ref"] == "" {
+		return ctrl.Result{}, nil
+	}
+
 	dnsRecords := &cfv1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace), client.MatchingFields{"metadata.ownerReferences.uid": string(instance.UID)}); err != nil {
 		log.Error(err, "Failed to fetch DNSRecord")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-
-	if instance.Annotations["cloudflare-operator.io/ignore"] == "true" {
-		if len(dnsRecords.Items) > 0 {
-			for _, dnsRecord := range dnsRecords.Items {
-				if err := r.Delete(ctx, &dnsRecord); err != nil {
-					log.Error(err, "Failed to delete DNSRecord")
-					return ctrl.Result{RequeueAfter: time.Second * 30}, err
-				}
-				log.Info("Deleted DNSRecord, because it was owned by an Ingress that is being ignored", "DNSRecord", dnsRecord.Name)
-			}
-			return ctrl.Result{}, nil
-		}
-		log.Info("Ingress has ignore annotation, skipping reconciliation", "ingress", instance.Name)
-		return ctrl.Result{}, nil
 	}
 
 	dnsRecordSpec := cfv1.DNSRecordSpec{}
@@ -85,11 +74,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	if ipRef, ok := instance.Annotations["cloudflare-operator.io/ip-ref"]; ok {
 		dnsRecordSpec.IPRef.Name = ipRef
-	}
-
-	if dnsRecordSpec.Content == "" && dnsRecordSpec.IPRef.Name == "" {
-		log.Info("Ingress has no content or ip-ref annotation, skipping reconciliation", "ingress", instance.Name)
-		return ctrl.Result{}, nil
 	}
 
 	if proxied, ok := instance.Annotations["cloudflare-operator.io/proxied"]; ok {
