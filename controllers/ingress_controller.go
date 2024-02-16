@@ -30,6 +30,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -146,18 +147,13 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				Labels: map[string]string{
 					"app.kubernetes.io/managed-by": "cloudflare-operator",
 				},
-				OwnerReferences: []metav1.OwnerReference{
-					{
-						APIVersion:         "networking.k8s.io/v1",
-						Kind:               "Ingress",
-						Name:               instance.Name,
-						UID:                instance.UID,
-						Controller:         newTrue(),
-						BlockOwnerDeletion: newTrue(),
-					},
-				},
 			},
 			Spec: dnsRecordSpec,
+		}
+
+		if err := controllerutil.SetControllerReference(instance, dnsRecord, r.Scheme); err != nil {
+			log.Error(err, "Failed to set controller reference")
+			return ctrl.Result{}, err
 		}
 
 		log.Info("Creating DNSRecord", "name", dnsRecord.Name)
