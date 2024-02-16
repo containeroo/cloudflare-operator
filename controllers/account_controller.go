@@ -165,16 +165,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					Labels: map[string]string{
 						"app.kubernetes.io/managed-by": "cloudflare-operator",
 					},
-					OwnerReferences: []metav1.OwnerReference{
-						{
-							APIVersion:         "cloudflare-operator.io/v1",
-							Kind:               "Account",
-							Name:               instance.Name,
-							UID:                instance.UID,
-							Controller:         newTrue(),
-							BlockOwnerDeletion: newTrue(),
-						},
-					},
 				},
 				Spec: cfv1.ZoneSpec{
 					Name:     operatorManagedZone.Name,
@@ -182,6 +172,12 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 					Interval: instance.Spec.Interval,
 				},
 			}
+
+			if err := controllerutil.SetControllerReference(instance, z, r.Scheme); err != nil {
+				log.Error(err, "Failed to set controller reference")
+				return ctrl.Result{}, err
+			}
+
 			if err := r.Create(ctx, z); err != nil {
 				log.Error(err, "Failed to create Zone resource", "Zone.Name", operatorManagedZone.Name, "Zone.ID", operatorManagedZone.ID)
 				continue
