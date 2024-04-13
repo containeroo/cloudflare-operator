@@ -5,7 +5,7 @@ go 1.21
 require (
 	github.com/cloudflare/cloudflare-go v0.89.0
 	github.com/go-logr/logr v1.4.1
-	github.com/itchyny/gojq v0.12.14
+	github.com/itchyny/gojq v0.12.15
 	github.com/prometheus/client_golang v1.18.0
 	golang.org/x/net v0.21.0
 	k8s.io/api v0.29.2
@@ -55,7 +55,7 @@ require (
 	go.uber.org/zap v1.26.0 // indirect
 	golang.org/x/exp v0.0.0-20220722155223-a9213eeb770e // indirect
 	golang.org/x/oauth2 v0.12.0 // indirect
-	golang.org/x/sys v0.17.0 // indirect
+	golang.org/x/sys v0.18.0 // indirect
 	golang.org/x/term v0.17.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	golang.org/x/time v0.5.0 // indirect
