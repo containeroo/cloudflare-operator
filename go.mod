@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/cloudflare/cloudflare-go v0.93.0
-	github.com/go-logr/logr v1.4.1
+	github.com/go-logr/logr v1.4.2
 	github.com/itchyny/gojq v0.12.15
 	github.com/prometheus/client_golang v1.19.0
 	golang.org/x/net v0.25.0
