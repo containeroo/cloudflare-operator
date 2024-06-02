@@ -1,18 +1,25 @@
-
 # Prometheus Monitor Service (Metrics)
 apiVersion: monitoring.coreos.com/v1
-kind: PodMonitor
+kind: ServiceMonitor
 metadata:
-  name: cloudflare-operator
-  namespace: cloudflare-operator
   labels:
-    app.kubernetes.io/instance: cloudflare-operator
-    app.kubernetes.io/name: cloudflare-operator
+    control-plane: controller-manager
+    app.kubernetes.io/name: servicemonitor
+    app.kubernetes.io/instance: controller-manager-metrics-monitor
+    app.kubernetes.io/component: metrics
+    app.kubernetes.io/created-by: cloudflare-operator
+    app.kubernetes.io/part-of: cloudflare-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: controller-manager-metrics-monitor
+  namespace: system
 spec:
-  podMetricsEndpoints:
-    - interval: 60s
-      port: metrics
+  endpoints:
+    - path: /metrics
+      port: https
+      scheme: https
+      bearerTokenFile: /var/run/secrets/kubernetes.io/serviceaccount/token
+      tlsConfig:
+        insecureSkipVerify: true
   selector:
     matchLabels:
-      app.kubernetes.io/instance: cloudflare-operator
-      app.kubernetes.io/name: cloudflare-operator
+      control-plane: controller-manager

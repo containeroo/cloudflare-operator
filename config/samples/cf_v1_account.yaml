@@ -1,9 +1,0 @@
-apiVersion: cloudflare-operator.io/v1
-kind: Account
-metadata:
-  name: account-sample
-spec:
-  apiToken:
-    secretRef:
-      name: api-token-sample
-      namespace: default

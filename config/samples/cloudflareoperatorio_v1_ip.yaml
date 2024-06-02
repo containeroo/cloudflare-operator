@@ -1,6 +1,12 @@
 apiVersion: cloudflare-operator.io/v1
 kind: IP
 metadata:
+  labels:
+    app.kubernetes.io/name: ip
+    app.kubernetes.io/instance: ip-sample
+    app.kubernetes.io/part-of: cloudflare-operator
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/created-by: cloudflare-operator
   name: ip-sample
 spec:
   type: static # or dynamic

@@ -1,7 +1,7 @@
-## Append samples you want in your CSV to this file as resources ##
+## Append samples of your project ##
 resources:
-- cf_v1_dnsrecord.yaml
-- cf_v1_ip.yaml
-- cf_v1_account.yaml
-- cf_v1_zone.yaml
+- cloudflareoperatorio_v1_dnsrecord.yaml
+- cloudflareoperatorio_v1_ip.yaml
+- cloudflareoperatorio_v1_account.yaml
+- cloudflareoperatorio_v1_zone.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

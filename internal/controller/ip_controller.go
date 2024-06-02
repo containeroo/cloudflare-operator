@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controller
 
 import (
 	"bytes"
@@ -31,7 +31,9 @@ import (
 	"strings"
 	"time"
 
-	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
+	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	"github.com/containeroo/cloudflare-operator/internal/common"
+	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	"github.com/go-logr/logr"
 	"github.com/itchyny/gojq"
 	corev1 "k8s.io/api/core/v1"
@@ -61,7 +63,7 @@ type IPReconciler struct {
 func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1.IP{}
+	instance := &cloudflareoperatoriov1.IP{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("IP resource not found. Ignoring since object must be deleted.")
@@ -71,8 +73,8 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		return ctrl.Result{}, err
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
+	if !controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(instance, common.CloudflareOperatorFinalizer)
 		if err := r.Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update IP finalizer")
 			return ctrl.Result{}, err
@@ -80,18 +82,18 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	if instance.GetDeletionTimestamp() != nil {
-		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
-			ipFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Type)
+		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
+			metrics.IpFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Type)
 		}
 
-		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
+		controllerutil.RemoveFinalizer(instance, common.CloudflareOperatorFinalizer)
 		if err := r.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 
-	ipFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(0)
+	metrics.IpFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(0)
 
 	if instance.Spec.Type == "static" {
 		if instance.Spec.Address == "" {
@@ -166,7 +168,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	dnsRecords := &cfv1.DNSRecordList{}
+	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords); err != nil {
 		log.Error(err, "Failed to list DNSRecords")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
@@ -206,12 +208,12 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 // SetupWithManager sets up the controller with the Manager.
 func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1.IP{}).
+		For(&cloudflareoperatoriov1.IP{}).
 		Complete(r)
 }
 
 // getIPSource returns the IP gathered from the IPSource
-func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1.IPSpecIPSources, log logr.Logger) (string, error) {
+func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperatoriov1.IPSpecIPSources, log logr.Logger) (string, error) {
 	if _, err := url.Parse(source.URL); err != nil {
 		return "", fmt.Errorf("failed to parse URL %s: %s", source.URL, err)
 	}
@@ -311,8 +313,8 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cfv1.IPSpecIPSour
 }
 
 // markFailed marks the reconciled object as failed
-func (r *IPReconciler) markFailed(instance *cfv1.IP, ctx context.Context, message string) error {
-	ipFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(1)
+func (r *IPReconciler) markFailed(instance *cloudflareoperatoriov1.IP, ctx context.Context, message string) error {
+	metrics.IpFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "False",

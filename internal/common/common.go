@@ -14,18 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package common
 
-const cloudflareOperatorFinalizer = "cloudflare-operator.io/finalizer"
+const CloudflareOperatorFinalizer = "cloudflare-operator.io/finalizer"
 
-// newTrue creates a pointer to a true bool
-func newTrue() *bool {
+// NewTrue creates a pointer to a true bool
+func NewTrue() *bool {
 	b := true
 	return &b
 }
 
-// newFalse creates a pointer to a false bool
-func newFalse() *bool {
+// NewFalse creates a pointer to a false bool
+func NewFalse() *bool {
 	b := false
 	return &b
 }
