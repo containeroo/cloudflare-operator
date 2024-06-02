@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controller
 
 import (
 	"context"
@@ -32,7 +32,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
-	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
+	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	"github.com/containeroo/cloudflare-operator/internal/common"
+	"github.com/containeroo/cloudflare-operator/internal/metrics"
 )
 
 // ZoneReconciler reconciles a Zone object
@@ -51,7 +53,7 @@ type ZoneReconciler struct {
 func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1.Zone{}
+	instance := &cloudflareoperatoriov1.Zone{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Zone resource not found. Ignoring since object must be deleted.")
@@ -61,8 +63,8 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{}, err
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
+	if !controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(instance, common.CloudflareOperatorFinalizer)
 		if err := r.Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update Zone finalizer")
 			return ctrl.Result{}, err
@@ -70,18 +72,18 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	if instance.GetDeletionTimestamp() != nil {
-		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
-			zoneFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Name)
+		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
+			metrics.ZoneFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Name)
 		}
 
-		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
+		controllerutil.RemoveFinalizer(instance, common.CloudflareOperatorFinalizer)
 		if err := r.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 
-	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(0)
+	metrics.ZoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(0)
 
 	if r.Cf.APIToken == "" {
 		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
@@ -106,7 +108,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	dnsRecords := &cfv1.DNSRecordList{}
+	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords); err != nil {
 		log.Error(err, "Failed to list DNSRecord resources")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
@@ -159,13 +161,13 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 // SetupWithManager sets up the controller with the Manager.
 func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1.Zone{}).
+		For(&cloudflareoperatoriov1.Zone{}).
 		Complete(r)
 }
 
 // markFailed marks the reconciled object as failed
-func (r *ZoneReconciler) markFailed(instance *cfv1.Zone, ctx context.Context, message string) error {
-	zoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(1)
+func (r *ZoneReconciler) markFailed(instance *cloudflareoperatoriov1.Zone, ctx context.Context, message string) error {
+	metrics.ZoneFailureCounter.WithLabelValues(instance.Name, instance.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "False",

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controller
 
 import (
 	"context"
@@ -23,7 +23,8 @@ import (
 	"strings"
 	"time"
 
-	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
+	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	"github.com/containeroo/cloudflare-operator/internal/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -61,13 +62,13 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	dnsRecords := &cfv1.DNSRecordList{}
+	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords, client.InNamespace(instance.Namespace), client.MatchingFields{"metadata.ownerReferences.uid": string(instance.UID)}); err != nil {
 		log.Error(err, "Failed to fetch DNSRecord")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
 	}
 
-	dnsRecordSpec := cfv1.DNSRecordSpec{}
+	dnsRecordSpec := cloudflareoperatoriov1.DNSRecordSpec{}
 
 	if content, ok := instance.Annotations["cloudflare-operator.io/content"]; ok {
 		dnsRecordSpec.Content = content
@@ -80,16 +81,16 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if proxied, ok := instance.Annotations["cloudflare-operator.io/proxied"]; ok {
 		switch proxied {
 		case "true":
-			dnsRecordSpec.Proxied = newTrue()
+			dnsRecordSpec.Proxied = common.NewTrue()
 		case "false":
-			dnsRecordSpec.Proxied = newFalse()
+			dnsRecordSpec.Proxied = common.NewFalse()
 		default:
-			dnsRecordSpec.Proxied = newTrue()
+			dnsRecordSpec.Proxied = common.NewTrue()
 			log.Error(nil, "Failed to parse proxied annotation, defaulting to true", "proxied", proxied, "ingress", instance.Name)
 		}
 	}
 	if dnsRecordSpec.Proxied == nil {
-		dnsRecordSpec.Proxied = newTrue()
+		dnsRecordSpec.Proxied = common.NewTrue()
 	}
 
 	if ttl, ok := instance.Annotations["cloudflare-operator.io/ttl"]; ok {
@@ -123,7 +124,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		dnsRecordSpec.Interval.Duration = time.Minute * 5
 	}
 
-	dnsRecordMap := make(map[string]cfv1.DNSRecord)
+	dnsRecordMap := make(map[string]cloudflareoperatoriov1.DNSRecord)
 	for _, dnsRecord := range dnsRecords.Items {
 		dnsRecordMap[dnsRecord.Spec.Name] = dnsRecord
 	}
@@ -140,7 +141,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 		dnsRecordSpec.Name = rule.Host
 
-		dnsRecord := &cfv1.DNSRecord{
+		dnsRecord := &cloudflareoperatoriov1.DNSRecord{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      strings.ReplaceAll(rule.Host, ".", "-"),
 				Namespace: instance.Namespace,
@@ -197,7 +198,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &cfv1.DNSRecord{}, "metadata.ownerReferences.uid", func(rawObj client.Object) []string {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &cloudflareoperatoriov1.DNSRecord{}, "metadata.ownerReferences.uid", func(rawObj client.Object) []string {
 		ownerReferences := rawObj.GetOwnerReferences()
 		var ownerUIDs []string
 		for _, ownerReference := range ownerReferences {

@@ -14,7 +14,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package controllers
+package controller
 
 import (
 	"context"
@@ -35,7 +35,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
-	cfv1 "github.com/containeroo/cloudflare-operator/api/v1"
+	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	"github.com/containeroo/cloudflare-operator/internal/common"
+	"github.com/containeroo/cloudflare-operator/internal/metrics"
 )
 
 // AccountReconciler reconciles an Account object
@@ -55,7 +57,7 @@ type AccountReconciler struct {
 func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrllog.FromContext(ctx)
 
-	instance := &cfv1.Account{}
+	instance := &cloudflareoperatoriov1.Account{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
 		if errors.IsNotFound(err) {
 			log.Info("Account resource not found. Ignoring since object must be deleted.")
@@ -65,8 +67,8 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, err
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(instance, cloudflareOperatorFinalizer)
+	if !controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(instance, common.CloudflareOperatorFinalizer)
 		if err := r.Update(ctx, instance); err != nil {
 			log.Error(err, "Failed to update Account finalizer")
 			return ctrl.Result{}, err
@@ -74,18 +76,18 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	if instance.GetDeletionTimestamp() != nil {
-		if controllerutil.ContainsFinalizer(instance, cloudflareOperatorFinalizer) {
-			accountFailureCounter.DeleteLabelValues(instance.Name)
+		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
+			metrics.AccountFailureCounter.DeleteLabelValues(instance.Name)
 		}
 
-		controllerutil.RemoveFinalizer(instance, cloudflareOperatorFinalizer)
+		controllerutil.RemoveFinalizer(instance, common.CloudflareOperatorFinalizer)
 		if err := r.Update(ctx, instance); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 
-	accountFailureCounter.WithLabelValues(instance.Name).Set(0)
+	metrics.AccountFailureCounter.WithLabelValues(instance.Name).Set(0)
 
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: instance.Spec.ApiToken.SecretRef.Namespace, Name: instance.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
@@ -133,15 +135,15 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	operatorManagedZones := []cfv1.AccountStatusZones{}
+	operatorManagedZones := []cloudflareoperatoriov1.AccountStatusZones{}
 	for _, cfZone := range cfZones {
 		_, found := userDefinedManagedZoneMap[strings.ToLower(cfZone.Name)]
 		if len(userDefinedManagedZoneMap) == 0 || found {
-			operatorManagedZones = append(operatorManagedZones, cfv1.AccountStatusZones{Name: cfZone.Name, ID: cfZone.ID})
+			operatorManagedZones = append(operatorManagedZones, cloudflareoperatoriov1.AccountStatusZones{Name: cfZone.Name, ID: cfZone.ID})
 		}
 	}
 
-	zones := &cfv1.ZoneList{}
+	zones := &cloudflareoperatoriov1.ZoneList{}
 	if err := r.List(ctx, zones); err != nil {
 		if err := r.markFailed(instance, ctx, "Failed to list zones"); err != nil {
 			log.Error(err, "Failed to update Account status")
@@ -159,14 +161,14 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	for _, operatorManagedZone := range operatorManagedZones {
 		operatorManagedZoneMap[operatorManagedZone.ID] = struct{}{}
 		if _, found := zoneMap[operatorManagedZone.ID]; !found {
-			z := &cfv1.Zone{
+			z := &cloudflareoperatoriov1.Zone{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: strings.ReplaceAll(operatorManagedZone.Name, ".", "-"),
 					Labels: map[string]string{
 						"app.kubernetes.io/managed-by": "cloudflare-operator",
 					},
 				},
-				Spec: cfv1.ZoneSpec{
+				Spec: cloudflareoperatoriov1.ZoneSpec{
 					Name:     operatorManagedZone.Name,
 					ID:       operatorManagedZone.ID,
 					Interval: instance.Spec.Interval,
@@ -222,13 +224,13 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 // SetupWithManager sets up the controller with the Manager.
 func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cfv1.Account{}).
+		For(&cloudflareoperatoriov1.Account{}).
 		Complete(r)
 }
 
 // markFailed marks the reconciled object as failed
-func (r *AccountReconciler) markFailed(instance *cfv1.Account, ctx context.Context, message string) error {
-	accountFailureCounter.WithLabelValues(instance.Name).Set(1)
+func (r *AccountReconciler) markFailed(instance *cloudflareoperatoriov1.Account, ctx context.Context, message string) error {
+	metrics.AccountFailureCounter.WithLabelValues(instance.Name).Set(1)
 	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "False",
