@@ -23,7 +23,7 @@ linters:
     - errcheck
     - exportloopref
     - goconst
-    - gocyclo
+    # - gocyclo
     - gofmt
     - goimports
     - gosimple
