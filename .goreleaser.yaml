@@ -21,9 +21,9 @@ dockers:
     extra_files:
       - go.mod
       - go.sum
-      - main.go
+      - cmd/main.go
       - api
-      - controllers
+      - internal/controller
     build_flag_templates:
       - --pull
       - --platform=linux/amd64
@@ -43,9 +43,9 @@ dockers:
     extra_files:
       - go.mod
       - go.sum
-      - main.go
+      - cmd/main.go
       - api
-      - controllers
+      - internal/controller
     goarch: arm64
     build_flag_templates:
       - --pull
