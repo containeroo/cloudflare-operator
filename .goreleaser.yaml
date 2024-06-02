@@ -24,7 +24,7 @@ dockers:
       - go.sum
       - cmd/main.go
       - api
-      - internal/controller
+      - internal
     build_flag_templates:
       - --pull
       - --platform=linux/amd64
@@ -46,7 +46,7 @@ dockers:
       - go.sum
       - cmd/main.go
       - api
-      - internal/controller
+      - internal
     goarch: arm64
     build_flag_templates:
       - --pull
