@@ -26,14 +26,12 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/containeroo/cloudflare-operator/internal/common"
@@ -47,6 +45,13 @@ type AccountReconciler struct {
 	Cf     *cloudflare.API
 }
 
+// SetupWithManager sets up the controller with the Manager.
+func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&cloudflareoperatoriov1.Account{}).
+		Complete(r)
+}
+
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=accounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=accounts/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=accounts/finalizers,verbs=update
@@ -55,16 +60,11 @@ type AccountReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrllog.FromContext(ctx)
+	log := ctrl.LoggerFrom(ctx)
 
 	instance := &cloudflareoperatoriov1.Account{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Account resource not found. Ignoring since object must be deleted.")
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "Failed to get Account resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if !controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
@@ -75,7 +75,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		}
 	}
 
-	if instance.GetDeletionTimestamp() != nil {
+	if !instance.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
 			metrics.AccountFailureCounter.DeleteLabelValues(instance.Name)
 		}
@@ -219,13 +219,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.Account{}).
-		Complete(r)
 }
 
 // markFailed marks the reconciled object as failed
