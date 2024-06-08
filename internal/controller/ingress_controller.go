@@ -26,13 +26,11 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/containeroo/cloudflare-operator/internal/common"
 	networkingv1 "k8s.io/api/networking/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // IngressReconciler reconciles an Ingress object
@@ -41,22 +39,35 @@ type IngressReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+// SetupWithManager sets up the controller with the Manager.
+func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &cloudflareoperatoriov1.DNSRecord{}, "metadata.ownerReferences.uid", func(rawObj client.Object) []string {
+		ownerReferences := rawObj.GetOwnerReferences()
+		var ownerUIDs []string
+		for _, ownerReference := range ownerReferences {
+			ownerUIDs = append(ownerUIDs, string(ownerReference.UID))
+		}
+
+		return ownerUIDs
+	}); err != nil {
+		return err
+	}
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&networkingv1.Ingress{}).
+		Complete(r)
+}
+
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
 // +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrllog.FromContext(ctx)
+	log := ctrl.LoggerFrom(ctx)
 
 	instance := &networkingv1.Ingress{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Ingress resource not found. Ignoring since object must be deleted.")
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "Failed to get Ingress resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if instance.Annotations["cloudflare-operator.io/content"] == "" && instance.Annotations["cloudflare-operator.io/ip-ref"] == "" {
@@ -195,22 +206,4 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	return ctrl.Result{}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &cloudflareoperatoriov1.DNSRecord{}, "metadata.ownerReferences.uid", func(rawObj client.Object) []string {
-		ownerReferences := rawObj.GetOwnerReferences()
-		var ownerUIDs []string
-		for _, ownerReference := range ownerReferences {
-			ownerUIDs = append(ownerUIDs, string(ownerReference.UID))
-		}
-
-		return ownerUIDs
-	}); err != nil {
-		return err
-	}
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&networkingv1.Ingress{}).
-		Complete(r)
 }

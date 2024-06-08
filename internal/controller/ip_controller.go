@@ -37,20 +37,25 @@ import (
 	"github.com/go-logr/logr"
 	"github.com/itchyny/gojq"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // IPReconciler reconciles a IP object
 type IPReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+}
+
+// SetupWithManager sets up the controller with the Manager.
+func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&cloudflareoperatoriov1.IP{}).
+		Complete(r)
 }
 
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=ips,verbs=get;list;watch;create;update;patch;delete
@@ -61,16 +66,11 @@ type IPReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrllog.FromContext(ctx)
+	log := ctrl.LoggerFrom(ctx)
 
 	instance := &cloudflareoperatoriov1.IP{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("IP resource not found. Ignoring since object must be deleted.")
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "Failed to get IP resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if !controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
@@ -81,7 +81,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	if instance.GetDeletionTimestamp() != nil {
+	if !instance.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
 			metrics.IpFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Type)
 		}
@@ -203,13 +203,6 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
 	}
 	return ctrl.Result{}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.IP{}).
-		Complete(r)
 }
 
 // getIPSource returns the IP gathered from the IPSource

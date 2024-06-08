@@ -33,7 +33,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
@@ -48,6 +47,13 @@ type DNSRecordReconciler struct {
 	Cf     *cloudflare.API
 }
 
+// SetupWithManager sets up the controller with the Manager.
+func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&cloudflareoperatoriov1.DNSRecord{}).
+		Complete(r)
+}
+
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=dnsrecords/finalizers,verbs=update
@@ -55,16 +61,11 @@ type DNSRecordReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrllog.FromContext(ctx)
+	log := ctrl.LoggerFrom(ctx)
 
 	instance := &cloudflareoperatoriov1.DNSRecord{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("DNSRecord resource not found. Ignoring since object must be deleted.")
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "Failed to get DNSRecord resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if r.Cf.APIToken == "" {
@@ -121,7 +122,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}
 
-	if instance.GetDeletionTimestamp() != nil {
+	if !instance.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
 			if err := r.finalizeDNSRecord(ctx, zone.Spec.ID, log, instance); err != nil && err.Error() != "Record does not exist. (81044)" {
 				if err := r.markFailed(instance, ctx, err.Error()); err != nil {
@@ -258,13 +259,6 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.DNSRecord{}).
-		Complete(r)
 }
 
 // finalizeDNSRecord deletes the DNS record from cloudflare

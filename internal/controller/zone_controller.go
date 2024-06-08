@@ -22,7 +22,6 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -30,7 +29,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/containeroo/cloudflare-operator/internal/common"
@@ -44,6 +42,13 @@ type ZoneReconciler struct {
 	Cf     *cloudflare.API
 }
 
+// SetupWithManager sets up the controller with the Manager.
+func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&cloudflareoperatoriov1.Zone{}).
+		Complete(r)
+}
+
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=zones,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=zones/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=zones/finalizers,verbs=update
@@ -51,16 +56,11 @@ type ZoneReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrllog.FromContext(ctx)
+	log := ctrl.LoggerFrom(ctx)
 
 	instance := &cloudflareoperatoriov1.Zone{}
 	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("Zone resource not found. Ignoring since object must be deleted.")
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "Failed to get Zone resource")
-		return ctrl.Result{}, err
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if !controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
@@ -71,7 +71,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	if instance.GetDeletionTimestamp() != nil {
+	if !instance.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
 			metrics.ZoneFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Name)
 		}
@@ -156,13 +156,6 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.Zone{}).
-		Complete(r)
 }
 
 // markFailed marks the reconciled object as failed
