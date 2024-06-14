@@ -202,6 +202,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	if ip.Spec.Type == "dynamic" {
 		return ctrl.Result{RequeueAfter: ip.Spec.Interval.Duration}, nil
 	}
+
 	return ctrl.Result{}, nil
 }
 
@@ -318,5 +319,6 @@ func (r *IPReconciler) markFailed(ip *cloudflareoperatoriov1.IP, ctx context.Con
 	if err := r.Status().Update(ctx, ip); err != nil {
 		return err
 	}
+
 	return nil
 }

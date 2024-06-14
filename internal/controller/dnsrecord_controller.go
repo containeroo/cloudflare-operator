@@ -267,6 +267,7 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 		log.Error(err, "Failed to delete DNS record in Cloudflare. Record may still exist in Cloudflare")
 		return err
 	}
+
 	return nil
 }
 
@@ -283,6 +284,7 @@ func (r *DNSRecordReconciler) markFailed(dnsrecord *cloudflareoperatoriov1.DNSRe
 	if err := r.Status().Update(ctx, dnsrecord); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -294,6 +296,7 @@ func comparePriority(a, b *uint16) bool {
 	if a == nil || b == nil {
 		return false
 	}
+
 	return *a == *b
 }
 
@@ -309,6 +312,7 @@ func compareData(a interface{}, b *apiextensionsv1.JSON) bool {
 	if err := json.Unmarshal(b.Raw, &bb); err != nil {
 		return false
 	}
+
 	return reflect.DeepEqual(a, bb)
 }
 
@@ -339,5 +343,6 @@ func compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existi
 	if !compareData(existingRecord.Data, dnsRecordSpec.Data) {
 		isEqual = false
 	}
+
 	return isEqual
 }
