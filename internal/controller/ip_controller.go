@@ -68,43 +68,43 @@ func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	instance := &cloudflareoperatoriov1.IP{}
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
+	ip := &cloudflareoperatoriov1.IP{}
+	if err := r.Get(ctx, req.NamespacedName, ip); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(instance, common.CloudflareOperatorFinalizer)
-		if err := r.Update(ctx, instance); err != nil {
+	if !controllerutil.ContainsFinalizer(ip, common.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(ip, common.CloudflareOperatorFinalizer)
+		if err := r.Update(ctx, ip); err != nil {
 			log.Error(err, "Failed to update IP finalizer")
 			return ctrl.Result{}, err
 		}
 	}
 
-	if !instance.DeletionTimestamp.IsZero() {
-		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
-			metrics.IpFailureCounter.DeleteLabelValues(instance.Name, instance.Spec.Type)
+	if !ip.DeletionTimestamp.IsZero() {
+		if controllerutil.ContainsFinalizer(ip, common.CloudflareOperatorFinalizer) {
+			metrics.IpFailureCounter.DeleteLabelValues(ip.Name, ip.Spec.Type)
 		}
 
-		controllerutil.RemoveFinalizer(instance, common.CloudflareOperatorFinalizer)
-		if err := r.Update(ctx, instance); err != nil {
+		controllerutil.RemoveFinalizer(ip, common.CloudflareOperatorFinalizer)
+		if err := r.Update(ctx, ip); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 
-	metrics.IpFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(0)
+	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(0)
 
-	if instance.Spec.Type == "static" {
-		if instance.Spec.Address == "" {
-			if err := r.markFailed(instance, ctx, "Address is required for static IPs"); err != nil {
+	if ip.Spec.Type == "static" {
+		if ip.Spec.Address == "" {
+			if err := r.markFailed(ip, ctx, "Address is required for static IPs"); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
 		}
-		if net.ParseIP(instance.Spec.Address) == nil {
-			if err := r.markFailed(instance, ctx, "Address is not a valid IP address"); err != nil {
+		if net.ParseIP(ip.Spec.Address) == nil {
+			if err := r.markFailed(ip, ctx, "Address is not a valid IP address"); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
@@ -112,43 +112,43 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	if instance.Spec.Type == "dynamic" {
-		if instance.Spec.Interval == nil {
-			instance.Spec.Interval = &metav1.Duration{Duration: time.Minute * 5}
-			if err := r.Update(ctx, instance); err != nil {
+	if ip.Spec.Type == "dynamic" {
+		if ip.Spec.Interval == nil {
+			ip.Spec.Interval = &metav1.Duration{Duration: time.Minute * 5}
+			if err := r.Update(ctx, ip); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
 		}
 
-		if len(instance.Spec.IPSources) == 0 {
-			if err := r.markFailed(instance, ctx, "IPSources is required for dynamic IPs"); err != nil {
+		if len(ip.Spec.IPSources) == 0 {
+			if err := r.markFailed(ip, ctx, "IPSources is required for dynamic IPs"); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
 		}
 
-		if len(instance.Spec.IPSources) > 1 {
-			rand.Shuffle(len(instance.Spec.IPSources), func(i, j int) {
-				instance.Spec.IPSources[i], instance.Spec.IPSources[j] = instance.Spec.IPSources[j], instance.Spec.IPSources[i]
+		if len(ip.Spec.IPSources) > 1 {
+			rand.Shuffle(len(ip.Spec.IPSources), func(i, j int) {
+				ip.Spec.IPSources[i], ip.Spec.IPSources[j] = ip.Spec.IPSources[j], ip.Spec.IPSources[i]
 			})
 		}
 
 		var ipSourceError string
-		for _, source := range instance.Spec.IPSources {
+		for _, source := range ip.Spec.IPSources {
 			response, err := r.getIPSource(ctx, source, log)
 			if err != nil {
 				ipSourceError = err.Error()
 				continue
 			}
-			instance.Spec.Address = response
+			ip.Spec.Address = response
 			ipSourceError = ""
 			break
 		}
 
 		if ipSourceError != "" {
-			if err := r.markFailed(instance, ctx, ipSourceError); err != nil {
+			if err := r.markFailed(ip, ctx, ipSourceError); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
@@ -156,13 +156,13 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	if instance.Spec.Address != instance.Status.LastObservedIP {
-		if err := r.Update(ctx, instance); err != nil {
+	if ip.Spec.Address != ip.Status.LastObservedIP {
+		if err := r.Update(ctx, ip); err != nil {
 			log.Error(err, "Failed to update IP resource")
 			return ctrl.Result{}, err
 		}
-		instance.Status.LastObservedIP = instance.Spec.Address
-		if err := r.Status().Update(ctx, instance); err != nil {
+		ip.Status.LastObservedIP = ip.Spec.Address
+		if err := r.Status().Update(ctx, ip); err != nil {
 			log.Error(err, "Failed to update IP resource")
 			return ctrl.Result{}, err
 		}
@@ -175,32 +175,32 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	}
 
 	for _, dnsRecord := range dnsRecords.Items {
-		if dnsRecord.Spec.IPRef.Name != instance.Name {
+		if dnsRecord.Spec.IPRef.Name != ip.Name {
 			continue
 		}
-		if dnsRecord.Spec.Content == instance.Spec.Address {
+		if dnsRecord.Spec.Content == ip.Spec.Address {
 			continue
 		}
-		dnsRecord.Spec.Content = instance.Spec.Address
+		dnsRecord.Spec.Content = ip.Spec.Address
 		if err := r.Update(ctx, &dnsRecord); err != nil {
 			log.Error(err, "Failed to update DNSRecord")
 		}
 	}
 
-	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "True",
 		Reason:             "Ready",
 		Message:            "IP is ready",
-		ObservedGeneration: instance.Generation,
+		ObservedGeneration: ip.Generation,
 	})
-	if err := r.Status().Update(ctx, instance); err != nil {
+	if err := r.Status().Update(ctx, ip); err != nil {
 		log.Error(err, "Failed to update IP resource")
 		return ctrl.Result{}, err
 	}
 
-	if instance.Spec.Type == "dynamic" {
-		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
+	if ip.Spec.Type == "dynamic" {
+		return ctrl.Result{RequeueAfter: ip.Spec.Interval.Duration}, nil
 	}
 	return ctrl.Result{}, nil
 }
@@ -306,16 +306,16 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 }
 
 // markFailed marks the reconciled object as failed
-func (r *IPReconciler) markFailed(instance *cloudflareoperatoriov1.IP, ctx context.Context, message string) error {
-	metrics.IpFailureCounter.WithLabelValues(instance.Name, instance.Spec.Type).Set(1)
-	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+func (r *IPReconciler) markFailed(ip *cloudflareoperatoriov1.IP, ctx context.Context, message string) error {
+	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(1)
+	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "False",
 		Reason:             "Failed",
 		Message:            message,
-		ObservedGeneration: instance.Generation,
+		ObservedGeneration: ip.Generation,
 	})
-	if err := r.Status().Update(ctx, instance); err != nil {
+	if err := r.Status().Update(ctx, ip); err != nil {
 		return err
 	}
 	return nil
