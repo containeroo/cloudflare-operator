@@ -40,18 +40,21 @@ type IngressReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(context.Background(), &cloudflareoperatoriov1.DNSRecord{}, "metadata.ownerReferences.uid", func(rawObj client.Object) []string {
-		ownerReferences := rawObj.GetOwnerReferences()
-		var ownerUIDs []string
-		for _, ownerReference := range ownerReferences {
-			ownerUIDs = append(ownerUIDs, string(ownerReference.UID))
-		}
+func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.DNSRecord{}, "metadata.ownerReferences.uid",
+		func(o client.Object) []string {
+			ownerReferences := o.GetOwnerReferences()
+			var ownerReferencesUIDs []string
+			for _, ownerReference := range ownerReferences {
+				ownerReferencesUIDs = append(ownerReferencesUIDs, string(ownerReference.UID))
+			}
 
-		return ownerUIDs
-	}); err != nil {
+			return ownerReferencesUIDs
+		},
+	); err != nil {
 		return err
 	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
 		Complete(r)
