@@ -234,5 +234,6 @@ func (r *AccountReconciler) markFailed(account *cloudflareoperatoriov1.Account, 
 	if err := r.Status().Update(ctx, account); err != nil {
 		return err
 	}
+
 	return nil
 }

@@ -171,5 +171,6 @@ func (r *ZoneReconciler) markFailed(zone *cloudflareoperatoriov1.Zone, ctx conte
 	if err := r.Status().Update(ctx, zone); err != nil {
 		return err
 	}
+
 	return nil
 }
