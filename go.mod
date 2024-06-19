@@ -3,7 +3,7 @@ module github.com/containeroo/cloudflare-operator
 go 1.22.2
 
 require (
-	github.com/cloudflare/cloudflare-go v0.97.0
+	github.com/cloudflare/cloudflare-go v0.98.0
 	github.com/go-logr/logr v1.4.2
 	github.com/itchyny/gojq v0.12.16
 	github.com/onsi/ginkgo/v2 v2.19.0
