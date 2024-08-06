@@ -124,6 +124,7 @@ func main() {
 	}
 
 	cf := cloudflare.API{}
+	ctx := ctrl.SetupSignalHandler()
 
 	if err = (&controller.DNSRecordReconciler{
 		Client: mgr.GetClient(),
@@ -136,7 +137,7 @@ func main() {
 	if err = (&controller.IngressReconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
+	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
 		os.Exit(1)
 	}
@@ -175,7 +176,7 @@ func main() {
 	}
 
 	setupLog.Info("starting manager")
-	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
+	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
 	}

@@ -33,7 +33,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	ctrllog "sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
@@ -48,6 +47,13 @@ type DNSRecordReconciler struct {
 	Cf     *cloudflare.API
 }
 
+// SetupWithManager sets up the controller with the Manager.
+func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&cloudflareoperatoriov1.DNSRecord{}).
+		Complete(r)
+}
+
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=dnsrecords,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=dnsrecords/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=cloudflare-operator.io,resources=dnsrecords/finalizers,verbs=update
@@ -55,40 +61,35 @@ type DNSRecordReconciler struct {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrllog.FromContext(ctx)
+	log := ctrl.LoggerFrom(ctx)
 
-	instance := &cloudflareoperatoriov1.DNSRecord{}
-	if err := r.Get(ctx, req.NamespacedName, instance); err != nil {
-		if errors.IsNotFound(err) {
-			log.Info("DNSRecord resource not found. Ignoring since object must be deleted.")
-			return ctrl.Result{}, nil
-		}
-		log.Error(err, "Failed to get DNSRecord resource")
-		return ctrl.Result{}, err
+	dnsrecord := &cloudflareoperatoriov1.DNSRecord{}
+	if err := r.Get(ctx, req.NamespacedName, dnsrecord); err != nil {
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
 	if r.Cf.APIToken == "" {
-		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             "False",
 			Reason:             "NotReady",
 			Message:            "Cloudflare account is not yet ready",
-			ObservedGeneration: instance.Generation,
+			ObservedGeneration: dnsrecord.Generation,
 		})
-		if err := r.Status().Update(ctx, instance); err != nil {
+		if err := r.Status().Update(ctx, dnsrecord); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
-	zoneName, _ := publicsuffix.EffectiveTLDPlusOne(instance.Spec.Name)
+	zoneName, _ := publicsuffix.EffectiveTLDPlusOne(dnsrecord.Spec.Name)
 	zoneName = strings.ReplaceAll(zoneName, ".", "-")
 
 	zone := &cloudflareoperatoriov1.Zone{}
 	if err := r.Get(ctx, client.ObjectKey{Name: zoneName}, zone); err != nil {
 		if errors.IsNotFound(err) {
-			if err := r.markFailed(instance, ctx, "Zone not found"); err != nil {
+			if err := r.markFailed(dnsrecord, ctx, "Zone not found"); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
@@ -99,80 +100,80 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if condition := apimeta.FindStatusCondition(zone.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
-		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             "False",
 			Reason:             "NotReady",
 			Message:            "Zone is not yet ready",
-			ObservedGeneration: instance.Generation,
+			ObservedGeneration: dnsrecord.Generation,
 		})
-		if err := r.Status().Update(ctx, instance); err != nil {
+		if err := r.Status().Update(ctx, dnsrecord); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(instance, common.CloudflareOperatorFinalizer)
-		if err := r.Update(ctx, instance); err != nil {
+	if !controllerutil.ContainsFinalizer(dnsrecord, common.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(dnsrecord, common.CloudflareOperatorFinalizer)
+		if err := r.Update(ctx, dnsrecord); err != nil {
 			log.Error(err, "Failed to update DNSRecord finalizer")
 			return ctrl.Result{}, err
 		}
 	}
 
-	if instance.GetDeletionTimestamp() != nil {
-		if controllerutil.ContainsFinalizer(instance, common.CloudflareOperatorFinalizer) {
-			if err := r.finalizeDNSRecord(ctx, zone.Spec.ID, log, instance); err != nil && err.Error() != "Record does not exist. (81044)" {
-				if err := r.markFailed(instance, ctx, err.Error()); err != nil {
+	if !dnsrecord.DeletionTimestamp.IsZero() {
+		if controllerutil.ContainsFinalizer(dnsrecord, common.CloudflareOperatorFinalizer) {
+			if err := r.finalizeDNSRecord(ctx, zone.Spec.ID, log, dnsrecord); err != nil && err.Error() != "Record does not exist. (81044)" {
+				if err := r.markFailed(dnsrecord, ctx, err.Error()); err != nil {
 					log.Error(err, "Failed to update DNSRecord status")
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{RequeueAfter: time.Second * 30}, err
 			}
-			metrics.DnsRecordFailureCounter.DeleteLabelValues(instance.Namespace, instance.Name, instance.Spec.Name)
+			metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)
 		}
 
-		controllerutil.RemoveFinalizer(instance, common.CloudflareOperatorFinalizer)
-		if err := r.Update(ctx, instance); err != nil {
+		controllerutil.RemoveFinalizer(dnsrecord, common.CloudflareOperatorFinalizer)
+		if err := r.Update(ctx, dnsrecord); err != nil {
 			return ctrl.Result{}, err
 		}
 		return ctrl.Result{}, nil
 	}
 
-	metrics.DnsRecordFailureCounter.WithLabelValues(instance.Namespace, instance.Name, instance.Spec.Name).Set(0)
+	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(0)
 
 	var existingRecord cloudflare.DNSRecord
 
-	if instance.Status.RecordID != "" {
+	if dnsrecord.Status.RecordID != "" {
 		var err error
-		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), instance.Status.RecordID)
+		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), dnsrecord.Status.RecordID)
 		if err != nil && err.Error() != "Record does not exist. (81044)" {
 			log.Error(err, "Failed to get DNS record from Cloudflare")
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
 	}
 
-	if (instance.Spec.Type == "A" || instance.Spec.Type == "AAAA") && instance.Spec.IPRef.Name != "" {
+	if (dnsrecord.Spec.Type == "A" || dnsrecord.Spec.Type == "AAAA") && dnsrecord.Spec.IPRef.Name != "" {
 		ip := &cloudflareoperatoriov1.IP{}
-		if err := r.Get(ctx, client.ObjectKey{Name: instance.Spec.IPRef.Name}, ip); err != nil {
-			if err := r.markFailed(instance, ctx, "IP object not found"); err != nil {
+		if err := r.Get(ctx, client.ObjectKey{Name: dnsrecord.Spec.IPRef.Name}, ip); err != nil {
+			if err := r.markFailed(dnsrecord, ctx, "IP object not found"); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
-		if ip.Spec.Address != instance.Spec.Content {
-			instance.Spec.Content = ip.Spec.Address
-			if err := r.Update(ctx, instance); err != nil {
+		if ip.Spec.Address != dnsrecord.Spec.Content {
+			dnsrecord.Spec.Content = ip.Spec.Address
+			if err := r.Update(ctx, dnsrecord); err != nil {
 				log.Error(err, "Failed to update DNSRecord resource")
 				return ctrl.Result{}, err
 			}
 		}
 	}
 
-	if *instance.Spec.Proxied && instance.Spec.TTL != 1 {
-		if err := r.markFailed(instance, ctx, "TTL must be 1 when proxied"); err != nil {
+	if *dnsrecord.Spec.Proxied && dnsrecord.Spec.TTL != 1 {
+		if err := r.markFailed(dnsrecord, ctx, "TTL must be 1 when proxied"); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
@@ -181,90 +182,83 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if existingRecord.ID == "" {
 		newDNSRecord, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.CreateDNSRecordParams{
-			Name:     instance.Spec.Name,
-			Type:     instance.Spec.Type,
-			Content:  instance.Spec.Content,
-			TTL:      instance.Spec.TTL,
-			Proxied:  instance.Spec.Proxied,
-			Priority: instance.Spec.Priority,
-			Data:     instance.Spec.Data,
+			Name:     dnsrecord.Spec.Name,
+			Type:     dnsrecord.Spec.Type,
+			Content:  dnsrecord.Spec.Content,
+			TTL:      dnsrecord.Spec.TTL,
+			Proxied:  dnsrecord.Spec.Proxied,
+			Priority: dnsrecord.Spec.Priority,
+			Data:     dnsrecord.Spec.Data,
 		})
 		if err != nil {
-			if err := r.markFailed(instance, ctx, err.Error()); err != nil {
+			if err := r.markFailed(dnsrecord, ctx, err.Error()); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
-		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             "True",
 			Reason:             "Ready",
 			Message:            "DNS record synced",
-			ObservedGeneration: instance.Generation,
+			ObservedGeneration: dnsrecord.Generation,
 		})
-		instance.Status.RecordID = newDNSRecord.ID
-		if err := r.Status().Update(ctx, instance); err != nil {
+		dnsrecord.Status.RecordID = newDNSRecord.ID
+		if err := r.Status().Update(ctx, dnsrecord); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
+		return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}, nil
 	}
 
-	if !compareDNSRecord(instance.Spec, existingRecord) {
+	if !compareDNSRecord(dnsrecord.Spec, existingRecord) {
 		if _, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.UpdateDNSRecordParams{
 			ID:       existingRecord.ID,
-			Name:     instance.Spec.Name,
-			Type:     instance.Spec.Type,
-			Content:  instance.Spec.Content,
-			TTL:      instance.Spec.TTL,
-			Proxied:  instance.Spec.Proxied,
-			Priority: instance.Spec.Priority,
-			Data:     instance.Spec.Data,
+			Name:     dnsrecord.Spec.Name,
+			Type:     dnsrecord.Spec.Type,
+			Content:  dnsrecord.Spec.Content,
+			TTL:      dnsrecord.Spec.TTL,
+			Proxied:  dnsrecord.Spec.Proxied,
+			Priority: dnsrecord.Spec.Priority,
+			Data:     dnsrecord.Spec.Data,
 		}); err != nil {
-			if err := r.markFailed(instance, ctx, err.Error()); err != nil {
+			if err := r.markFailed(dnsrecord, ctx, err.Error()); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
-		apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
 			Status:             "True",
 			Reason:             "Ready",
 			Message:            "DNS record synced",
-			ObservedGeneration: instance.Generation,
+			ObservedGeneration: dnsrecord.Generation,
 		})
-		instance.Status.RecordID = existingRecord.ID
-		if err := r.Status().Update(ctx, instance); err != nil {
+		dnsrecord.Status.RecordID = existingRecord.ID
+		if err := r.Status().Update(ctx, dnsrecord); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
 		log.Info("DNS record updated in cloudflare", "name", existingRecord.Name, "id", existingRecord.ID)
-		return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
+		return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}, nil
 	}
 
-	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+	apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "True",
 		Reason:             "Ready",
 		Message:            "DNS record synced",
-		ObservedGeneration: instance.Generation,
+		ObservedGeneration: dnsrecord.Generation,
 	})
-	instance.Status.RecordID = existingRecord.ID
-	if err := r.Status().Update(ctx, instance); err != nil {
+	dnsrecord.Status.RecordID = existingRecord.ID
+	if err := r.Status().Update(ctx, dnsrecord); err != nil {
 		log.Error(err, "Failed to update DNSRecord status")
 		return ctrl.Result{}, err
 	}
 
-	return ctrl.Result{RequeueAfter: instance.Spec.Interval.Duration}, nil
-}
-
-// SetupWithManager sets up the controller with the Manager.
-func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.DNSRecord{}).
-		Complete(r)
+	return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}, nil
 }
 
 // finalizeDNSRecord deletes the DNS record from cloudflare
@@ -273,22 +267,24 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 		log.Error(err, "Failed to delete DNS record in Cloudflare. Record may still exist in Cloudflare")
 		return err
 	}
+
 	return nil
 }
 
 // markFailed marks the reconciled object as failed
-func (r *DNSRecordReconciler) markFailed(instance *cloudflareoperatoriov1.DNSRecord, ctx context.Context, message string) error {
-	metrics.DnsRecordFailureCounter.WithLabelValues(instance.Namespace, instance.Name, instance.Spec.Name).Set(1)
-	apimeta.SetStatusCondition(&instance.Status.Conditions, metav1.Condition{
+func (r *DNSRecordReconciler) markFailed(dnsrecord *cloudflareoperatoriov1.DNSRecord, ctx context.Context, message string) error {
+	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(1)
+	apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "False",
 		Reason:             "Failed",
 		Message:            message,
-		ObservedGeneration: instance.Generation,
+		ObservedGeneration: dnsrecord.Generation,
 	})
-	if err := r.Status().Update(ctx, instance); err != nil {
+	if err := r.Status().Update(ctx, dnsrecord); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -300,6 +296,7 @@ func comparePriority(a, b *uint16) bool {
 	if a == nil || b == nil {
 		return false
 	}
+
 	return *a == *b
 }
 
@@ -315,35 +312,37 @@ func compareData(a interface{}, b *apiextensionsv1.JSON) bool {
 	if err := json.Unmarshal(b.Raw, &bb); err != nil {
 		return false
 	}
+
 	return reflect.DeepEqual(a, bb)
 }
 
-// compareDNSRecord compares the DNS record to the instance
-func compareDNSRecord(instance cloudflareoperatoriov1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
+// compareDNSRecord compares the DNS record to the DNSRecord object
+func compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
 	var isEqual bool = true
 
-	if instance.Name != existingRecord.Name {
+	if dnsRecordSpec.Name != existingRecord.Name {
 		isEqual = false
 	}
-	if instance.Type != existingRecord.Type {
+	if dnsRecordSpec.Type != existingRecord.Type {
 		isEqual = false
 	}
-	if instance.Type != "SRV" && instance.Type != "LOC" && instance.Type != "CAA" {
-		if instance.Content != existingRecord.Content {
+	if dnsRecordSpec.Type != "SRV" && dnsRecordSpec.Type != "LOC" && dnsRecordSpec.Type != "CAA" {
+		if dnsRecordSpec.Content != existingRecord.Content {
 			isEqual = false
 		}
 	}
-	if instance.TTL != existingRecord.TTL {
+	if dnsRecordSpec.TTL != existingRecord.TTL {
 		isEqual = false
 	}
-	if *instance.Proxied != *existingRecord.Proxied {
+	if *dnsRecordSpec.Proxied != *existingRecord.Proxied {
 		isEqual = false
 	}
-	if !comparePriority(instance.Priority, existingRecord.Priority) {
+	if !comparePriority(dnsRecordSpec.Priority, existingRecord.Priority) {
 		isEqual = false
 	}
-	if !compareData(existingRecord.Data, instance.Data) {
+	if !compareData(existingRecord.Data, dnsRecordSpec.Data) {
 		isEqual = false
 	}
+
 	return isEqual
 }
