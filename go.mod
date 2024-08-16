@@ -1,6 +1,6 @@
 module github.com/containeroo/cloudflare-operator
 
-go 1.22.2
+go 1.23.0
 
 require (
 	github.com/cloudflare/cloudflare-go v0.102.0
