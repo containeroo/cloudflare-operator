@@ -1,0 +1,26 @@
+---
+apiVersion: cloudflare-operator.io/v1
+kind: DNSRecord
+metadata:
+  name: {{ .Name | cleanName }}
+spec:
+  name: {{ .Name }}
+  proxied: true
+  ttl: {{ .TTL }}
+  type: {{ .Type }}
+{{- if and (ne .Type "SRV") (ne .Type "MX") }}
+  content: {{ .Content | trimDot }}
+{{- end }}
+{{- if (eq .Type "SRV") }}
+{{- $d := split .Content " " }}
+  data:
+    priority: {{ index $d 0 }}
+    weight: {{ index $d 1 }}
+    port: {{ index $d 2 }}
+    target: {{ index $d 3 | trimDot }}
+{{- end }}
+{{- if (eq .Type "MX") }}
+{{ $d := split .Content " " }}
+  priority: {{ index $d 0 }}
+  content: {{ index $d 1 | trimDot }}
+{{- end }}
