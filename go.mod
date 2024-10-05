@@ -8,7 +8,7 @@ require (
 	github.com/itchyny/gojq v0.12.16
 	github.com/onsi/ginkgo/v2 v2.20.0
 	github.com/onsi/gomega v1.34.1
-	github.com/prometheus/client_golang v1.20.0
+	github.com/prometheus/client_golang v1.20.4
 	golang.org/x/net v0.28.0
 	k8s.io/api v0.31.0
 	k8s.io/apiextensions-apiserver v0.31.0
