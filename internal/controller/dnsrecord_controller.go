@@ -1,5 +1,5 @@
 /*
-Copyright 2024 containeroo
+Copyright 2025 containeroo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -124,7 +124,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if !dnsrecord.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(dnsrecord, common.CloudflareOperatorFinalizer) {
-			if err := r.finalizeDNSRecord(ctx, zone.Spec.ID, log, dnsrecord); err != nil && err.Error() != "Record does not exist. (81044)" {
+			if err := r.finalizeDNSRecord(ctx, zone.Status.ID, log, dnsrecord); err != nil && err.Error() != "Record does not exist. (81044)" {
 				if err := r.markFailed(dnsrecord, ctx, err.Error()); err != nil {
 					log.Error(err, "Failed to update DNSRecord status")
 					return ctrl.Result{}, err
@@ -147,7 +147,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if dnsrecord.Status.RecordID != "" {
 		var err error
-		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), dnsrecord.Status.RecordID)
+		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), dnsrecord.Status.RecordID)
 		if err != nil && err.Error() != "Record does not exist. (81044)" {
 			log.Error(err, "Failed to get DNS record from Cloudflare")
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
@@ -181,7 +181,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if existingRecord.ID == "" {
-		newDNSRecord, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.CreateDNSRecordParams{
+		newDNSRecord, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.CreateDNSRecordParams{
 			Name:     dnsrecord.Spec.Name,
 			Type:     dnsrecord.Spec.Type,
 			Content:  dnsrecord.Spec.Content,
@@ -213,7 +213,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if !compareDNSRecord(dnsrecord.Spec, existingRecord) {
-		if _, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.UpdateDNSRecordParams{
+		if _, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.UpdateDNSRecordParams{
 			ID:       existingRecord.ID,
 			Name:     dnsrecord.Spec.Name,
 			Type:     dnsrecord.Spec.Type,

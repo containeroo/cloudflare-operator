@@ -1,5 +1,5 @@
 /*
-Copyright 2024 containeroo
+Copyright 2025 containeroo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -100,46 +100,66 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
-	if _, err := r.Cf.ZoneDetails(ctx, zone.Spec.ID); err != nil {
-		if err := r.markFailed(zone, ctx, err.Error()); err != nil {
-			log.Error(err, "Failed to update Zone status")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-
-	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
-	if err := r.List(ctx, dnsRecords); err != nil {
-		log.Error(err, "Failed to list DNSRecord resources")
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-
-	cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cloudflare.ListDNSRecordsParams{})
-	if err != nil {
-		if err := r.markFailed(zone, ctx, err.Error()); err != nil {
-			log.Error(err, "Failed to update Zone status")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-
-	dnsRecordMap := make(map[string]struct{})
-	for _, dnsRecord := range dnsRecords.Items {
-		dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
-	}
-
-	for _, cfDnsRecord := range cfDnsRecords {
-		if cfDnsRecord.Type == "TXT" && strings.HasPrefix(cfDnsRecord.Name, "_acme-challenge") {
-			continue
-		}
-
-		if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
-			if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Spec.ID), cfDnsRecord.ID); err != nil {
-				if err := r.markFailed(zone, ctx, err.Error()); err != nil {
-					log.Error(err, "Failed to update Zone status")
-				}
+	if zone.Status.ID == "" {
+		zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
+		if err != nil {
+			if err := r.markFailed(zone, ctx, err.Error()); err != nil {
+				log.Error(err, "Failed to update Zone status")
+				return ctrl.Result{}, err
 			}
-			log.Info("Deleted DNS record on Cloudflare " + cfDnsRecord.Name)
+			return ctrl.Result{}, err
+		}
+
+		zone.Status.ID = zoneID
+
+		if err := r.Status().Update(ctx, zone); err != nil {
+			log.Error(err, "Failed to update Zone status")
+			return ctrl.Result{}, err
+		}
+	}
+
+	if _, err := r.Cf.ZoneDetails(ctx, zone.Status.ID); err != nil {
+		if err := r.markFailed(zone, ctx, err.Error()); err != nil {
+			log.Error(err, "Failed to update Zone status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+	}
+
+	if zone.Spec.Prune {
+		dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
+		if err := r.List(ctx, dnsRecords); err != nil {
+			log.Error(err, "Failed to list DNSRecord resources")
+			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		}
+
+		cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
+		if err != nil {
+			if err := r.markFailed(zone, ctx, err.Error()); err != nil {
+				log.Error(err, "Failed to update Zone status")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		}
+
+		dnsRecordMap := make(map[string]struct{})
+		for _, dnsRecord := range dnsRecords.Items {
+			dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
+		}
+
+		for _, cfDnsRecord := range cfDnsRecords {
+			if cfDnsRecord.Type == "TXT" && strings.HasPrefix(cfDnsRecord.Name, "_acme-challenge") {
+				continue
+			}
+
+			if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
+				if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cfDnsRecord.ID); err != nil {
+					if err := r.markFailed(zone, ctx, err.Error()); err != nil {
+						log.Error(err, "Failed to update Zone status")
+					}
+				}
+				log.Info("Deleted DNS record on Cloudflare " + cfDnsRecord.Name)
+			}
 		}
 	}
 
