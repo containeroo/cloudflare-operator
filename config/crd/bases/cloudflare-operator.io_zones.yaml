@@ -57,9 +57,9 @@ spec:
                 description: Name of the zone
                 type: string
               prune:
-                default: true
+                default: false
                 description: Prune determines whether DNS records in the zone that
-                  are not managed by Kubernetes should be automatically removed
+                  are not managed by cloudflare-operator should be automatically removed
                 type: boolean
             required:
             - name

@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 
 	"github.com/cloudflare/cloudflare-go"
 	corev1 "k8s.io/api/core/v1"
@@ -58,7 +59,7 @@ func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
+	log := log.FromContext(ctx)
 
 	account := &cloudflareoperatoriov1.Account{}
 	if err := r.Get(ctx, req.NamespacedName, account); err != nil {
