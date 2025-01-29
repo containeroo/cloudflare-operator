@@ -5,86 +5,19 @@ metadata:
   name: manager-role
 rules:
 - apiGroups:
+  - ""
+  resources:
+  - secrets
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
   - cloudflare-operator.io
   resources:
   - accounts
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
-  - accounts/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
-  - accounts/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
   - dnsrecords
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
-  - dnsrecords/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
-  - dnsrecords/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
   - ips
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
-  - ips/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
-  - ips/status
-  verbs:
-  - get
-  - patch
-  - update
-- apiGroups:
-  - cloudflare-operator.io
-  resources:
   - zones
   verbs:
   - create
@@ -97,25 +30,23 @@ rules:
 - apiGroups:
   - cloudflare-operator.io
   resources:
+  - accounts/finalizers
+  - dnsrecords/finalizers
+  - ips/finalizers
   - zones/finalizers
   verbs:
   - update
 - apiGroups:
   - cloudflare-operator.io
   resources:
+  - accounts/status
+  - dnsrecords/status
+  - ips/status
   - zones/status
   verbs:
   - get
   - patch
   - update
-- apiGroups:
-  - ""
-  resources:
-  - secrets
-  verbs:
-  - get
-  - list
-  - watch
 - apiGroups:
   - networking.k8s.io
   resources:

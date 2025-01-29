@@ -1,5 +1,5 @@
 /*
-Copyright 2024 containeroo
+Copyright 2025 containeroo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -18,8 +18,6 @@ package controller
 
 import (
 	"context"
-	"reflect"
-	"strings"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -117,93 +115,6 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
 		*r.Cf = *cf
-	}
-
-	cfZones, err := r.Cf.ListZones(ctx)
-	if err != nil {
-		if err := r.markFailed(account, ctx, err.Error()); err != nil {
-			log.Error(err, "Failed to update Account status")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-
-	userDefinedManagedZoneMap := make(map[string]struct{})
-	if len(account.Spec.ManagedZones) != 0 {
-		for _, managedZone := range account.Spec.ManagedZones {
-			userDefinedManagedZoneMap[strings.ToLower(managedZone)] = struct{}{}
-		}
-	}
-
-	operatorManagedZones := []cloudflareoperatoriov1.AccountStatusZones{}
-	for _, cfZone := range cfZones {
-		_, found := userDefinedManagedZoneMap[strings.ToLower(cfZone.Name)]
-		if len(userDefinedManagedZoneMap) == 0 || found {
-			operatorManagedZones = append(operatorManagedZones, cloudflareoperatoriov1.AccountStatusZones{Name: cfZone.Name, ID: cfZone.ID})
-		}
-	}
-
-	zones := &cloudflareoperatoriov1.ZoneList{}
-	if err := r.List(ctx, zones); err != nil {
-		if err := r.markFailed(account, ctx, "Failed to list zones"); err != nil {
-			log.Error(err, "Failed to update Account status")
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
-	}
-
-	zoneMap := make(map[string]struct{})
-	for _, zone := range zones.Items {
-		zoneMap[zone.Spec.ID] = struct{}{}
-	}
-
-	operatorManagedZoneMap := make(map[string]struct{})
-	for _, operatorManagedZone := range operatorManagedZones {
-		operatorManagedZoneMap[operatorManagedZone.ID] = struct{}{}
-		if _, found := zoneMap[operatorManagedZone.ID]; !found {
-			z := &cloudflareoperatoriov1.Zone{
-				ObjectMeta: metav1.ObjectMeta{
-					Name: strings.ReplaceAll(operatorManagedZone.Name, ".", "-"),
-					Labels: map[string]string{
-						"app.kubernetes.io/managed-by": "cloudflare-operator",
-					},
-				},
-				Spec: cloudflareoperatoriov1.ZoneSpec{
-					Name:     operatorManagedZone.Name,
-					ID:       operatorManagedZone.ID,
-					Interval: account.Spec.Interval,
-				},
-			}
-
-			if err := controllerutil.SetControllerReference(account, z, r.Scheme); err != nil {
-				log.Error(err, "Failed to set controller reference")
-				return ctrl.Result{}, err
-			}
-
-			if err := r.Create(ctx, z); err != nil {
-				log.Error(err, "Failed to create Zone resource", "Zone.Name", operatorManagedZone.Name, "Zone.ID", operatorManagedZone.ID)
-				continue
-			}
-			log.Info("Created Zone resource", "Zone.Name", operatorManagedZone.Name, "Zone.ID", operatorManagedZone.ID)
-		}
-	}
-
-	if !reflect.DeepEqual(account.Status.Zones, operatorManagedZones) {
-		account.Status.Zones = operatorManagedZones
-		if err := r.Status().Update(ctx, account); err != nil {
-			log.Error(err, "Failed to update Account status")
-			return ctrl.Result{}, err
-		}
-	}
-
-	for _, z := range zones.Items {
-		if _, found := operatorManagedZoneMap[z.Spec.ID]; !found {
-			if err := r.Delete(ctx, &z); err != nil {
-				log.Error(err, "Failed to delete Zone resource", "Zone.Name", z.Name)
-				return ctrl.Result{}, err
-			}
-			log.Info("Deleted Zone resource", "Zone.Name", z.Spec.Name, "Zone.ID", z.Spec.ID)
-		}
 	}
 
 	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{

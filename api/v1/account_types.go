@@ -1,5 +1,5 @@
 /*
-Copyright 2024 containeroo
+Copyright 2025 containeroo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -35,17 +35,10 @@ type AccountSpec struct {
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
 	// List of zone names that should be managed by cloudflare-operator
+	// Deprecated and will be removed in a future release
 	// +optional
+	// +deprecated
 	ManagedZones []string `json:"managedZones,omitempty"`
-}
-
-type AccountStatusZones struct {
-	// Name of the zone
-	// +optional
-	Name string `json:"name,omitempty"`
-	// ID of the zone
-	// +optional
-	ID string `json:"id,omitempty"`
 }
 
 // AccountStatus defines the observed state of Account
@@ -53,9 +46,6 @@ type AccountStatus struct {
 	// Conditions contains the different condition statuses for the Account object.
 	// +optional
 	Conditions []metav1.Condition `json:"conditions"`
-	// Zones contains all the zones of the Account
-	// +optional
-	Zones []AccountStatusZones `json:"zones,omitempty"`
 }
 
 // +kubebuilder:object:root=true

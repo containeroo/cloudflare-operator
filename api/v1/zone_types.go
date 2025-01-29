@@ -1,5 +1,5 @@
 /*
-Copyright 2024 containeroo
+Copyright 2025 containeroo
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
@@ -24,8 +24,10 @@ import (
 type ZoneSpec struct {
 	// Name of the zone
 	Name string `json:"name"`
-	// ID of the zone
-	ID string `json:"id"`
+	// Prune determines whether DNS records in the zone that are not managed by Kubernetes should be automatically removed
+	// +kubebuilder:default=true
+	// +optional
+	Prune bool `json:"prune"`
 	// Interval to check zone status
 	// +kubebuilder:default="5m"
 	// +optional
@@ -34,6 +36,9 @@ type ZoneSpec struct {
 
 // ZoneStatus defines the observed state of Zone
 type ZoneStatus struct {
+	// ID of the zone
+	// +optional
+	ID string `json:"id,omitempty"`
 	// Conditions contains the different condition statuses for the Zone object.
 	// +optional
 	Conditions []metav1.Condition `json:"conditions"`
@@ -45,7 +50,7 @@ type ZoneStatus struct {
 
 // Zone is the Schema for the zones API
 // +kubebuilder:printcolumn:name="Zone Name",type="string",JSONPath=".spec.name"
-// +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".spec.id"
+// +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type == "Ready")].status`
 type Zone struct {
 	metav1.TypeMeta   `json:",inline"`
