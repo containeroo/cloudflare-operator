@@ -4,6 +4,7 @@ go 1.23.0
 
 require (
 	github.com/cloudflare/cloudflare-go v0.115.0
+	github.com/cloudflare/cloudflare-go/v4 v4.0.0
 	github.com/go-logr/logr v1.4.2
 	github.com/itchyny/gojq v0.12.17
 	github.com/onsi/ginkgo/v2 v2.22.2
