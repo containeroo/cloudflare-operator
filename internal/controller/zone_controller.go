@@ -85,17 +85,11 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	}
 
 	if r.Cf.APIToken == "" {
-		apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
-			Status:             "False",
-			Reason:             "NotReady",
-			Message:            "Cloudflare account is not yet ready",
-			ObservedGeneration: zone.Generation,
-		})
-		if err := r.Status().Update(ctx, zone); err != nil {
+		if err := r.setStatusCondition(ctx, zone, "Cloudflare account is not yet ready", "NotReady", metav1.ConditionFalse); err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
 		}
+
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
@@ -154,14 +148,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		}
 	}
 
-	apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             "True",
-		Reason:             "Ready",
-		Message:            "Zone is ready",
-		ObservedGeneration: zone.Generation,
-	})
-	if err := r.Status().Update(ctx, zone); err != nil {
+	if err := r.setStatusCondition(ctx, zone, "Zone is ready", "Ready", metav1.ConditionTrue); err != nil {
 		log.Error(err, "Failed to update Zone status")
 		return ctrl.Result{}, err
 	}
