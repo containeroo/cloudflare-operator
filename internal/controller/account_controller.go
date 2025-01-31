@@ -86,11 +86,9 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(0)
-
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
-		if err := r.markFailed(account, ctx, "Failed to get secret"); err != nil {
+		if err := r.setStatusCondition(ctx, account, "Failed to get secret", "Failed", metav1.ConditionFalse); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -99,7 +97,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	cfApiToken := string(secret.Data["apiToken"])
 	if cfApiToken == "" {
-		if err := r.markFailed(account, ctx, "Secret has no 'apiToken' key"); err != nil {
+		if err := r.setStatusCondition(ctx, account, "Secret has no 'apiToken' key", "Failed", metav1.ConditionFalse); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -109,7 +107,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if r.Cf.APIToken != cfApiToken {
 		cf, err := cloudflare.NewWithAPIToken(cfApiToken)
 		if err != nil {
-			if err := r.markFailed(account, ctx, err.Error()); err != nil {
+			if err := r.setStatusCondition(ctx, account, err.Error(), "Failed", metav1.ConditionFalse); err != nil {
 				log.Error(err, "Failed to update Account status")
 				return ctrl.Result{}, err
 			}
@@ -118,14 +116,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		*r.Cf = *cf
 	}
 
-	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             "True",
-		Reason:             "Ready",
-		Message:            "Account is ready",
-		ObservedGeneration: account.Generation,
-	})
-	if err := r.Status().Update(ctx, account); err != nil {
+	if err := r.setStatusCondition(ctx, account, "Account is ready", "Ready", metav1.ConditionTrue); err != nil {
 		log.Error(err, "Failed to update Account status")
 		return ctrl.Result{}, err
 	}
@@ -133,13 +124,22 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}, nil
 }
 
-// markFailed marks the reconciled object as failed
-func (r *AccountReconciler) markFailed(account *cloudflareoperatoriov1.Account, ctx context.Context, message string) error {
-	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(1)
+// setStatusCondition sets the status condition and updates the failure counter
+func (r *AccountReconciler) setStatusCondition(ctx context.Context, account *cloudflareoperatoriov1.Account, message, reason string, status metav1.ConditionStatus) error {
+	var gaugeValue float64
+	switch status {
+	case metav1.ConditionTrue:
+		gaugeValue = 0
+	case metav1.ConditionFalse:
+		gaugeValue = 1
+	}
+
+	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(gaugeValue)
+
 	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "False",
-		Reason:             "Failed",
+		Status:             status,
+		Reason:             reason,
 		Message:            message,
 		ObservedGeneration: account.Generation,
 	})
