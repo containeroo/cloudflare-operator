@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"reflect"
 	"time"
 
@@ -159,6 +160,58 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(0)
+
+	if !zone.Spec.Prune {
+		existingDNSRecordIfPruneFalse, _, _ := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{Name: dnsrecord.Spec.Name, Type: dnsrecord.Spec.Type, Content: dnsrecord.Spec.Content})
+
+		if len(existingDNSRecordIfPruneFalse) == 1 {
+			apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
+				Type:               "Ready",
+				Status:             "True",
+				Reason:             "Ready",
+				Message:            "DNS record synced",
+				ObservedGeneration: dnsrecord.Generation,
+			})
+			dnsrecord.Status.RecordID = existingDNSRecordIfPruneFalse[0].ID
+			if err := r.Status().Update(ctx, dnsrecord); err != nil {
+				log.Error(err, "Failed to update DNSRecord status")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}, nil
+		} else if len(existingDNSRecordIfPruneFalse) > 1 {
+			fmt.Println("something went very wrong")
+		} else if len(existingDNSRecordIfPruneFalse) == 0 {
+			newDNSRecord, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.CreateDNSRecordParams{
+				Name:     dnsrecord.Spec.Name,
+				Type:     dnsrecord.Spec.Type,
+				Content:  dnsrecord.Spec.Content,
+				TTL:      dnsrecord.Spec.TTL,
+				Proxied:  dnsrecord.Spec.Proxied,
+				Priority: dnsrecord.Spec.Priority,
+				Data:     dnsrecord.Spec.Data,
+			})
+			if err != nil {
+				if err := r.markFailed(dnsrecord, ctx, err.Error()); err != nil {
+					log.Error(err, "Failed to update DNSRecord status")
+					return ctrl.Result{}, err
+				}
+				return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			}
+			apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
+				Type:               "Ready",
+				Status:             "True",
+				Reason:             "Ready",
+				Message:            "DNS record synced",
+				ObservedGeneration: dnsrecord.Generation,
+			})
+			dnsrecord.Status.RecordID = newDNSRecord.ID
+			if err := r.Status().Update(ctx, dnsrecord); err != nil {
+				log.Error(err, "Failed to update DNSRecord status")
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}, nil
+		}
+	}
 
 	var existingRecord cloudflare.DNSRecord
 
