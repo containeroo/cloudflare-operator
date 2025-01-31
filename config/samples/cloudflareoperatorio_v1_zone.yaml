@@ -7,9 +7,6 @@ metadata:
     app.kubernetes.io/part-of: cloudflare-operator
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/created-by: cloudflare-operator
-  name: zone-sample
+  name: example-com
 spec:
-  # this object will be automatically created by the operator based on the
-  # zones available in the Cloudflare account
-  id: abcdef123456
   name: example.com

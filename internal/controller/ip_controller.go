@@ -43,6 +43,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // IPReconciler reconciles a IP object
@@ -66,7 +67,7 @@ func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
+	log := log.FromContext(ctx)
 
 	ip := &cloudflareoperatoriov1.IP{}
 	if err := r.Get(ctx, req.NamespacedName, ip); err != nil {
@@ -93,18 +94,16 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		return ctrl.Result{}, nil
 	}
 
-	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(0)
-
 	if ip.Spec.Type == "static" {
 		if ip.Spec.Address == "" {
-			if err := r.markFailed(ip, ctx, "Address is required for static IPs"); err != nil {
+			if err := r.setStatusCondition(ctx, ip, "Address is required for static IPs", "Failed", metav1.ConditionFalse); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
 		}
 		if net.ParseIP(ip.Spec.Address) == nil {
-			if err := r.markFailed(ip, ctx, "Address is not a valid IP address"); err != nil {
+			if err := r.setStatusCondition(ctx, ip, "Address is not a valid IP address", "Failed", metav1.ConditionFalse); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
@@ -122,18 +121,16 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 
 		if len(ip.Spec.IPSources) == 0 {
-			if err := r.markFailed(ip, ctx, "IPSources is required for dynamic IPs"); err != nil {
+			if err := r.setStatusCondition(ctx, ip, "IPSources is required for dynamic IPs", "Failed", metav1.ConditionFalse); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
 		}
 
-		if len(ip.Spec.IPSources) > 1 {
-			rand.Shuffle(len(ip.Spec.IPSources), func(i, j int) {
-				ip.Spec.IPSources[i], ip.Spec.IPSources[j] = ip.Spec.IPSources[j], ip.Spec.IPSources[i]
-			})
-		}
+		rand.Shuffle(len(ip.Spec.IPSources), func(i, j int) {
+			ip.Spec.IPSources[i], ip.Spec.IPSources[j] = ip.Spec.IPSources[j], ip.Spec.IPSources[i]
+		})
 
 		var ipSourceError string
 		for _, source := range ip.Spec.IPSources {
@@ -148,7 +145,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 
 		if ipSourceError != "" {
-			if err := r.markFailed(ip, ctx, ipSourceError); err != nil {
+			if err := r.setStatusCondition(ctx, ip, ipSourceError, "Failed", metav1.ConditionFalse); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
@@ -187,14 +184,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 	}
 
-	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             "True",
-		Reason:             "Ready",
-		Message:            "IP is ready",
-		ObservedGeneration: ip.Generation,
-	})
-	if err := r.Status().Update(ctx, ip); err != nil {
+	if err := r.setStatusCondition(ctx, ip, "Ready", "Ready", metav1.ConditionTrue); err != nil {
 		log.Error(err, "Failed to update IP resource")
 		return ctrl.Result{}, err
 	}
@@ -214,6 +204,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 
 	tr := http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: source.InsecureSkipVerify},
+		Proxy:           http.ProxyFromEnvironment,
 	}
 	httpClient := &http.Client{Transport: &tr}
 	req, err := http.NewRequest(source.RequestMethod, source.URL, io.Reader(bytes.NewBuffer([]byte(source.RequestBody))))
@@ -306,13 +297,22 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 	return strings.TrimSpace(extractedIP), nil
 }
 
-// markFailed marks the reconciled object as failed
-func (r *IPReconciler) markFailed(ip *cloudflareoperatoriov1.IP, ctx context.Context, message string) error {
-	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(1)
+// setStatusCondition sets the status condition and updates the failure counter
+func (r *IPReconciler) setStatusCondition(ctx context.Context, ip *cloudflareoperatoriov1.IP, message, reason string, status metav1.ConditionStatus) error {
+	var gaugeValue float64
+	switch status {
+	case metav1.ConditionTrue:
+		gaugeValue = 0
+	case metav1.ConditionFalse:
+		gaugeValue = 1
+	}
+
+	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(gaugeValue)
+
 	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "False",
-		Reason:             "Failed",
+		Status:             status,
+		Reason:             reason,
 		Message:            message,
 		ObservedGeneration: ip.Generation,
 	})
