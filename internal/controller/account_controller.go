@@ -92,6 +92,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}, nil
 }
 
+// ensureFinalizer ensures that the Account has the CloudflareOperatorFinalizer
 func (r *AccountReconciler) ensureFinalizer(ctx context.Context, account *cloudflareoperatoriov1.Account) error {
 	if !controllerutil.ContainsFinalizer(account, common.CloudflareOperatorFinalizer) {
 		controllerutil.AddFinalizer(account, common.CloudflareOperatorFinalizer)
@@ -100,6 +101,7 @@ func (r *AccountReconciler) ensureFinalizer(ctx context.Context, account *cloudf
 	return nil
 }
 
+// handleDeletion handles the deletion of the Account
 func (r *AccountReconciler) handleDeletion(ctx context.Context, account *cloudflareoperatoriov1.Account) (ctrl.Result, error) {
 	if controllerutil.ContainsFinalizer(account, common.CloudflareOperatorFinalizer) {
 		metrics.AccountFailureCounter.DeleteLabelValues(account.Name)
@@ -111,6 +113,7 @@ func (r *AccountReconciler) handleDeletion(ctx context.Context, account *cloudfl
 	return ctrl.Result{}, nil
 }
 
+// getAPIToken gets the API token from the Secret
 func (r *AccountReconciler) getAPIToken(ctx context.Context, account *cloudflareoperatoriov1.Account) (string, error) {
 	secret := &corev1.Secret{}
 	key := client.ObjectKey{
@@ -129,6 +132,7 @@ func (r *AccountReconciler) getAPIToken(ctx context.Context, account *cloudflare
 	return cfApiToken, nil
 }
 
+// updateCloudflareClient updates the Cloudflare client
 func (r *AccountReconciler) updateCloudflareClient(apiToken string) error {
 	if r.Cf.APIToken != apiToken {
 		cf, err := cloudflare.NewWithAPIToken(apiToken)
@@ -140,6 +144,7 @@ func (r *AccountReconciler) updateCloudflareClient(apiToken string) error {
 	return nil
 }
 
+// setStatusCondition sets the status condition and updates the failure counter
 func (r *AccountReconciler) setStatusCondition(ctx context.Context, account *cloudflareoperatoriov1.Account, message, reason string, status metav1.ConditionStatus) error {
 	gaugeValue := 0.0
 	if status == metav1.ConditionFalse {

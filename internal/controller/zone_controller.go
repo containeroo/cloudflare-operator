@@ -58,30 +58,19 @@ func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 // move the current state of the cluster closer to the desired state.
 func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := log.FromContext(ctx)
-
 	zone := &cloudflareoperatoriov1.Zone{}
+
 	if err := r.Get(ctx, req.NamespacedName, zone); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if !controllerutil.ContainsFinalizer(zone, common.CloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(zone, common.CloudflareOperatorFinalizer)
-		if err := r.Update(ctx, zone); err != nil {
-			log.Error(err, "Failed to update Zone finalizer")
-			return ctrl.Result{}, err
-		}
+	if err := r.ensureFinalizer(ctx, zone); err != nil {
+		log.Error(err, "Failed to update Zone finalizer")
+		return ctrl.Result{}, err
 	}
 
 	if !zone.DeletionTimestamp.IsZero() {
-		if controllerutil.ContainsFinalizer(zone, common.CloudflareOperatorFinalizer) {
-			metrics.ZoneFailureCounter.DeleteLabelValues(zone.Name, zone.Spec.Name)
-		}
-
-		controllerutil.RemoveFinalizer(zone, common.CloudflareOperatorFinalizer)
-		if err := r.Update(ctx, zone); err != nil {
-			return ctrl.Result{}, err
-		}
-		return ctrl.Result{}, nil
+		return r.handleDeletion(ctx, zone)
 	}
 
 	if r.Cf.APIToken == "" {
@@ -93,18 +82,19 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
-	if zone.Status.ID == "" {
-		zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
-		if err != nil {
-			if err := r.setStatusCondition(ctx, zone, err.Error(), "Failed", "Ready"); err != nil {
-				log.Error(err, "Failed to update Zone status")
-				return ctrl.Result{}, err
-			}
+	zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
+	if err != nil {
+		if err := r.setStatusCondition(ctx, zone, err.Error(), "Failed", "Ready"); err != nil {
+			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, err
+	}
 
+	zone.Status.ID = zoneID
+
+	if zone.Status.ID != zoneID {
 		zone.Status.ID = zoneID
-
 		if err := r.Status().Update(ctx, zone); err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
@@ -156,14 +146,32 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}, nil
 }
 
+// ensureFinalizer ensures that the Zone has the CloudflareOperatorFinalizer
+func (r *ZoneReconciler) ensureFinalizer(ctx context.Context, zone *cloudflareoperatoriov1.Zone) error {
+	if !controllerutil.ContainsFinalizer(zone, common.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(zone, common.CloudflareOperatorFinalizer)
+		return r.Update(ctx, zone)
+	}
+	return nil
+}
+
+// handleDeletion handles the deletion of the Zone
+func (r *ZoneReconciler) handleDeletion(ctx context.Context, zone *cloudflareoperatoriov1.Zone) (ctrl.Result, error) {
+	if controllerutil.ContainsFinalizer(zone, common.CloudflareOperatorFinalizer) {
+		metrics.ZoneFailureCounter.DeleteLabelValues(zone.Name, zone.Spec.Name)
+		controllerutil.RemoveFinalizer(zone, common.CloudflareOperatorFinalizer)
+		if err := r.Update(ctx, zone); err != nil {
+			return ctrl.Result{}, err
+		}
+	}
+	return ctrl.Result{}, nil
+}
+
 // setStatusCondition sets the status condition and updates the failure counter
 func (r *ZoneReconciler) setStatusCondition(ctx context.Context, zone *cloudflareoperatoriov1.Zone, message, reason string, status metav1.ConditionStatus) error {
-	var gaugeValue float64
-	switch status {
-	case metav1.ConditionTrue:
-		gaugeValue = 0
-	case metav1.ConditionFalse:
-		gaugeValue = 1
+	gaugeValue := 0.0
+	if status == metav1.ConditionFalse {
+		gaugeValue = 1.0
 	}
 
 	metrics.ZoneFailureCounter.WithLabelValues(zone.Name, zone.Spec.Name).Set(gaugeValue)
@@ -175,9 +183,6 @@ func (r *ZoneReconciler) setStatusCondition(ctx context.Context, zone *cloudflar
 		Message:            message,
 		ObservedGeneration: zone.Generation,
 	})
-	if err := r.Status().Update(ctx, zone); err != nil {
-		return err
-	}
 
-	return nil
+	return r.Status().Update(ctx, zone)
 }
