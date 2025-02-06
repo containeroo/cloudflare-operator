@@ -24,8 +24,8 @@ import (
 type ZoneSpec struct {
 	// Name of the zone
 	Name string `json:"name"`
-	// Prune determines whether DNS records in the zone that are not managed by Kubernetes should be automatically removed
-	// +kubebuilder:default=true
+	// Prune determines whether DNS records in the zone that are not managed by cloudflare-operator should be automatically removed
+	// +kubebuilder:default=false
 	// +optional
 	Prune bool `json:"prune"`
 	// Interval to check zone status
