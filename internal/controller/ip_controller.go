@@ -214,6 +214,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 
 	tr := http.Transport{
 		TLSClientConfig: &tls.Config{InsecureSkipVerify: source.InsecureSkipVerify},
+		Proxy:           http.ProxyFromEnvironment,
 	}
 	httpClient := &http.Client{Transport: &tr}
 	req, err := http.NewRequest(source.RequestMethod, source.URL, io.Reader(bytes.NewBuffer([]byte(source.RequestBody))))
