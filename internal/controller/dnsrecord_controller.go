@@ -20,7 +20,6 @@ import (
 	"context"
 	"encoding/json"
 	"reflect"
-	"strings"
 	"time"
 
 	"github.com/go-logr/logr"
@@ -84,19 +83,34 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	zoneName, _ := publicsuffix.EffectiveTLDPlusOne(dnsrecord.Spec.Name)
-	zoneName = strings.ReplaceAll(zoneName, ".", "-")
 
-	zone := &cloudflareoperatoriov1.Zone{}
-	if err := r.Get(ctx, client.ObjectKey{Name: zoneName}, zone); err != nil {
+	zones := &cloudflareoperatoriov1.ZoneList{}
+	if err := r.List(ctx, zones); err != nil {
 		if errors.IsNotFound(err) {
-			if err := r.markFailed(dnsrecord, ctx, "Zone not found"); err != nil {
+			if err := r.markFailed(dnsrecord, ctx, "Failed to fetch Zones"); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 30}, err
 		}
-		log.Error(err, "Failed to get Zone resource")
+		log.Error(err, "Failed to fetch Zone resources")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+	}
+
+	zone := cloudflareoperatoriov1.Zone{}
+	for _, z := range zones.Items {
+		if z.Spec.Name == zoneName {
+			zone = z
+			break
+		}
+	}
+
+	if zone.Spec.Name == "" {
+		if err := r.markFailed(dnsrecord, ctx, "Zone not found"); err != nil {
+			log.Error(err, "Failed to update DNSRecord status")
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
 	}
 
 	if condition := apimeta.FindStatusCondition(zone.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
