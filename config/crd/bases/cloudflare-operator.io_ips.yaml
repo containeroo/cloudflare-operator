@@ -91,7 +91,6 @@ spec:
                       type: object
                       x-kubernetes-map-type: atomic
                     requestMethod:
-                      default: GET
                       description: RequestMethod defines the HTTP method to be used
                       enum:
                       - GET

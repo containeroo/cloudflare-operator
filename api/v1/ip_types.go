@@ -24,7 +24,6 @@ import (
 
 type IPSpecIPSources struct {
 	// URL of the IP source (e.g. https://checkip.amazonaws.com)
-	// +optional
 	URL string `json:"url,omitempty"`
 	// RequestBody to be sent to the URL
 	// +optional
@@ -38,7 +37,7 @@ type IPSpecIPSources struct {
 	RequestHeadersSecretRef corev1.SecretReference `json:"requestHeadersSecretRef,omitempty"`
 	// RequestMethod defines the HTTP method to be used
 	// +kubebuilder:validation:Enum=GET;POST;PUT;DELETE
-	// +kubebuilder:default=GET
+	// +optional
 	RequestMethod string `json:"requestMethod,omitempty"`
 	// ResponseJQFilter applies a JQ filter to the response to extract the IP
 	// +optional
