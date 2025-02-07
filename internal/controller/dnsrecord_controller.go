@@ -157,15 +157,22 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(0)
 
-	var existingRecord cloudflare.DNSRecord
-
-	if dnsrecord.Status.RecordID != "" {
-		var err error
-		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), dnsrecord.Status.RecordID)
-		if err != nil && err.Error() != "Record does not exist. (81044)" {
-			log.Error(err, "Failed to get DNS record from Cloudflare")
-			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+	cfExistingRecord, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{
+		Name:    dnsrecord.Spec.Name,
+		Type:    dnsrecord.Spec.Type,
+		Content: dnsrecord.Spec.Content,
+	})
+	if err != nil {
+		if err := r.markFailed(dnsrecord, ctx, err.Error()); err != nil {
+			log.Error(err, "Failed to update DNSRecord status")
+			return ctrl.Result{}, err
 		}
+		return ctrl.Result{}, err
+	}
+
+	var existingRecord cloudflare.DNSRecord
+	if len(cfExistingRecord) != 0 {
+		existingRecord = cfExistingRecord[0]
 	}
 
 	if (dnsrecord.Spec.Type == "A" || dnsrecord.Spec.Type == "AAAA") && dnsrecord.Spec.IPRef.Name != "" {
