@@ -45,6 +45,8 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
+const version = "v1.4.0"
+
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
@@ -165,7 +167,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
+	setupLog.Info("starting cloudflare-operator " + version)
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)
