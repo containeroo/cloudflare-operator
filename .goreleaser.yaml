@@ -80,3 +80,4 @@ docker_manifests:
 release:
   extra_files:
     - glob: ./crds.yaml
+  prerelease: auto
