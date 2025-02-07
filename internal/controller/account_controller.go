@@ -93,7 +93,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
 	cfApiToken := string(secret.Data["apiToken"])
@@ -112,7 +112,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 				log.Error(err, "Failed to update Account status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 		}
 		*r.Cf = *cf
 	}

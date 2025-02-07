@@ -171,7 +171,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords); err != nil {
 		log.Error(err, "Failed to list DNSRecords")
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
 	for _, dnsRecord := range dnsRecords.Items {

@@ -121,7 +121,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 		if err := r.List(ctx, dnsRecords); err != nil {
 			log.Error(err, "Failed to list DNSRecord resources")
-			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 		}
 
 		cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
@@ -130,7 +130,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 				log.Error(err, "Failed to update Zone status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 		}
 
 		dnsRecordMap := make(map[string]struct{})

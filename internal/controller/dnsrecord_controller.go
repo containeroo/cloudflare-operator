@@ -91,10 +91,10 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 		}
 		log.Error(err, "Failed to fetch Zone resources")
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
 	zone := cloudflareoperatoriov1.Zone{}
@@ -143,7 +143,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 					log.Error(err, "Failed to update DNSRecord status")
 					return ctrl.Result{}, err
 				}
-				return ctrl.Result{RequeueAfter: time.Second * 30}, err
+				return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 			}
 			metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)
 		}
@@ -182,7 +182,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 		}
 		if ip.Spec.Address != dnsrecord.Spec.Content {
 			dnsrecord.Spec.Content = ip.Spec.Address
@@ -216,7 +216,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 		}
 		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
@@ -248,7 +248,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
-			return ctrl.Result{RequeueAfter: time.Second * 30}, err
+			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 		}
 		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
