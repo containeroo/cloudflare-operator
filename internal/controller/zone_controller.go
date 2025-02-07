@@ -100,30 +100,21 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 		return ctrl.Result{RequeueAfter: time.Second * 5}, nil
 	}
 
-	if zone.Status.ID == "" {
-		zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
-		if err != nil {
-			if err := r.markFailed(zone, ctx, err.Error()); err != nil {
-				log.Error(err, "Failed to update Zone status")
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{}, err
-		}
-
-		zone.Status.ID = zoneID
-
-		if err := r.Status().Update(ctx, zone); err != nil {
-			log.Error(err, "Failed to update Zone status")
-			return ctrl.Result{}, err
-		}
-	}
-
-	if _, err := r.Cf.ZoneDetails(ctx, zone.Status.ID); err != nil {
+	zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
+	if err != nil {
 		if err := r.markFailed(zone, ctx, err.Error()); err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
 		}
-		return ctrl.Result{RequeueAfter: time.Second * 30}, err
+		return ctrl.Result{}, err
+	}
+
+	if zone.Status.ID != zoneID {
+		zone.Status.ID = zoneID
+		if err := r.Status().Update(ctx, zone); err != nil {
+			log.Error(err, "Failed to update Zone status")
+			return ctrl.Result{}, err
+		}
 	}
 
 	if zone.Spec.Prune {
@@ -158,7 +149,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 						log.Error(err, "Failed to update Zone status")
 					}
 				}
-				log.Info("Deleted DNS record on Cloudflare " + cfDnsRecord.Name)
+				log.Info("Deleted DNS record on Cloudflare", "name", cfDnsRecord.Name)
 			}
 		}
 	}
