@@ -19,13 +19,14 @@ package controller
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"reflect"
 	"time"
 
 	"github.com/go-logr/logr"
 	"golang.org/x/net/publicsuffix"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
 	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -86,14 +87,10 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	zones := &cloudflareoperatoriov1.ZoneList{}
 	if err := r.List(ctx, zones); err != nil {
-		if errors.IsNotFound(err) {
-			if err := r.markFailed(ctx, dnsrecord, "Failed to fetch Zones"); err != nil {
-				log.Error(err, "Failed to update DNSRecord status")
-				return ctrl.Result{}, err
-			}
-			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
+		if err := r.markFailed(ctx, dnsrecord, err); err != nil {
+			log.Error(err, "Failed to update DNSRecord status")
+			return ctrl.Result{}, err
 		}
-		log.Error(err, "Failed to fetch Zone resources")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
@@ -106,7 +103,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if zone.Spec.Name == "" {
-		if err := r.markFailed(ctx, dnsrecord, "Zone not found"); err != nil {
+		if err := r.markFailed(ctx, dnsrecord, fmt.Errorf("Zone %q not found", zoneName)); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
@@ -139,7 +136,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if !dnsrecord.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(dnsrecord, common.CloudflareOperatorFinalizer) {
 			if err := r.finalizeDNSRecord(ctx, zone.Status.ID, log, dnsrecord); err != nil && err.Error() != "Record does not exist. (81044)" {
-				if err := r.markFailed(ctx, dnsrecord, err.Error()); err != nil {
+				if err := r.markFailed(ctx, dnsrecord, err); err != nil {
 					log.Error(err, "Failed to update DNSRecord status")
 					return ctrl.Result{}, err
 				}
@@ -163,7 +160,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		Content: dnsrecord.Spec.Content,
 	})
 	if err != nil {
-		if err := r.markFailed(ctx, dnsrecord, err.Error()); err != nil {
+		if err := r.markFailed(ctx, dnsrecord, err); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
@@ -178,7 +175,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	if (dnsrecord.Spec.Type == "A" || dnsrecord.Spec.Type == "AAAA") && dnsrecord.Spec.IPRef.Name != "" {
 		ip := &cloudflareoperatoriov1.IP{}
 		if err := r.Get(ctx, client.ObjectKey{Name: dnsrecord.Spec.IPRef.Name}, ip); err != nil {
-			if err := r.markFailed(ctx, dnsrecord, "IP object not found"); err != nil {
+			if err := r.markFailed(ctx, dnsrecord, err); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
@@ -187,14 +184,14 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		if ip.Spec.Address != dnsrecord.Spec.Content {
 			dnsrecord.Spec.Content = ip.Spec.Address
 			if err := r.Update(ctx, dnsrecord); err != nil {
-				log.Error(err, "Failed to update DNSRecord resource")
+				log.Error(err, "Failed to update DNSRecord")
 				return ctrl.Result{}, err
 			}
 		}
 	}
 
 	if *dnsrecord.Spec.Proxied && dnsrecord.Spec.TTL != 1 {
-		if err := r.markFailed(ctx, dnsrecord, "TTL must be 1 when proxied"); err != nil {
+		if err := r.markFailed(ctx, dnsrecord, errors.New("TTL must be 1 when proxied")); err != nil {
 			log.Error(err, "Failed to update DNSRecord status")
 			return ctrl.Result{}, err
 		}
@@ -212,7 +209,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Data:     dnsrecord.Spec.Data,
 		})
 		if err != nil {
-			if err := r.markFailed(ctx, dnsrecord, err.Error()); err != nil {
+			if err := r.markFailed(ctx, dnsrecord, err); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
@@ -244,7 +241,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 			Priority: dnsrecord.Spec.Priority,
 			Data:     dnsrecord.Spec.Data,
 		}); err != nil {
-			if err := r.markFailed(ctx, dnsrecord, err.Error()); err != nil {
+			if err := r.markFailed(ctx, dnsrecord, err); err != nil {
 				log.Error(err, "Failed to update DNSRecord status")
 				return ctrl.Result{}, err
 			}
@@ -293,20 +290,17 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 }
 
 // markFailed marks the reconciled object as failed
-func (r *DNSRecordReconciler) markFailed(ctx context.Context, dnsrecord *cloudflareoperatoriov1.DNSRecord, message string) error {
+func (r *DNSRecordReconciler) markFailed(ctx context.Context, dnsrecord *cloudflareoperatoriov1.DNSRecord, err error) error {
 	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "False",
 		Reason:             "Failed",
-		Message:            message,
+		Message:            err.Error(),
 		ObservedGeneration: dnsrecord.Generation,
 	})
-	if err := r.Status().Update(ctx, dnsrecord); err != nil {
-		return err
-	}
 
-	return nil
+	return r.Status().Update(ctx, dnsrecord)
 }
 
 // comparePriority compares the priority nil safe

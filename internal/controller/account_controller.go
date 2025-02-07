@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -89,7 +90,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
-		if err := r.markFailed(ctx, account, "Failed to get secret"); err != nil {
+		if err := r.markFailed(ctx, account, err); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -98,7 +99,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	cfApiToken := string(secret.Data["apiToken"])
 	if cfApiToken == "" {
-		if err := r.markFailed(ctx, account, "Secret has no 'apiToken' key"); err != nil {
+		if err := r.markFailed(ctx, account, errors.New("Secret has no 'apiToken' key")); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -108,7 +109,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if r.Cf.APIToken != cfApiToken {
 		cf, err := cloudflare.NewWithAPIToken(cfApiToken)
 		if err != nil {
-			if err := r.markFailed(ctx, account, err.Error()); err != nil {
+			if err := r.markFailed(ctx, account, err); err != nil {
 				log.Error(err, "Failed to update Account status")
 				return ctrl.Result{}, err
 			}
@@ -133,18 +134,15 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 // markFailed marks the reconciled object as failed
-func (r *AccountReconciler) markFailed(ctx context.Context, account *cloudflareoperatoriov1.Account, message string) error {
+func (r *AccountReconciler) markFailed(ctx context.Context, account *cloudflareoperatoriov1.Account, err error) error {
 	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(1)
 	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "False",
 		Reason:             "Failed",
-		Message:            message,
+		Message:            err.Error(),
 		ObservedGeneration: account.Generation,
 	})
-	if err := r.Status().Update(ctx, account); err != nil {
-		return err
-	}
 
-	return nil
+	return r.Status().Update(ctx, account)
 }

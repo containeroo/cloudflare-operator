@@ -21,6 +21,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"math/rand"
@@ -97,15 +98,15 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 
 	if ip.Spec.Type == "static" {
 		if ip.Spec.Address == "" {
-			if err := r.markFailed(ctx, ip, "Address is required for static IPs"); err != nil {
-				log.Error(err, "Failed to update IP resource")
+			if err := r.markFailed(ctx, ip, errors.New("Address is required for static IPs")); err != nil {
+				log.Error(err, "Failed to update IP status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
 		}
 		if net.ParseIP(ip.Spec.Address) == nil {
-			if err := r.markFailed(ctx, ip, "Address is not a valid IP address"); err != nil {
-				log.Error(err, "Failed to update IP resource")
+			if err := r.markFailed(ctx, ip, errors.New("Address is not a valid IP address")); err != nil {
+				log.Error(err, "Failed to update IP status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
@@ -116,14 +117,14 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		if ip.Spec.Interval == nil {
 			ip.Spec.Interval = &metav1.Duration{Duration: time.Minute * 5}
 			if err := r.Update(ctx, ip); err != nil {
-				log.Error(err, "Failed to update IP resource")
+				log.Error(err, "Failed to update IP")
 				return ctrl.Result{}, err
 			}
 		}
 
 		if len(ip.Spec.IPSources) == 0 {
-			if err := r.markFailed(ctx, ip, "IPSources is required for dynamic IPs"); err != nil {
-				log.Error(err, "Failed to update IP resource")
+			if err := r.markFailed(ctx, ip, errors.New("IP sources are required for dynamic IPs")); err != nil {
+				log.Error(err, "Failed to update IP status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
@@ -135,21 +136,20 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 			})
 		}
 
-		var ipSourceError string
+		var ipSourceError error
 		for _, source := range ip.Spec.IPSources {
 			response, err := r.getIPSource(ctx, source, log)
 			if err != nil {
-				ipSourceError = err.Error()
+				ipSourceError = err
 				continue
 			}
 			ip.Spec.Address = response
-			ipSourceError = ""
 			break
 		}
 
-		if ipSourceError != "" {
+		if ipSourceError != nil {
 			if err := r.markFailed(ctx, ip, ipSourceError); err != nil {
-				log.Error(err, "Failed to update IP resource")
+				log.Error(err, "Failed to update IP status")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{RequeueAfter: time.Second * 30}, nil
@@ -158,12 +158,12 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 
 	if ip.Spec.Address != ip.Status.LastObservedIP {
 		if err := r.Update(ctx, ip); err != nil {
-			log.Error(err, "Failed to update IP resource")
+			log.Error(err, "Failed to update IP status")
 			return ctrl.Result{}, err
 		}
 		ip.Status.LastObservedIP = ip.Spec.Address
 		if err := r.Status().Update(ctx, ip); err != nil {
-			log.Error(err, "Failed to update IP resource")
+			log.Error(err, "Failed to update IP status")
 			return ctrl.Result{}, err
 		}
 	}
@@ -195,7 +195,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		ObservedGeneration: ip.Generation,
 	})
 	if err := r.Status().Update(ctx, ip); err != nil {
-		log.Error(err, "Failed to update IP resource")
+		log.Error(err, "Failed to update IP status")
 		return ctrl.Result{}, err
 	}
 
@@ -308,18 +308,15 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 }
 
 // markFailed marks the reconciled object as failed
-func (r *IPReconciler) markFailed(ctx context.Context, ip *cloudflareoperatoriov1.IP, message string) error {
+func (r *IPReconciler) markFailed(ctx context.Context, ip *cloudflareoperatoriov1.IP, err error) error {
 	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(1)
 	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "False",
 		Reason:             "Failed",
-		Message:            message,
+		Message:            err.Error(),
 		ObservedGeneration: ip.Generation,
 	})
-	if err := r.Status().Update(ctx, ip); err != nil {
-		return err
-	}
 
-	return nil
+	return r.Status().Update(ctx, ip)
 }

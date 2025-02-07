@@ -79,7 +79,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords, client.InNamespace(ingress.Namespace), client.MatchingFields{"metadata.ownerReferences.uid": string(ingress.UID)}); err != nil {
-		log.Error(err, "Failed to fetch DNSRecord")
+		log.Error(err, "Failed to list DNSRecords")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
