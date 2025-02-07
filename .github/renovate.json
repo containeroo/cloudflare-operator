@@ -1,18 +1,10 @@
 {
-  "extends": [
-    "config:recommended"
-  ],
-  "labels": [
-    "dependency"
-  ],
-  "postUpdateOptions": [
-    "gomodTidy"
-  ],
+  "extends": ["config:recommended"],
+  "labels": ["dependency"],
+  "postUpdateOptions": ["gomodTidy"],
   "packageRules": [
     {
-      "matchPackageNames": [
-        "k8s.io/client-go"
-      ],
+      "matchPackageNames": ["k8s.io/client-go"],
       "allowedVersions": "< 1.0.0"
     }
   ]
