@@ -97,14 +97,14 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 
 	if ip.Spec.Type == "static" {
 		if ip.Spec.Address == "" {
-			if err := r.markFailed(ip, ctx, "Address is required for static IPs"); err != nil {
+			if err := r.markFailed(ctx, ip, "Address is required for static IPs"); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
 			return ctrl.Result{}, nil
 		}
 		if net.ParseIP(ip.Spec.Address) == nil {
-			if err := r.markFailed(ip, ctx, "Address is not a valid IP address"); err != nil {
+			if err := r.markFailed(ctx, ip, "Address is not a valid IP address"); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
@@ -122,7 +122,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 
 		if len(ip.Spec.IPSources) == 0 {
-			if err := r.markFailed(ip, ctx, "IPSources is required for dynamic IPs"); err != nil {
+			if err := r.markFailed(ctx, ip, "IPSources is required for dynamic IPs"); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
@@ -148,7 +148,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Re
 		}
 
 		if ipSourceError != "" {
-			if err := r.markFailed(ip, ctx, ipSourceError); err != nil {
+			if err := r.markFailed(ctx, ip, ipSourceError); err != nil {
 				log.Error(err, "Failed to update IP resource")
 				return ctrl.Result{}, err
 			}
@@ -308,7 +308,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 }
 
 // markFailed marks the reconciled object as failed
-func (r *IPReconciler) markFailed(ip *cloudflareoperatoriov1.IP, ctx context.Context, message string) error {
+func (r *IPReconciler) markFailed(ctx context.Context, ip *cloudflareoperatoriov1.IP, message string) error {
 	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(1)
 	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
 		Type:               "Ready",

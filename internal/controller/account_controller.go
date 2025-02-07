@@ -89,7 +89,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
-		if err := r.markFailed(account, ctx, "Failed to get secret"); err != nil {
+		if err := r.markFailed(ctx, account, "Failed to get secret"); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -98,7 +98,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	cfApiToken := string(secret.Data["apiToken"])
 	if cfApiToken == "" {
-		if err := r.markFailed(account, ctx, "Secret has no 'apiToken' key"); err != nil {
+		if err := r.markFailed(ctx, account, "Secret has no 'apiToken' key"); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}
@@ -108,7 +108,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	if r.Cf.APIToken != cfApiToken {
 		cf, err := cloudflare.NewWithAPIToken(cfApiToken)
 		if err != nil {
-			if err := r.markFailed(account, ctx, err.Error()); err != nil {
+			if err := r.markFailed(ctx, account, err.Error()); err != nil {
 				log.Error(err, "Failed to update Account status")
 				return ctrl.Result{}, err
 			}
@@ -133,7 +133,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 }
 
 // markFailed marks the reconciled object as failed
-func (r *AccountReconciler) markFailed(account *cloudflareoperatoriov1.Account, ctx context.Context, message string) error {
+func (r *AccountReconciler) markFailed(ctx context.Context, account *cloudflareoperatoriov1.Account, message string) error {
 	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(1)
 	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{
 		Type:               "Ready",

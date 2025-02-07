@@ -102,7 +102,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 	zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
 	if err != nil {
-		if err := r.markFailed(zone, ctx, err.Error()); err != nil {
+		if err := r.markFailed(ctx, zone, err.Error()); err != nil {
 			log.Error(err, "Failed to update Zone status")
 			return ctrl.Result{}, err
 		}
@@ -126,7 +126,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 		cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
 		if err != nil {
-			if err := r.markFailed(zone, ctx, err.Error()); err != nil {
+			if err := r.markFailed(ctx, zone, err.Error()); err != nil {
 				log.Error(err, "Failed to update Zone status")
 				return ctrl.Result{}, err
 			}
@@ -145,7 +145,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 
 			if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
 				if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cfDnsRecord.ID); err != nil {
-					if err := r.markFailed(zone, ctx, err.Error()); err != nil {
+					if err := r.markFailed(ctx, zone, err.Error()); err != nil {
 						log.Error(err, "Failed to update Zone status")
 					}
 				}
@@ -170,7 +170,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.
 }
 
 // markFailed marks the reconciled object as failed
-func (r *ZoneReconciler) markFailed(zone *cloudflareoperatoriov1.Zone, ctx context.Context, message string) error {
+func (r *ZoneReconciler) markFailed(ctx context.Context, zone *cloudflareoperatoriov1.Zone, message string) error {
 	metrics.ZoneFailureCounter.WithLabelValues(zone.Name, zone.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
