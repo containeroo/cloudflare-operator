@@ -97,7 +97,7 @@ spec:
               ttl:
                 default: 1
                 description: Time to live, in seconds, of the DNS record. Must be
-                  between 60 and 86400, or 1 for 'automatic' (e.g. 3600)
+                  between 60 and 86400, or 1 for "automatic" (e.g. 3600)
                 maximum: 86400
                 minimum: 1
                 type: integer

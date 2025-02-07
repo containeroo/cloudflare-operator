@@ -99,7 +99,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 
 	cfApiToken := string(secret.Data["apiToken"])
 	if cfApiToken == "" {
-		if err := r.markFailed(ctx, account, errors.New("Secret has no 'apiToken' key")); err != nil {
+		if err := r.markFailed(ctx, account, errors.New("Secret has no key named \"apiToken\"")); err != nil {
 			log.Error(err, "Failed to update Account status")
 			return ctrl.Result{}, err
 		}

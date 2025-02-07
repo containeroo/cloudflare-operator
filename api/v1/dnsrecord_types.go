@@ -46,7 +46,7 @@ type DNSRecordSpec struct {
 	// +kubebuilder:default=true
 	// +optional
 	Proxied *bool `json:"proxied,omitempty"`
-	// Time to live, in seconds, of the DNS record. Must be between 60 and 86400, or 1 for 'automatic' (e.g. 3600)
+	// Time to live, in seconds, of the DNS record. Must be between 60 and 86400, or 1 for "automatic" (e.g. 3600)
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=86400
 	// +kubebuilder:default=1
