@@ -289,7 +289,7 @@ func (r *DNSRecordReconciler) finalizeDNSRecord(ctx context.Context, dnsRecordZo
 	return nil
 }
 
-// markFailed marks the reconciled object as failed
+// markFailed marks the dnsrecord as failed
 func (r *DNSRecordReconciler) markFailed(ctx context.Context, dnsrecord *cloudflareoperatoriov1.DNSRecord, err error) error {
 	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{

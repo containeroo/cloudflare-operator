@@ -98,6 +98,7 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 	return r.reconcileAccount(ctx, account), nil
 }
 
+// reconcileAccount reconciles the account
 func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloudflareoperatoriov1.Account) ctrl.Result {
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
@@ -133,12 +134,13 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}
 }
 
+// reconcileDelete reconciles the deletion of the account
 func (r *AccountReconciler) reconcileDelete(account *cloudflareoperatoriov1.Account) {
 	metrics.AccountFailureCounter.DeleteLabelValues(account.Name)
 	controllerutil.RemoveFinalizer(account, common.CloudflareOperatorFinalizer)
 }
 
-// markFailed marks the reconciled object as failed
+// markFailed marks the account as failed
 func (r *AccountReconciler) markFailed(account *cloudflareoperatoriov1.Account, err error) {
 	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(1)
 	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{

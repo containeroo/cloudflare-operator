@@ -83,6 +83,7 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	return r.reconcileIngress(ctx, ingress, annotations)
 }
 
+// reconcileIngress reconciles the ingress
 func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *networkingv1.Ingress, annotations map[string]string) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
 

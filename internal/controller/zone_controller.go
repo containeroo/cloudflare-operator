@@ -96,6 +96,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 	return r.reconcileZone(ctx, zone), nil
 }
 
+// reconcileZone reconciles the zone
 func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
 	if r.Cf.APIToken == "" {
 		apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
@@ -135,6 +136,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}
 }
 
+// handlePrune deletes DNS records that are not managed by the operator if enabled
 func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperatoriov1.Zone) error {
 	log := ctrl.LoggerFrom(ctx)
 
@@ -170,12 +172,13 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 	return nil
 }
 
+// reconcileDelete reconciles the deletion of the zone
 func (r *ZoneReconciler) reconcileDelete(zone *cloudflareoperatoriov1.Zone) {
 	metrics.ZoneFailureCounter.DeleteLabelValues(zone.Name, zone.Spec.Name)
 	controllerutil.RemoveFinalizer(zone, common.CloudflareOperatorFinalizer)
 }
 
-// markFailed marks the reconciled object as failed
+// markFailed marks the zone as failed
 func (r *ZoneReconciler) markFailed(zone *cloudflareoperatoriov1.Zone, err error) {
 	metrics.ZoneFailureCounter.WithLabelValues(zone.Name, zone.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{

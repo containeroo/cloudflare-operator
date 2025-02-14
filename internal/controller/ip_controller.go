@@ -307,7 +307,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 	return strings.TrimSpace(extractedIP), nil
 }
 
-// markFailed marks the reconciled object as failed
+// markFailed marks the ip as failed
 func (r *IPReconciler) markFailed(ctx context.Context, ip *cloudflareoperatoriov1.IP, err error) error {
 	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(1)
 	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
