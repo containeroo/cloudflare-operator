@@ -17,15 +17,3 @@ limitations under the License.
 package common
 
 const CloudflareOperatorFinalizer = "cloudflare-operator.io/finalizer"
-
-// NewTrue creates a pointer to a true bool
-func NewTrue() *bool {
-	b := true
-	return &b
-}
-
-// NewFalse creates a pointer to a false bool
-func NewFalse() *bool {
-	b := false
-	return &b
-}

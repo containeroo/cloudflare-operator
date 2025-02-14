@@ -24,7 +24,6 @@ import (
 	"time"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
-	"github.com/containeroo/cloudflare-operator/internal/common"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -41,15 +40,19 @@ type IngressReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.DNSRecord{}, "metadata.ownerReferences.uid",
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.DNSRecord{}, ".metadata.ownerReferences.uid",
 		func(o client.Object) []string {
-			ownerReferences := o.GetOwnerReferences()
-			var ownerReferencesUIDs []string
+			obj := o.(*cloudflareoperatoriov1.DNSRecord)
+			ownerReferences := obj.GetOwnerReferences()
+			var ownerReferencesUID string
 			for _, ownerReference := range ownerReferences {
-				ownerReferencesUIDs = append(ownerReferencesUIDs, string(ownerReference.UID))
+				if ownerReference.Kind != "Ingress" {
+					continue
+				}
+				ownerReferencesUID = string(ownerReference.UID)
 			}
 
-			return ownerReferencesUIDs
+			return []string{ownerReferencesUID}
 		},
 	); err != nil {
 		return err
@@ -57,6 +60,7 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
+		Owns(&cloudflareoperatoriov1.DNSRecord{}).
 		Complete(r)
 }
 
@@ -66,78 +70,29 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
 func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	log := ctrl.LoggerFrom(ctx)
-
 	ingress := &networkingv1.Ingress{}
 	if err := r.Get(ctx, req.NamespacedName, ingress); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	if ingress.Annotations["cloudflare-operator.io/content"] == "" && ingress.Annotations["cloudflare-operator.io/ip-ref"] == "" {
+	annotations := ingress.GetAnnotations()
+	if annotations["cloudflare-operator.io/content"] == "" && annotations["cloudflare-operator.io/ip-ref"] == "" {
 		return ctrl.Result{}, nil
 	}
 
+	return r.reconcileIngress(ctx, ingress, annotations)
+}
+
+func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *networkingv1.Ingress, annotations map[string]string) (ctrl.Result, error) {
+	log := ctrl.LoggerFrom(ctx)
+
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
-	if err := r.List(ctx, dnsRecords, client.InNamespace(ingress.Namespace), client.MatchingFields{"metadata.ownerReferences.uid": string(ingress.UID)}); err != nil {
+	if err := r.List(ctx, dnsRecords, client.InNamespace(ingress.Namespace), client.MatchingFields{".metadata.ownerReferences.uid": string(ingress.UID)}); err != nil {
 		log.Error(err, "Failed to list DNSRecords")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
-	dnsRecordSpec := cloudflareoperatoriov1.DNSRecordSpec{}
-
-	if content, ok := ingress.Annotations["cloudflare-operator.io/content"]; ok {
-		dnsRecordSpec.Content = content
-	}
-
-	if ipRef, ok := ingress.Annotations["cloudflare-operator.io/ip-ref"]; ok {
-		dnsRecordSpec.IPRef.Name = ipRef
-	}
-
-	if proxied, ok := ingress.Annotations["cloudflare-operator.io/proxied"]; ok {
-		switch proxied {
-		case "true":
-			dnsRecordSpec.Proxied = common.NewTrue()
-		case "false":
-			dnsRecordSpec.Proxied = common.NewFalse()
-		default:
-			dnsRecordSpec.Proxied = common.NewTrue()
-			log.Error(nil, "Failed to parse proxied annotation, defaulting to true", "proxied", proxied, "ingress", ingress.Name)
-		}
-	}
-	if dnsRecordSpec.Proxied == nil {
-		dnsRecordSpec.Proxied = common.NewTrue()
-	}
-
-	if ttl, ok := ingress.Annotations["cloudflare-operator.io/ttl"]; ok {
-		ttlInt, _ := strconv.Atoi(ttl)
-		if *dnsRecordSpec.Proxied && ttlInt != 1 {
-			log.Info("DNSRecord is proxied and ttl is not 1, skipping reconciliation", "ingress", ingress.Name)
-			return ctrl.Result{}, nil
-		}
-		dnsRecordSpec.TTL = ttlInt
-	}
-	if dnsRecordSpec.TTL == 0 {
-		dnsRecordSpec.TTL = 1
-	}
-
-	if recordType, ok := ingress.Annotations["cloudflare-operator.io/type"]; ok {
-		dnsRecordSpec.Type = recordType
-	}
-	if dnsRecordSpec.Type == "" {
-		dnsRecordSpec.Type = "A"
-	}
-
-	if interval, ok := ingress.Annotations["cloudflare-operator.io/interval"]; ok {
-		intervalDuration, err := time.ParseDuration(interval)
-		if err != nil {
-			log.Error(err, "Failed to parse interval", "interval", interval, "ingress", ingress.Name)
-			return ctrl.Result{}, err
-		}
-		dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
-	}
-	if dnsRecordSpec.Interval.Duration == 0 {
-		dnsRecordSpec.Interval.Duration = time.Minute * 5
-	}
+	dnsRecordSpec := r.parseAnnotations(annotations)
 
 	dnsRecordMap := make(map[string]cloudflareoperatoriov1.DNSRecord)
 	for _, dnsRecord := range dnsRecords.Items {
@@ -209,4 +164,40 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	}
 
 	return ctrl.Result{}, nil
+}
+
+// parseAnnotations parses ingress annotations and returns a DNSRecordSpec
+func (r *IngressReconciler) parseAnnotations(annotations map[string]string) cloudflareoperatoriov1.DNSRecordSpec {
+	dnsRecordSpec := cloudflareoperatoriov1.DNSRecordSpec{}
+
+	dnsRecordSpec.Content = annotations["cloudflare-operator.io/content"]
+	dnsRecordSpec.IPRef.Name = annotations["cloudflare-operator.io/ip-ref"]
+
+	proxied, err := strconv.ParseBool(annotations["cloudflare-operator.io/proxied"])
+	if err != nil {
+		proxied = true
+	}
+
+	dnsRecordSpec.Proxied = &proxied
+	ttl, err := strconv.Atoi(annotations["cloudflare-operator.io/ttl"])
+	if err != nil {
+		ttl = 1
+	}
+	if *dnsRecordSpec.Proxied && ttl != 1 {
+		ttl = 1
+	}
+	dnsRecordSpec.TTL = ttl
+
+	dnsRecordSpec.Type = annotations["cloudflare-operator.io/type"]
+	if dnsRecordSpec.Type == "" {
+		dnsRecordSpec.Type = "A"
+	}
+
+	intervalDuration, err := time.ParseDuration(annotations["cloudflare-operator.io/interval"])
+	if err != nil {
+		intervalDuration = 5 * time.Minute
+	}
+	dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
+
+	return dnsRecordSpec
 }
