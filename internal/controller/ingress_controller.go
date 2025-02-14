@@ -60,6 +60,7 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
+		Owns(&cloudflareoperatoriov1.DNSRecord{}).
 		Complete(r)
 }
 
