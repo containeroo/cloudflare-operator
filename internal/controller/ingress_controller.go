@@ -60,7 +60,6 @@ func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manag
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
-		Owns(&cloudflareoperatoriov1.DNSRecord{}).
 		Complete(r)
 }
 
@@ -100,68 +99,37 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 		dnsRecordMap[dnsRecord.Spec.Name] = dnsRecord
 	}
 
-	ingressRuleMap := make(map[string]struct{})
+	ingressRules := make(map[string]struct{})
 	for _, rule := range ingress.Spec.Rules {
 		if rule.Host == "" {
 			continue
 		}
-		ingressRuleMap[rule.Host] = struct{}{}
-		if _, found := dnsRecordMap[rule.Host]; found {
-			continue
-		}
-
+		ingressRules[rule.Host] = struct{}{}
 		dnsRecordSpec.Name = rule.Host
-
-		dnsRecord := &cloudflareoperatoriov1.DNSRecord{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      strings.ReplaceAll(rule.Host, ".", "-"),
-				Namespace: ingress.Namespace,
-				Labels: map[string]string{
-					"app.kubernetes.io/managed-by": "cloudflare-operator",
-				},
-			},
-			Spec: dnsRecordSpec,
-		}
-
-		if err := controllerutil.SetControllerReference(ingress, dnsRecord, r.Scheme); err != nil {
-			log.Error(err, "Failed to set controller reference")
-			return ctrl.Result{}, err
-		}
-
-		log.Info("Creating DNSRecord", "name", dnsRecord.Name)
-		if err := r.Create(ctx, dnsRecord); err != nil {
-			log.Error(err, "Failed to create DNSRecord")
-			return ctrl.Result{}, err
-		}
-	}
-
-	for _, rule := range ingress.Spec.Rules {
-		dnsRecord, exists := dnsRecordMap[rule.Host]
-		if !exists {
-			continue
-		}
-
-		dnsRecordSpec.Name = rule.Host
-		if reflect.DeepEqual(dnsRecord.Spec, dnsRecordSpec) {
-			continue
-		}
-
-		log.Info("Updating DNSRecord", "name", dnsRecord.Name)
-		dnsRecord.Spec = dnsRecordSpec
-		if err := r.Update(ctx, &dnsRecord); err != nil {
-			log.Error(err, "Failed to update DNSRecord")
-			return ctrl.Result{}, err
+		if dnsRecord, found := dnsRecordMap[rule.Host]; !found {
+			if err := r.createDNSRecord(ctx, ingress, dnsRecordSpec); err != nil {
+				log.Error(err, "Failed to create DNSRecord")
+				return ctrl.Result{}, err
+			}
+			log.Info("Created DNSRecord", "name", dnsRecordSpec.Name)
+		} else if !reflect.DeepEqual(dnsRecord.Spec, dnsRecordSpec) {
+			dnsRecord.Spec = dnsRecordSpec
+			if err := r.Update(ctx, &dnsRecord); err != nil {
+				log.Error(err, "Failed to update DNSRecord")
+				return ctrl.Result{}, err
+			}
+			log.Info("Updated DNSRecord", "name", dnsRecord.Name)
 		}
 	}
 
 	for _, dnsRecord := range dnsRecords.Items {
-		if _, found := ingressRuleMap[dnsRecord.Spec.Name]; found {
+		if _, found := ingressRules[dnsRecord.Spec.Name]; found {
 			continue
 		}
-		log.Info("Deleting DNSRecord", "name", dnsRecord.Name)
 		if err := r.Delete(ctx, &dnsRecord); err != nil {
 			log.Error(err, "Failed to delete DNSRecord")
 		}
+		log.Info("Deleted DNSRecord", "name", dnsRecord.Name)
 	}
 
 	return ctrl.Result{}, nil
@@ -201,4 +169,22 @@ func (r *IngressReconciler) parseAnnotations(annotations map[string]string) clou
 	dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
 
 	return dnsRecordSpec
+}
+
+// createDNSRecord creates a DNSRecord
+func (r *IngressReconciler) createDNSRecord(ctx context.Context, ingress *networkingv1.Ingress, dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec) error {
+	dnsRecord := &cloudflareoperatoriov1.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      strings.ReplaceAll(dnsRecordSpec.Name, ".", "-"),
+			Namespace: ingress.Namespace,
+			Labels: map[string]string{
+				"app.kubernetes.io/managed-by": "cloudflare-operator",
+			},
+		},
+		Spec: dnsRecordSpec,
+	}
+	if err := controllerutil.SetControllerReference(ingress, dnsRecord, r.Scheme); err != nil {
+		return err
+	}
+	return r.Create(ctx, dnsRecord)
 }
