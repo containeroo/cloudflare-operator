@@ -172,7 +172,7 @@ func (r *IngressReconciler) parseAnnotations(annotations map[string]string) clou
 	return dnsRecordSpec
 }
 
-// createDNSRecord creates a DNSRecord
+// createDNSRecord creates a DNSRecord object
 func (r *IngressReconciler) createDNSRecord(ctx context.Context, ingress *networkingv1.Ingress, dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec) error {
 	dnsRecord := &cloudflareoperatoriov1.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
