@@ -77,8 +77,8 @@ type DNSRecordStatus struct {
 }
 
 const (
-	// IPRefIndexKey is the key used for indexing DNSRecord objects by their IPRef.
-	IPRefIndexKey string = ".spec.ipRef.name"
+	IPRefIndexKey       string = ".spec.ipRef.name"
+	OwnerRefUIDIndexKey string = ".metadata.ownerReferences.uid"
 )
 
 // +kubebuilder:object:root=true

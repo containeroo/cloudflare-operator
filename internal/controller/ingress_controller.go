@@ -40,7 +40,7 @@ type IngressReconciler struct {
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.DNSRecord{}, ".metadata.ownerReferences.uid",
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.DNSRecord{}, cloudflareoperatoriov1.OwnerRefUIDIndexKey,
 		func(o client.Object) []string {
 			obj := o.(*cloudflareoperatoriov1.DNSRecord)
 			ownerReferences := obj.GetOwnerReferences()
@@ -88,7 +88,7 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 	log := ctrl.LoggerFrom(ctx)
 
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
-	if err := r.List(ctx, dnsRecords, client.InNamespace(ingress.Namespace), client.MatchingFields{".metadata.ownerReferences.uid": string(ingress.UID)}); err != nil {
+	if err := r.List(ctx, dnsRecords, client.InNamespace(ingress.Namespace), client.MatchingFields{cloudflareoperatoriov1.OwnerRefUIDIndexKey: string(ingress.UID)}); err != nil {
 		log.Error(err, "Failed to list DNSRecords")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
