@@ -33,6 +33,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
@@ -48,9 +50,18 @@ type DNSRecordReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *DNSRecordReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *DNSRecordReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.DNSRecord{}, cloudflareoperatoriov1.IPRefIndexKey,
+		func(o client.Object) []string {
+			dnsRecord := o.(*cloudflareoperatoriov1.DNSRecord)
+			return []string{dnsRecord.Spec.IPRef.Name}
+		}); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cloudflareoperatoriov1.DNSRecord{}).
+		Watches(&cloudflareoperatoriov1.IP{}, handler.EnqueueRequestsFromMapFunc(r.requestsForIPChange)).
 		Complete(r)
 }
 
@@ -371,4 +382,28 @@ func compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existi
 	}
 
 	return isEqual
+}
+
+// requestsForIPChange returns a list of reconcile.Requests for DNSRecords that need to be reconciled
+func (r *DNSRecordReconciler) requestsForIPChange(ctx context.Context, o client.Object) []reconcile.Request {
+	ip, ok := o.(*cloudflareoperatoriov1.IP)
+	if !ok {
+		err := fmt.Errorf("expected a DNSRecord, got %T", o)
+		ctrl.LoggerFrom(ctx).Error(err, "failed to get requests for IP change")
+		return nil
+	}
+
+	var dnsRecords cloudflareoperatoriov1.DNSRecordList
+	if err := r.List(ctx, &dnsRecords, client.MatchingFields{
+		cloudflareoperatoriov1.IPRefIndexKey: client.ObjectKeyFromObject(ip).Name,
+	}); err != nil {
+		ctrl.LoggerFrom(ctx).Error(err, "failed to list DNSRecords for IP change")
+		return nil
+	}
+
+	reqs := make([]reconcile.Request, 0, len(dnsRecords.Items))
+	for i := range dnsRecords.Items {
+		reqs = append(reqs, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&dnsRecords.Items[i])})
+	}
+	return reqs
 }

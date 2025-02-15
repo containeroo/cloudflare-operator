@@ -119,11 +119,6 @@ func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatorio
 		}
 	}
 
-	if err := r.updateDNSRecords(ctx, ip); err != nil {
-		r.markFailed(ip, err)
-		return ctrl.Result{}
-	}
-
 	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
 		Status:             "True",
@@ -139,27 +134,6 @@ func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatorio
 	}
 
 	return ctrl.Result{}
-}
-
-// updateDNSRecords updates the DNS records with the new IP
-func (r *IPReconciler) updateDNSRecords(ctx context.Context, ip *cloudflareoperatoriov1.IP) error {
-	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
-	if err := r.List(ctx, dnsRecords); err != nil {
-		return err
-	}
-	for _, dnsRecord := range dnsRecords.Items {
-		if dnsRecord.Spec.IPRef.Name != ip.Name {
-			continue
-		}
-		if dnsRecord.Spec.Content == ip.Spec.Address {
-			continue
-		}
-		dnsRecord.Spec.Content = ip.Spec.Address
-		if err := r.Update(ctx, &dnsRecord); err != nil {
-			return err
-		}
-	}
-	return nil
 }
 
 // getIPSource returns the IP gathered from the IPSource

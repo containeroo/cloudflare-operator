@@ -76,6 +76,11 @@ type DNSRecordStatus struct {
 	RecordID string `json:"recordID,omitempty"`
 }
 
+const (
+	// IPRefIndexKey is the key used for indexing DNSRecord objects by their IPRef.
+	IPRefIndexKey string = ".spec.ipRef.name"
+)
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
