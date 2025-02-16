@@ -44,6 +44,10 @@ type ZoneStatus struct {
 	Conditions []metav1.Condition `json:"conditions"`
 }
 
+const (
+	ZoneNameIndexKey string = ".spec.name"
+)
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster
@@ -58,6 +62,16 @@ type Zone struct {
 
 	Spec   ZoneSpec   `json:"spec,omitempty"`
 	Status ZoneStatus `json:"status,omitempty"`
+}
+
+// GetConditions returns the status conditions of the object.
+func (in *Zone) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+// SetConditions sets the status conditions on the object.
+func (in *Zone) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
 }
 
 // +kubebuilder:object:root=true

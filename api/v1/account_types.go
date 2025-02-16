@@ -62,6 +62,16 @@ type Account struct {
 	Status AccountStatus `json:"status,omitempty"`
 }
 
+// GetConditions returns the status conditions of the object.
+func (in *Account) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+// SetConditions sets the status conditions on the object.
+func (in *Account) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
+}
+
 // +kubebuilder:object:root=true
 
 // AccountList contains a list of Account

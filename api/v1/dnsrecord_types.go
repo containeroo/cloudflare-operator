@@ -76,6 +76,11 @@ type DNSRecordStatus struct {
 	RecordID string `json:"recordID,omitempty"`
 }
 
+const (
+	IPRefIndexKey       string = ".spec.ipRef.name"
+	OwnerRefUIDIndexKey string = ".metadata.ownerReferences.uid"
+)
+
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
@@ -92,6 +97,16 @@ type DNSRecord struct {
 
 	Spec   DNSRecordSpec   `json:"spec,omitempty"`
 	Status DNSRecordStatus `json:"status,omitempty"`
+}
+
+// GetConditions returns the status conditions of the object.
+func (in *DNSRecord) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+// SetConditions sets the status conditions on the object.
+func (in *DNSRecord) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
 }
 
 // +kubebuilder:object:root=true

@@ -14,6 +14,18 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package v1
 
-const CloudflareOperatorFinalizer = "cloudflare-operator.io/finalizer"
+const (
+	// ConditionTypeReady represents the fact that the object is ready.
+	ConditionTypeReady string = "Ready"
+
+	// ConditionReasonReady represents the fact that the object is ready.
+	ConditionReasonReady string = "Ready"
+
+	// ConditionReasonNotReady represents the fact that the object is not ready.
+	ConditionReasonNotReady string = "NotReady"
+
+	// ConditionReasonFailed represents the fact that the object has failed.
+	ConditionReasonFailed string = "Failed"
+)

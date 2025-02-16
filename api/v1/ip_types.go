@@ -73,9 +73,6 @@ type IPStatus struct {
 	// Conditions contains the different condition statuses for the IP object.
 	// +optional
 	Conditions []metav1.Condition `json:"conditions"`
-	// LastObservedIP contains the IP address observed at the last interval (used to determine whether the IP has changed)
-	// +optional
-	LastObservedIP string `json:"lastObservedIP,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -92,6 +89,16 @@ type IP struct {
 
 	Spec   IPSpec   `json:"spec,omitempty"`
 	Status IPStatus `json:"status,omitempty"`
+}
+
+// GetConditions returns the status conditions of the object.
+func (in *IP) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+// SetConditions sets the status conditions on the object.
+func (in *IP) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
 }
 
 // +kubebuilder:object:root=true
