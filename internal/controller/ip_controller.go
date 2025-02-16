@@ -39,7 +39,6 @@ import (
 	"github.com/itchyny/gojq"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	apimeta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
@@ -109,25 +108,17 @@ func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatorio
 	switch ip.Spec.Type {
 	case "static":
 		if err := r.handleStatic(ip); err != nil {
-			r.markFailed(ip, err)
+			common.MarkFalse(ip, err)
 			return ctrl.Result{}
 		}
 	case "dynamic":
 		if err := r.handleDynamic(ctx, ip); err != nil {
-			r.markFailed(ip, err)
+			common.MarkFalse(ip, err)
 			return ctrl.Result{}
 		}
 	}
 
-	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionTrue,
-		Reason:             "Ready",
-		Message:            "IP is ready",
-		ObservedGeneration: ip.Generation,
-	})
-
-	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(0)
+	common.MarkTrue(ip, "IP is ready")
 
 	if ip.Spec.Type == "dynamic" {
 		return ctrl.Result{RequeueAfter: ip.Spec.Interval.Duration}
@@ -283,16 +274,4 @@ func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperator
 func (r *IPReconciler) reconcileDelete(ip *cloudflareoperatoriov1.IP) {
 	metrics.IpFailureCounter.DeleteLabelValues(ip.Name, ip.Spec.Type)
 	controllerutil.RemoveFinalizer(ip, common.CloudflareOperatorFinalizer)
-}
-
-// markFailed marks the ip as failed
-func (r *IPReconciler) markFailed(ip *cloudflareoperatoriov1.IP, err error) {
-	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(1)
-	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "Failed",
-		Message:            err.Error(),
-		ObservedGeneration: ip.Generation,
-	})
 }

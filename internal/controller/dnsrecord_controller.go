@@ -24,12 +24,11 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/fluxcd/pkg/runtime/patch"
 	"golang.org/x/net/publicsuffix"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	apimeta "k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -124,7 +123,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if len(zones.Items) == 0 {
-		r.markFailed(dnsrecord, fmt.Errorf("Zone %q not found", zoneName))
+		common.MarkFalse(dnsrecord, fmt.Errorf("Zone %q not found", zoneName))
 		return ctrl.Result{}, nil
 	}
 
@@ -149,24 +148,12 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // reconcileDNSRecord reconciles the dnsrecord
 func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
 	if r.Cf.APIToken == "" {
-		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionFalse,
-			Reason:             "NotReady",
-			Message:            "Cloudflare account is not ready",
-			ObservedGeneration: dnsrecord.Generation,
-		})
+		common.MarkUnknown(dnsrecord, "Cloudflare account is not ready")
 		return ctrl.Result{RequeueAfter: time.Second * 5}
 	}
 
-	if condition := apimeta.FindStatusCondition(zone.Status.Conditions, "Ready"); condition == nil || condition.Status != metav1.ConditionTrue {
-		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionFalse,
-			Reason:             "NotReady",
-			Message:            "Zone is not ready",
-			ObservedGeneration: dnsrecord.Generation,
-		})
+	if !conditions.IsTrue(zone, cloudflareoperatoriov1.ConditionTypeReady) {
+		common.MarkUnknown(dnsrecord, "Zone is not ready")
 		return ctrl.Result{RequeueAfter: time.Second * 5}
 	}
 
@@ -175,7 +162,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		var err error
 		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), dnsrecord.Status.RecordID)
 		if err != nil {
-			r.markFailed(dnsrecord, err)
+			common.MarkFalse(dnsrecord, err)
 			return ctrl.Result{}
 		}
 	} else {
@@ -185,7 +172,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Content: dnsrecord.Spec.Content,
 		})
 		if err != nil {
-			r.markFailed(dnsrecord, err)
+			common.MarkFalse(dnsrecord, err)
 			return ctrl.Result{}
 		}
 		if len(cfExistingRecords) > 0 {
@@ -196,7 +183,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 	if (dnsrecord.Spec.Type == "A" || dnsrecord.Spec.Type == "AAAA") && dnsrecord.Spec.IPRef.Name != "" {
 		ip := &cloudflareoperatoriov1.IP{}
 		if err := r.Get(ctx, client.ObjectKey{Name: dnsrecord.Spec.IPRef.Name}, ip); err != nil {
-			r.markFailed(dnsrecord, err)
+			common.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 		if ip.Spec.Address != dnsrecord.Spec.Content {
@@ -205,7 +192,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 	}
 
 	if *dnsrecord.Spec.Proxied && dnsrecord.Spec.TTL != 1 {
-		r.markFailed(dnsrecord, errors.New("TTL must be 1 when proxied"))
+		common.MarkFalse(dnsrecord, errors.New("TTL must be 1 when proxied"))
 		return ctrl.Result{}
 	}
 
@@ -220,7 +207,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Data:     dnsrecord.Spec.Data,
 		})
 		if err != nil {
-			r.markFailed(dnsrecord, err)
+			common.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 		dnsrecord.Status.RecordID = newDNSRecord.ID
@@ -235,20 +222,12 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Priority: dnsrecord.Spec.Priority,
 			Data:     dnsrecord.Spec.Data,
 		}); err != nil {
-			r.markFailed(dnsrecord, err)
+			common.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 	}
 
-	apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionTrue,
-		Reason:             "Ready",
-		Message:            "DNS record synced",
-		ObservedGeneration: dnsrecord.Generation,
-	})
-
-	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(0)
+	common.MarkTrue(dnsrecord, "DNS record synced")
 
 	return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}
 }
@@ -262,18 +241,6 @@ func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zoneID string
 	controllerutil.RemoveFinalizer(dnsrecord, common.CloudflareOperatorFinalizer)
 
 	return nil
-}
-
-// markFailed marks the dnsrecord as failed
-func (r *DNSRecordReconciler) markFailed(dnsrecord *cloudflareoperatoriov1.DNSRecord, err error) {
-	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(1)
-	apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "Failed",
-		Message:            err.Error(),
-		ObservedGeneration: dnsrecord.Generation,
-	})
 }
 
 // comparePriority compares the priority nil safe

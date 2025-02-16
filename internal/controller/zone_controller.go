@@ -24,8 +24,6 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	apimeta "k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -107,19 +105,13 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 // reconcileZone reconciles the zone
 func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
 	if r.Cf.APIToken == "" {
-		apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
-			Type:               "Ready",
-			Status:             metav1.ConditionFalse,
-			Reason:             "NotReady",
-			Message:            "Cloudflare account is not ready",
-			ObservedGeneration: zone.Generation,
-		})
+		common.MarkUnknown(zone, "Cloudflare account is not ready")
 		return ctrl.Result{RequeueAfter: time.Second * 5}
 	}
 
 	zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
 	if err != nil {
-		r.markFailed(zone, err)
+		common.MarkFalse(zone, err)
 		return ctrl.Result{}
 	}
 
@@ -131,15 +123,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 		}
 	}
 
-	apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionTrue,
-		Reason:             "Ready",
-		Message:            "Zone is ready",
-		ObservedGeneration: zone.Generation,
-	})
-
-	metrics.ZoneFailureCounter.WithLabelValues(zone.Name, zone.Spec.Name).Set(0)
+	common.MarkTrue(zone, "Zone is ready")
 
 	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}
 }
@@ -156,7 +140,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 
 	cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
 	if err != nil {
-		r.markFailed(zone, err)
+		common.MarkFalse(zone, err)
 		return err
 	}
 
@@ -172,7 +156,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 
 		if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
 			if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cfDnsRecord.ID); err != nil {
-				r.markFailed(zone, err)
+				common.MarkFalse(zone, err)
 			}
 			log.Info("Deleted DNS record on Cloudflare", "name", cfDnsRecord.Name)
 		}
@@ -184,16 +168,4 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 func (r *ZoneReconciler) reconcileDelete(zone *cloudflareoperatoriov1.Zone) {
 	metrics.ZoneFailureCounter.DeleteLabelValues(zone.Name, zone.Spec.Name)
 	controllerutil.RemoveFinalizer(zone, common.CloudflareOperatorFinalizer)
-}
-
-// markFailed marks the zone as failed
-func (r *ZoneReconciler) markFailed(zone *cloudflareoperatoriov1.Zone, err error) {
-	metrics.ZoneFailureCounter.WithLabelValues(zone.Name, zone.Spec.Name).Set(1)
-	apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "Failed",
-		Message:            err.Error(),
-		ObservedGeneration: zone.Generation,
-	})
 }

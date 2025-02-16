@@ -5,7 +5,6 @@ go 1.23.0
 require (
 	github.com/cloudflare/cloudflare-go v0.115.0
 	github.com/fluxcd/pkg/runtime v0.53.1
-	github.com/go-logr/logr v1.4.2
 	github.com/itchyny/gojq v0.12.17
 	github.com/prometheus/client_golang v1.20.5
 	golang.org/x/net v0.35.0
@@ -25,6 +24,7 @@ require (
 	github.com/fluxcd/pkg/apis/meta v1.10.0 // indirect
 	github.com/fsnotify/fsnotify v1.8.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.7.0 // indirect
+	github.com/go-logr/logr v1.4.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
 	github.com/go-openapi/jsonpointer v0.21.0 // indirect
 	github.com/go-openapi/jsonreference v0.21.0 // indirect

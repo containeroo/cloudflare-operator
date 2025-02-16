@@ -91,6 +91,16 @@ type IP struct {
 	Status IPStatus `json:"status,omitempty"`
 }
 
+// GetConditions returns the status conditions of the object.
+func (in *IP) GetConditions() []metav1.Condition {
+	return in.Status.Conditions
+}
+
+// SetConditions sets the status conditions on the object.
+func (in *IP) SetConditions(conditions []metav1.Condition) {
+	in.Status.Conditions = conditions
+}
+
 // +kubebuilder:object:root=true
 
 // IPList contains a list of IP

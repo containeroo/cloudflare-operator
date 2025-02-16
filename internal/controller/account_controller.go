@@ -26,8 +26,6 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"github.com/fluxcd/pkg/runtime/patch"
 	corev1 "k8s.io/api/core/v1"
-	apimeta "k8s.io/apimachinery/pkg/api/meta"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -102,34 +100,26 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloudflareoperatoriov1.Account) ctrl.Result {
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
-		r.markFailed(account, err)
+		common.MarkFalse(account, err)
 		return ctrl.Result{RequeueAfter: time.Second * 30}
 	}
 
 	cfApiToken := string(secret.Data["apiToken"])
 	if cfApiToken == "" {
-		r.markFailed(account, errors.New("Secret has no key named \"apiToken\""))
+		common.MarkFalse(account, errors.New("Secret has no key named \"apiToken\""))
 		return ctrl.Result{RequeueAfter: time.Second * 30}
 	}
 
 	if r.Cf.APIToken != cfApiToken {
 		cf, err := cloudflare.NewWithAPIToken(cfApiToken)
 		if err != nil {
-			r.markFailed(account, err)
+			common.MarkFalse(account, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 		*r.Cf = *cf
 	}
 
-	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionTrue,
-		Reason:             "Ready",
-		Message:            "Account is ready",
-		ObservedGeneration: account.Generation,
-	})
-
-	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(0)
+	common.MarkTrue(account, "Account is ready")
 
 	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}
 }
@@ -138,16 +128,4 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 func (r *AccountReconciler) reconcileDelete(account *cloudflareoperatoriov1.Account) {
 	metrics.AccountFailureCounter.DeleteLabelValues(account.Name)
 	controllerutil.RemoveFinalizer(account, common.CloudflareOperatorFinalizer)
-}
-
-// markFailed marks the account as failed
-func (r *AccountReconciler) markFailed(account *cloudflareoperatoriov1.Account, err error) {
-	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(1)
-	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{
-		Type:               "Ready",
-		Status:             metav1.ConditionFalse,
-		Reason:             "Failed",
-		Message:            err.Error(),
-		ObservedGeneration: account.Generation,
-	})
 }
