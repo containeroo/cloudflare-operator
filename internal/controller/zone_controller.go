@@ -48,7 +48,15 @@ type ZoneReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *ZoneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.Zone{}, cloudflareoperatoriov1.ZoneNameIndexKey,
+		func(rawObj client.Object) []string {
+			zone := rawObj.(*cloudflareoperatoriov1.Zone)
+			return []string{zone.Spec.Name}
+		}); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cloudflareoperatoriov1.Zone{}).
 		Complete(r)

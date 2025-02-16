@@ -39,25 +39,7 @@ type IngressReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *IngressReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.DNSRecord{}, cloudflareoperatoriov1.OwnerRefUIDIndexKey,
-		func(o client.Object) []string {
-			obj := o.(*cloudflareoperatoriov1.DNSRecord)
-			ownerReferences := obj.GetOwnerReferences()
-			var ownerReferencesUID string
-			for _, ownerReference := range ownerReferences {
-				if ownerReference.Kind != "Ingress" {
-					continue
-				}
-				ownerReferencesUID = string(ownerReference.UID)
-			}
-
-			return []string{ownerReferencesUID}
-		},
-	); err != nil {
-		return err
-	}
-
+func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}).
 		Owns(&cloudflareoperatoriov1.DNSRecord{}).
@@ -112,14 +94,12 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 				log.Error(err, "Failed to create DNSRecord")
 				return ctrl.Result{}, err
 			}
-			log.Info("Created DNSRecord", "name", dnsRecordSpec.Name)
 		} else if !reflect.DeepEqual(dnsRecord.Spec, dnsRecordSpec) {
 			dnsRecord.Spec = dnsRecordSpec
 			if err := r.Update(ctx, &dnsRecord); err != nil {
 				log.Error(err, "Failed to update DNSRecord")
 				return ctrl.Result{}, err
 			}
-			log.Info("Updated DNSRecord", "name", dnsRecord.Name)
 		}
 	}
 
@@ -130,7 +110,6 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 		if err := r.Delete(ctx, &dnsRecord); err != nil {
 			log.Error(err, "Failed to delete DNSRecord")
 		}
-		log.Info("Deleted DNSRecord", "name", dnsRecord.Name)
 	}
 
 	return ctrl.Result{}, nil
