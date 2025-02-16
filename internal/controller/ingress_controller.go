@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"reflect"
 	"strconv"
 	"strings"
@@ -69,50 +70,75 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *networkingv1.Ingress, annotations map[string]string) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
-	if err := r.List(ctx, dnsRecords, client.InNamespace(ingress.Namespace), client.MatchingFields{cloudflareoperatoriov1.OwnerRefUIDIndexKey: string(ingress.UID)}); err != nil {
+	dnsRecords, err := r.getDNSRecords(ctx, ingress)
+	if err != nil {
 		log.Error(err, "Failed to list DNSRecords")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
 
 	dnsRecordSpec := r.parseAnnotations(annotations)
-
-	dnsRecordMap := make(map[string]cloudflareoperatoriov1.DNSRecord)
-	for _, dnsRecord := range dnsRecords.Items {
-		dnsRecordMap[dnsRecord.Spec.Name] = dnsRecord
+	existingRecords := make(map[string]cloudflareoperatoriov1.DNSRecord)
+	for _, record := range dnsRecords.Items {
+		existingRecords[record.Spec.Name] = record
 	}
 
-	ingressRules := make(map[string]struct{})
-	for _, rule := range ingress.Spec.Rules {
-		if rule.Host == "" {
-			continue
-		}
-		ingressRules[rule.Host] = struct{}{}
-		dnsRecordSpec.Name = rule.Host
-		if dnsRecord, found := dnsRecordMap[rule.Host]; !found {
-			if err := r.createDNSRecord(ctx, ingress, dnsRecordSpec); err != nil {
-				log.Error(err, "Failed to create DNSRecord")
-				return ctrl.Result{}, err
-			}
-		} else if !reflect.DeepEqual(dnsRecord.Spec, dnsRecordSpec) {
-			dnsRecord.Spec = dnsRecordSpec
-			if err := r.Update(ctx, &dnsRecord); err != nil {
-				log.Error(err, "Failed to update DNSRecord")
-				return ctrl.Result{}, err
-			}
-		}
-	}
+	ingressHosts := r.getIngressHosts(ingress)
 
-	for _, dnsRecord := range dnsRecords.Items {
-		if _, found := ingressRules[dnsRecord.Spec.Name]; found {
-			continue
-		}
-		if err := r.Delete(ctx, &dnsRecord); err != nil {
-			log.Error(err, "Failed to delete DNSRecord")
-		}
+	if err := r.reconcileDNSRecords(ctx, ingress, dnsRecordSpec, existingRecords, ingressHosts); err != nil {
+		log.Error(err, "Failed to reconcile DNS records")
+		return ctrl.Result{}, err
 	}
 
 	return ctrl.Result{}, nil
+}
+
+func (r *IngressReconciler) getDNSRecords(ctx context.Context, ingress *networkingv1.Ingress) (*cloudflareoperatoriov1.DNSRecordList, error) {
+	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
+	err := r.List(ctx, dnsRecords, client.InNamespace(ingress.Namespace), client.MatchingFields{cloudflareoperatoriov1.OwnerRefUIDIndexKey: string(ingress.UID)})
+	return dnsRecords, err
+}
+
+func (r *IngressReconciler) getIngressHosts(ingress *networkingv1.Ingress) map[string]struct{} {
+	hosts := make(map[string]struct{})
+	for _, rule := range ingress.Spec.Rules {
+		if rule.Host != "" {
+			hosts[rule.Host] = struct{}{}
+		}
+	}
+	return hosts
+}
+
+func (r *IngressReconciler) reconcileDNSRecords(ctx context.Context, ingress *networkingv1.Ingress, dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecords map[string]cloudflareoperatoriov1.DNSRecord, ingressHosts map[string]struct{}) error {
+	log := ctrl.LoggerFrom(ctx)
+
+	for host := range ingressHosts {
+		record, exists := existingRecords[host]
+		dnsRecordSpec.Name = host
+
+		if !exists {
+			if err := r.createDNSRecord(ctx, ingress, dnsRecordSpec); err != nil {
+				return fmt.Errorf("failed to create DNSRecord for %s: %w", host, err)
+			}
+			continue
+		}
+
+		if !reflect.DeepEqual(record.Spec, dnsRecordSpec) {
+			record.Spec = dnsRecordSpec
+			if err := r.Update(ctx, &record); err != nil {
+				return fmt.Errorf("failed to update DNSRecord for %s: %w", host, err)
+			}
+		}
+	}
+
+	for host, record := range existingRecords {
+		if _, exists := ingressHosts[host]; !exists {
+			if err := r.Delete(ctx, &record); err != nil {
+				log.Error(err, "Failed to delete DNSRecord", "host", host)
+			}
+		}
+	}
+
+	return nil
 }
 
 // parseAnnotations parses ingress annotations and returns a DNSRecordSpec
