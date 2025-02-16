@@ -123,7 +123,7 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 
 	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "True",
+		Status:             metav1.ConditionTrue,
 		Reason:             "Ready",
 		Message:            "Account is ready",
 		ObservedGeneration: account.Generation,
@@ -145,7 +145,7 @@ func (r *AccountReconciler) markFailed(account *cloudflareoperatoriov1.Account, 
 	metrics.AccountFailureCounter.WithLabelValues(account.Name).Set(1)
 	apimeta.SetStatusCondition(&account.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "False",
+		Status:             metav1.ConditionFalse,
 		Reason:             "Failed",
 		Message:            err.Error(),
 		ObservedGeneration: account.Generation,

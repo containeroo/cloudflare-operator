@@ -151,20 +151,20 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 	if r.Cf.APIToken == "" {
 		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
-			Status:             "False",
+			Status:             metav1.ConditionFalse,
 			Reason:             "NotReady",
-			Message:            "Cloudflare account is not yet ready",
+			Message:            "Cloudflare account is not ready",
 			ObservedGeneration: dnsrecord.Generation,
 		})
 		return ctrl.Result{RequeueAfter: time.Second * 5}
 	}
 
-	if condition := apimeta.FindStatusCondition(zone.Status.Conditions, "Ready"); condition == nil || condition.Status != "True" {
+	if condition := apimeta.FindStatusCondition(zone.Status.Conditions, "Ready"); condition == nil || condition.Status != metav1.ConditionTrue {
 		apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
-			Status:             "False",
+			Status:             metav1.ConditionFalse,
 			Reason:             "NotReady",
-			Message:            "Zone is not yet ready",
+			Message:            "Zone is not ready",
 			ObservedGeneration: dnsrecord.Generation,
 		})
 		return ctrl.Result{RequeueAfter: time.Second * 5}
@@ -242,7 +242,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 
 	apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "True",
+		Status:             metav1.ConditionTrue,
 		Reason:             "Ready",
 		Message:            "DNS record synced",
 		ObservedGeneration: dnsrecord.Generation,
@@ -269,7 +269,7 @@ func (r *DNSRecordReconciler) markFailed(dnsrecord *cloudflareoperatoriov1.DNSRe
 	metrics.DnsRecordFailureCounter.WithLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&dnsrecord.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "False",
+		Status:             metav1.ConditionFalse,
 		Reason:             "Failed",
 		Message:            err.Error(),
 		ObservedGeneration: dnsrecord.Generation,

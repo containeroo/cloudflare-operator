@@ -121,7 +121,7 @@ func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatorio
 
 	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "True",
+		Status:             metav1.ConditionTrue,
 		Reason:             "Ready",
 		Message:            "IP is ready",
 		ObservedGeneration: ip.Generation,
@@ -290,7 +290,7 @@ func (r *IPReconciler) markFailed(ip *cloudflareoperatoriov1.IP, err error) {
 	metrics.IpFailureCounter.WithLabelValues(ip.Name, ip.Spec.Type).Set(1)
 	apimeta.SetStatusCondition(&ip.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "False",
+		Status:             metav1.ConditionFalse,
 		Reason:             "Failed",
 		Message:            err.Error(),
 		ObservedGeneration: ip.Generation,

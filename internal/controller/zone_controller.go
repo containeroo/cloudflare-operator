@@ -109,9 +109,9 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 	if r.Cf.APIToken == "" {
 		apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
 			Type:               "Ready",
-			Status:             "False",
+			Status:             metav1.ConditionFalse,
 			Reason:             "NotReady",
-			Message:            "Cloudflare account is not yet ready",
+			Message:            "Cloudflare account is not ready",
 			ObservedGeneration: zone.Generation,
 		})
 		return ctrl.Result{RequeueAfter: time.Second * 5}
@@ -133,7 +133,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 
 	apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "True",
+		Status:             metav1.ConditionTrue,
 		Reason:             "Ready",
 		Message:            "Zone is ready",
 		ObservedGeneration: zone.Generation,
@@ -191,7 +191,7 @@ func (r *ZoneReconciler) markFailed(zone *cloudflareoperatoriov1.Zone, err error
 	metrics.ZoneFailureCounter.WithLabelValues(zone.Name, zone.Spec.Name).Set(1)
 	apimeta.SetStatusCondition(&zone.Status.Conditions, metav1.Condition{
 		Type:               "Ready",
-		Status:             "False",
+		Status:             metav1.ConditionFalse,
 		Reason:             "Failed",
 		Message:            err.Error(),
 		ObservedGeneration: zone.Generation,
