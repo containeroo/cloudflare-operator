@@ -232,17 +232,6 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 	return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}
 }
 
-// reconcileDelete reconciles the deletion of the dnsrecord
-func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zoneID string, dnsrecord *cloudflareoperatoriov1.DNSRecord) error {
-	if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zoneID), dnsrecord.Status.RecordID); err != nil && err.Error() != "Record does not exist. (81044)" {
-		return err
-	}
-	metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)
-	controllerutil.RemoveFinalizer(dnsrecord, common.CloudflareOperatorFinalizer)
-
-	return nil
-}
-
 // comparePriority compares the priority nil safe
 func comparePriority(a, b *uint16) bool {
 	if a == nil && b == nil {
@@ -324,4 +313,15 @@ func (r *DNSRecordReconciler) requestsForIPChange(ctx context.Context, o client.
 		reqs = append(reqs, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&dnsRecords.Items[i])})
 	}
 	return reqs
+}
+
+// reconcileDelete reconciles the deletion of the dnsrecord
+func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zoneID string, dnsrecord *cloudflareoperatoriov1.DNSRecord) error {
+	if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zoneID), dnsrecord.Status.RecordID); err != nil && err.Error() != "Record does not exist. (81044)" {
+		return err
+	}
+	metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)
+	controllerutil.RemoveFinalizer(dnsrecord, common.CloudflareOperatorFinalizer)
+
+	return nil
 }
