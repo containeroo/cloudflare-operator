@@ -127,6 +127,48 @@ func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatorio
 	return ctrl.Result{}
 }
 
+// handleStatic handles the static ip
+func (r *IPReconciler) handleStatic(ip *cloudflareoperatoriov1.IP) error {
+	if ip.Spec.Address == "" {
+		return errors.New("Address is required for static IPs")
+	}
+	if net.ParseIP(ip.Spec.Address) == nil {
+		return errors.New("Address is not a valid IP address")
+	}
+	return nil
+}
+
+// handleDynamic handles the dynamic ip
+func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperatoriov1.IP) error {
+	if ip.Spec.Interval == nil {
+		ip.Spec.Interval = &metav1.Duration{Duration: time.Minute * 5}
+	}
+	if len(ip.Spec.IPSources) == 0 {
+		return errors.New("IP sources are required for dynamic IPs")
+	}
+	// DeepCopy the ip sources to avoid modifying the original slice which would cause the object to be updated on every reconcile
+	// which would lead to an infinite loop
+	ipSources := ip.Spec.DeepCopy().IPSources
+	rand.Shuffle(len(ipSources), func(i, j int) {
+		ipSources[i], ipSources[j] = ipSources[j], ipSources[i]
+	})
+	var ipSourceError error
+	for _, source := range ipSources {
+		response, err := r.getIPSource(ctx, source)
+		if err != nil {
+			ipSourceError = err
+			continue
+		}
+		ip.Spec.Address = response
+		ipSourceError = nil
+		break
+	}
+	if ipSourceError != nil {
+		return ipSourceError
+	}
+	return nil
+}
+
 // getIPSource returns the IP gathered from the IPSource
 func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperatoriov1.IPSpecIPSources) (string, error) {
 	log := ctrl.LoggerFrom(ctx)
@@ -229,48 +271,6 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 	}
 
 	return extractedIP, nil
-}
-
-// handleStatic handles the static ip
-func (r *IPReconciler) handleStatic(ip *cloudflareoperatoriov1.IP) error {
-	if ip.Spec.Address == "" {
-		return errors.New("Address is required for static IPs")
-	}
-	if net.ParseIP(ip.Spec.Address) == nil {
-		return errors.New("Address is not a valid IP address")
-	}
-	return nil
-}
-
-// handleDynamic handles the dynamic ip
-func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperatoriov1.IP) error {
-	if ip.Spec.Interval == nil {
-		ip.Spec.Interval = &metav1.Duration{Duration: time.Minute * 5}
-	}
-	if len(ip.Spec.IPSources) == 0 {
-		return errors.New("IP sources are required for dynamic IPs")
-	}
-	// DeepCopy the ip sources to avoid modifying the original slice which would cause the object to be updated on every reconcile
-	// which would lead to an infinite loop
-	ipSources := ip.Spec.DeepCopy().IPSources
-	rand.Shuffle(len(ipSources), func(i, j int) {
-		ipSources[i], ipSources[j] = ipSources[j], ipSources[i]
-	})
-	var ipSourceError error
-	for _, source := range ipSources {
-		response, err := r.getIPSource(ctx, source)
-		if err != nil {
-			ipSourceError = err
-			continue
-		}
-		ip.Spec.Address = response
-		ipSourceError = nil
-		break
-	}
-	if ipSourceError != nil {
-		return ipSourceError
-	}
-	return nil
 }
 
 // reconcileDelete reconciles the deletion of the ip
