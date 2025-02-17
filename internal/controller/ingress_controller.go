@@ -179,9 +179,10 @@ func (r *IngressReconciler) parseAnnotations(annotations map[string]string) clou
 
 // createDNSRecord creates a DNSRecord object
 func (r *IngressReconciler) createDNSRecord(ctx context.Context, ingress *networkingv1.Ingress, dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec) error {
+	replacer := strings.NewReplacer(".", "-", "*", "wildcard")
 	dnsRecord := &cloudflareoperatoriov1.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      strings.ReplaceAll(dnsRecordSpec.Name, ".", "-"),
+			Name:      replacer.Replace(dnsRecordSpec.Name),
 			Namespace: ingress.Namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/managed-by": "cloudflare-operator",
