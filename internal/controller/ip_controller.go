@@ -24,7 +24,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math/rand"
+	"math/rand/v2"
 	"net"
 	"net/http"
 	"net/url"
@@ -223,11 +223,12 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 		extractedIP = match[1]
 	}
 
+	extractedIP = strings.TrimSpace(extractedIP)
 	if net.ParseIP(extractedIP) == nil {
 		return "", fmt.Errorf("ip from source %s is invalid: %s", source.URL, extractedIP)
 	}
 
-	return strings.TrimSpace(extractedIP), nil
+	return extractedIP, nil
 }
 
 // handleStatic handles the static ip
@@ -249,19 +250,21 @@ func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperator
 	if len(ip.Spec.IPSources) == 0 {
 		return errors.New("IP sources are required for dynamic IPs")
 	}
-	if len(ip.Spec.IPSources) > 1 {
-		rand.Shuffle(len(ip.Spec.IPSources), func(i, j int) {
-			ip.Spec.IPSources[i], ip.Spec.IPSources[j] = ip.Spec.IPSources[j], ip.Spec.IPSources[i]
-		})
-	}
+	// DeepCopy the ip sources to avoid modifying the original slice which would cause the object to be updated on every reconcile
+	// which would lead to an infinite loop
+	ipSources := ip.Spec.DeepCopy().IPSources
+	rand.Shuffle(len(ipSources), func(i, j int) {
+		ipSources[i], ipSources[j] = ipSources[j], ipSources[i]
+	})
 	var ipSourceError error
-	for _, source := range ip.Spec.IPSources {
+	for _, source := range ipSources {
 		response, err := r.getIPSource(ctx, source)
 		if err != nil {
 			ipSourceError = err
 			continue
 		}
 		ip.Spec.Address = response
+		ipSourceError = nil
 		break
 	}
 	if ipSourceError != nil {
