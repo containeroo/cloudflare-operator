@@ -223,11 +223,12 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 		extractedIP = match[1]
 	}
 
+	extractedIP = strings.TrimSpace(extractedIP)
 	if net.ParseIP(extractedIP) == nil {
 		return "", fmt.Errorf("ip from source %s is invalid: %s", source.URL, extractedIP)
 	}
 
-	return strings.TrimSpace(extractedIP), nil
+	return extractedIP, nil
 }
 
 // handleStatic handles the static ip
