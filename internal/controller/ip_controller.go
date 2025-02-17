@@ -263,6 +263,7 @@ func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperator
 			continue
 		}
 		ip.Spec.Address = response
+		ipSourceError = nil
 		break
 	}
 	if ipSourceError != nil {
