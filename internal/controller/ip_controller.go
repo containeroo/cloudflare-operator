@@ -104,6 +104,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result 
 	return r.reconcileIP(ctx, ip), nil
 }
 
+// reconcileIP reconciles the ip
 func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatoriov1.IP) ctrl.Result {
 	switch ip.Spec.Type {
 	case "static":

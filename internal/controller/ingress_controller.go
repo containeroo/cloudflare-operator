@@ -63,11 +63,11 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, nil
 	}
 
-	return r.reconcileIngress(ctx, ingress, annotations)
+	return r.reconcileIngress(ctx, ingress)
 }
 
 // reconcileIngress reconciles the ingress
-func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *networkingv1.Ingress, annotations map[string]string) (ctrl.Result, error) {
+func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *networkingv1.Ingress) (ctrl.Result, error) {
 	log := ctrl.LoggerFrom(ctx)
 
 	dnsRecords, err := r.getDNSRecords(ctx, ingress)
@@ -75,6 +75,8 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 		log.Error(err, "Failed to list DNSRecords")
 		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
 	}
+
+	annotations := ingress.GetAnnotations()
 
 	dnsRecordSpec := r.parseAnnotations(annotations)
 	existingRecords := make(map[string]cloudflareoperatoriov1.DNSRecord)
@@ -92,12 +94,14 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 	return ctrl.Result{}, nil
 }
 
+// getDNSRecords returns a list of DNSRecords
 func (r *IngressReconciler) getDNSRecords(ctx context.Context, ingress *networkingv1.Ingress) (*cloudflareoperatoriov1.DNSRecordList, error) {
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	err := r.List(ctx, dnsRecords, client.InNamespace(ingress.Namespace), client.MatchingFields{cloudflareoperatoriov1.OwnerRefUIDIndexKey: string(ingress.UID)})
 	return dnsRecords, err
 }
 
+// getIngressHosts returns a map of hosts from the ingress rules
 func (r *IngressReconciler) getIngressHosts(ingress *networkingv1.Ingress) map[string]struct{} {
 	hosts := make(map[string]struct{})
 	for _, rule := range ingress.Spec.Rules {
@@ -108,6 +112,7 @@ func (r *IngressReconciler) getIngressHosts(ingress *networkingv1.Ingress) map[s
 	return hosts
 }
 
+// reconcileDNSRecords reconciles the DNSRecords
 func (r *IngressReconciler) reconcileDNSRecords(ctx context.Context, ingress *networkingv1.Ingress, dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecords map[string]cloudflareoperatoriov1.DNSRecord, ingressHosts map[string]struct{}) error {
 	log := ctrl.LoggerFrom(ctx)
 
