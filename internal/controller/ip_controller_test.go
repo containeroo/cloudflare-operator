@@ -62,7 +62,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	go StartIPSource()
 
-	t.Run("reconciles dynamic ip plain text", func(t *testing.T) {
+	t.Run("reconcile dynamic ip plain text", func(t *testing.T) {
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL: "http://localhost:8080/plain",
 		}}
@@ -76,7 +76,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
 	})
 
-	t.Run("reconciles dynamic ip jq filter", func(t *testing.T) {
+	t.Run("reconcile dynamic ip jq filter", func(t *testing.T) {
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL:              "http://localhost:8080/json",
 			ResponseJQFilter: ".ip",
@@ -91,7 +91,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
 	})
 
-	t.Run("reconciles dynamic ip regex", func(t *testing.T) {
+	t.Run("reconcile dynamic ip regex", func(t *testing.T) {
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL:                 "http://localhost:8080/json",
 			PostProcessingRegex: "([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)",

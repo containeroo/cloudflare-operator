@@ -57,7 +57,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		g := NewWithT(t)
 
 		var err error
-		testRecord, err = cf.CreateDNSRecord(context.TODO(), cloudflare.ResourceIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+		testRecord, err = cf.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
 			Name:    "test.containeroo-test.org",
 			Content: "1.1.1.1",
 			Type:    "A",
@@ -65,7 +65,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 	})
 
-	t.Run("reconciles zone without prune", func(t *testing.T) {
+	t.Run("reconcile zone without prune", func(t *testing.T) {
 		g := NewWithT(t)
 
 		zone.Spec.Prune = false
@@ -77,11 +77,11 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		}))
 		g.Expect(zone.Status.ID).To(Equal(zoneID))
 
-		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ResourceIdentifier(zoneID), testRecord.ID)
+		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), testRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
 	})
 
-	t.Run("reconciles zone with prune", func(t *testing.T) {
+	t.Run("reconcile zone with prune", func(t *testing.T) {
 		g := NewWithT(t)
 
 		zone.Spec.Prune = true
@@ -93,7 +93,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		}))
 		g.Expect(zone.Status.ID).To(Equal(zoneID))
 
-		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ResourceIdentifier(zone.Status.ID), testRecord.ID)
+		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), testRecord.ID)
 		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
 	})
 }

@@ -18,67 +18,145 @@ package controller
 
 import (
 	"context"
+	"os"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
+	"github.com/cloudflare/cloudflare-go"
+	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-var _ = Describe("DNSRecord Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
+	zone := &cloudflareoperatoriov1.Zone{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "zone",
+		},
+		Spec: cloudflareoperatoriov1.ZoneSpec{
+			Name: "containeroo-test.org",
+		},
+		Status: cloudflareoperatoriov1.ZoneStatus{
+			ID: os.Getenv("CF_ZONE_ID"),
+			Conditions: []metav1.Condition{{
+				Type:    cloudflareoperatoriov1.ConditionTypeReady,
+				Status:  metav1.ConditionTrue,
+				Reason:  cloudflareoperatoriov1.ConditionReasonReady,
+				Message: "Zone is ready",
+			}},
+		},
+	}
 
-		ctx := context.Background()
+	dnsRecord := &cloudflareoperatoriov1.DNSRecord{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "dnsrecord",
+			Namespace: "default",
+		},
+	}
 
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+	ip := &cloudflareoperatoriov1.IP{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ip",
+		},
+		Spec: cloudflareoperatoriov1.IPSpec{
+			Address: "2.2.2.2",
+		},
+	}
+
+	r := &DNSRecordReconciler{
+		Client: fake.NewClientBuilder().
+			WithScheme(NewTestScheme()).
+			WithObjects(dnsRecord, ip).
+			Build(),
+		Cf: &cf,
+	}
+
+	t.Run("reconcile dnsrecord", func(t *testing.T) {
+		g := NewWithT(t)
+		dnsRecord.Spec = cloudflareoperatoriov1.DNSRecordSpec{
+			Name:    "dnstest.containeroo-test.org",
+			Content: "1.1.1.1",
+			Type:    "A",
+			Proxied: new(bool),
 		}
-		dnsrecord := &cloudflareoperatoriov1.DNSRecord{}
 
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind DNSRecord")
-			err := k8sClient.Get(ctx, typeNamespacedName, dnsrecord)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &cloudflareoperatoriov1.DNSRecord{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					// TODO(user): Specify other spec details if needed.
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
-		})
+		_ = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
 
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &cloudflareoperatoriov1.DNSRecord{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "DNS record synced"),
+		}))
 
-			By("Cleanup the specific resource instance DNSRecord")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &DNSRecordReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
+		cfDnsRecord, err := cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
+		g.Expect(err).ToNot(HaveOccurred())
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
-		})
+		g.Expect(dnsRecord.Status.RecordID).To(Equal(cfDnsRecord.ID))
+
+		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
+		_, err = cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
+		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
 	})
-})
+
+	t.Run("reconcile dnsrecord with ipref", func(t *testing.T) {
+		g := NewWithT(t)
+		dnsRecord.Status = cloudflareoperatoriov1.DNSRecordStatus{}
+		dnsRecord.Spec = cloudflareoperatoriov1.DNSRecordSpec{
+			Name:    "dnstest.containeroo-test.org",
+			Type:    "A",
+			Proxied: new(bool),
+			IPRef: cloudflareoperatoriov1.DNSRecordSpecIPRef{
+				Name: "ip",
+			},
+		}
+
+		_ = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+
+		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "DNS record synced"),
+		}))
+
+		cfDnsRecord, err := cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		g.Expect(dnsRecord.Status.RecordID).To(Equal(cfDnsRecord.ID))
+		g.Expect(cfDnsRecord.Content).To(Equal(ip.Spec.Address))
+
+		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
+		_, err = cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
+		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
+	})
+
+	t.Run("adopt existing dns record", func(t *testing.T) {
+		g := NewWithT(t)
+		cfDnsRecord, err := cf.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.CreateDNSRecordParams{
+			Name:    "adopt.containeroo-test.org",
+			Type:    "A",
+			Content: "1.1.1.1",
+			Proxied: new(bool),
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+
+		dnsRecord.Status = cloudflareoperatoriov1.DNSRecordStatus{}
+		dnsRecord.Spec = cloudflareoperatoriov1.DNSRecordSpec{
+			Name:    cfDnsRecord.Name,
+			Type:    cfDnsRecord.Type,
+			Content: cfDnsRecord.Content,
+			Proxied: cfDnsRecord.Proxied,
+		}
+
+		_ = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+
+		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "DNS record synced"),
+		}))
+
+		g.Expect(dnsRecord.Status.RecordID).To(Equal(cfDnsRecord.ID))
+
+		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
+		_, err = cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
+		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
+	})
+}

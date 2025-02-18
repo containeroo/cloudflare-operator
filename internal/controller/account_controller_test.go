@@ -45,7 +45,7 @@ func NewTestScheme() *runtime.Scheme {
 var cf cloudflare.API
 
 func TestAccountReconciler_reconcileAccount(t *testing.T) {
-	t.Run("reconciles account", func(t *testing.T) {
+	t.Run("reconcile account", func(t *testing.T) {
 		g := NewWithT(t)
 
 		secret := &v1.Secret{
