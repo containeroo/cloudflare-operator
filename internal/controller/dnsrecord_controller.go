@@ -178,6 +178,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		if len(cfExistingRecords) > 0 {
 			existingRecord = cfExistingRecords[0]
 		}
+		dnsrecord.Status.RecordID = existingRecord.ID
 	}
 
 	if (dnsrecord.Spec.Type == "A" || dnsrecord.Spec.Type == "AAAA") && dnsrecord.Spec.IPRef.Name != "" {
