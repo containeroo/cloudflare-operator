@@ -18,67 +18,82 @@ package controller
 
 import (
 	"context"
+	"os"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
+	"github.com/cloudflare/cloudflare-go"
+	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-var _ = Describe("Zone Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+func TestZoneReconciler_reconcileZone(t *testing.T) {
+	zone := &cloudflareoperatoriov1.Zone{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "zone",
+		},
+		Spec: cloudflareoperatoriov1.ZoneSpec{
+			Name: "containeroo-test.org",
+		},
+	}
 
-		ctx := context.Background()
+	r := &ZoneReconciler{
+		Client: fake.NewClientBuilder().
+			WithScheme(NewTestScheme()).
+			WithObjects(zone).
+			Build(),
+		Cf: &cf,
+	}
 
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		zone := &cloudflareoperatoriov1.Zone{}
+	zoneID := os.Getenv("CF_ZONE_ID")
+	var testRecord cloudflare.DNSRecord
 
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind Zone")
-			err := k8sClient.Get(ctx, typeNamespacedName, zone)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &cloudflareoperatoriov1.Zone{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					// TODO(user): Specify other spec details if needed.
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
+	t.Run("create dns record for testing", func(t *testing.T) {
+		g := NewWithT(t)
+
+		var err error
+		testRecord, err = cf.CreateDNSRecord(context.TODO(), cloudflare.ResourceIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+			Name:    "test.containeroo-test.org",
+			Content: "1.1.1.1",
+			Type:    "A",
 		})
-
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &cloudflareoperatoriov1.Zone{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance Zone")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &ZoneReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
-		})
+		g.Expect(err).ToNot(HaveOccurred())
 	})
-})
+
+	t.Run("reconciles zone without prune", func(t *testing.T) {
+		g := NewWithT(t)
+
+		zone.Spec.Prune = false
+
+		_ = r.reconcileZone(context.TODO(), zone)
+
+		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Zone is ready"),
+		}))
+		g.Expect(zone.Status.ID).To(Equal(zoneID))
+
+		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ResourceIdentifier(zoneID), testRecord.ID)
+		g.Expect(err).ToNot(HaveOccurred())
+	})
+
+	t.Run("reconciles zone with prune", func(t *testing.T) {
+		g := NewWithT(t)
+
+		zone.Spec.Prune = true
+
+		_ = r.reconcileZone(context.TODO(), zone)
+
+		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Zone is ready"),
+		}))
+		g.Expect(zone.Status.ID).To(Equal(zoneID))
+
+		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ResourceIdentifier(zone.Status.ID), testRecord.ID)
+		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
+	})
+}

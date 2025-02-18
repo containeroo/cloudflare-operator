@@ -35,7 +35,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
-	//+kubebuilder:scaffold:imports
+	// +kubebuilder:scaffold:imports
 )
 
 // These tests use Ginkgo (BDD-style Go testing framework). Refer to
@@ -82,7 +82,7 @@ var _ = BeforeSuite(func() {
 	err = networkingv1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
-	//+kubebuilder:scaffold:scheme
+	// +kubebuilder:scaffold:scheme
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())

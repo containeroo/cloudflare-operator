@@ -18,67 +18,91 @@ package controller
 
 import (
 	"context"
+	"net/http"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
+	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-var _ = Describe("IP Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
-
-		ctx := context.Background()
-
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
-		}
-		ip := &cloudflareoperatoriov1.IP{}
-
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind IP")
-			err := k8sClient.Get(ctx, typeNamespacedName, ip)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &cloudflareoperatoriov1.IP{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
-					// TODO(user): Specify other spec details if needed.
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
-		})
-
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &cloudflareoperatoriov1.IP{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance IP")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &IPReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
-		})
+func StartIPSource() {
+	http.HandleFunc("/plain", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte("1.1.1.1"))
 	})
-})
+	http.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
+		_, _ = w.Write([]byte(`{"ip":"1.1.1.1"}`))
+	})
+	_ = http.ListenAndServe(":8080", nil)
+}
+
+func TestIPReconciler_reconcileIP(t *testing.T) {
+	g := NewWithT(t)
+
+	ip := &cloudflareoperatoriov1.IP{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ip",
+		},
+		Spec: cloudflareoperatoriov1.IPSpec{
+			Type: "dynamic",
+		},
+	}
+
+	r := &IPReconciler{
+		Client: fake.NewClientBuilder().
+			WithScheme(NewTestScheme()).
+			WithObjects().
+			Build(),
+	}
+
+	go StartIPSource()
+
+	t.Run("reconciles dynamic ip plain text", func(t *testing.T) {
+		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
+			URL: "http://localhost:8080/plain",
+		}}
+
+		_ = r.reconcileIP(context.TODO(), ip)
+
+		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
+		}))
+
+		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+	})
+
+	t.Run("reconciles dynamic ip jq filter", func(t *testing.T) {
+		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
+			URL:              "http://localhost:8080/json",
+			ResponseJQFilter: ".ip",
+		}}
+
+		_ = r.reconcileIP(context.TODO(), ip)
+
+		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
+		}))
+
+		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+	})
+
+	t.Run("reconciles dynamic ip regex", func(t *testing.T) {
+		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
+			URL:                 "http://localhost:8080/json",
+			PostProcessingRegex: "([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)",
+		}}
+
+		_ = r.reconcileIP(context.TODO(), ip)
+
+		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
+		}))
+
+		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+	})
+}

@@ -18,67 +18,74 @@ package controller
 
 import (
 	"context"
+	"os"
+	"testing"
 
-	. "github.com/onsi/ginkgo/v2"
+	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
+	v1 "k8s.io/api/core/v1"
+
+	"k8s.io/apimachinery/pkg/runtime"
+	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-var _ = Describe("Account Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-resource"
+func NewTestScheme() *runtime.Scheme {
+	s := runtime.NewScheme()
+	utilruntime.Must(v1.AddToScheme(s))
+	utilruntime.Must(cloudflareoperatoriov1.AddToScheme(s))
+	return s
+}
 
-		ctx := context.Background()
+var cf cloudflare.API
 
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+func TestAccountReconciler_reconcileAccount(t *testing.T) {
+	t.Run("reconciles account", func(t *testing.T) {
+		g := NewWithT(t)
+
+		secret := &v1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "secret",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
+			},
 		}
-		account := &cloudflareoperatoriov1.Account{}
 
-		BeforeEach(func() {
-			By("creating the custom resource for the Kind Account")
-			err := k8sClient.Get(ctx, typeNamespacedName, account)
-			if err != nil && errors.IsNotFound(err) {
-				resource := &cloudflareoperatoriov1.Account{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
+		account := &cloudflareoperatoriov1.Account{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "account",
+			},
+			Spec: cloudflareoperatoriov1.AccountSpec{
+				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
+					SecretRef: v1.SecretReference{
+						Name:      "secret",
 						Namespace: "default",
 					},
-					// TODO(user): Specify other spec details if needed.
-				}
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-			}
-		})
+				},
+			},
+		}
 
-		AfterEach(func() {
-			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &cloudflareoperatoriov1.Account{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
+		r := &AccountReconciler{
+			Client: fake.NewClientBuilder().
+				WithScheme(NewTestScheme()).
+				WithObjects(secret, account).
+				Build(),
+			Cf: &cf,
+		}
 
-			By("Cleanup the specific resource instance Account")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
-		})
-		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &AccountReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
+		_ = r.reconcileAccount(context.TODO(), account)
 
-			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			// TODO(user): Add more specific assertions depending on your controller's reconciliation logic.
-			// Example: If you expect a certain status condition after reconciliation, verify it here.
-		})
+		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Account is ready"),
+		}))
+
+		g.Expect(cf.APIToken).To(Equal(string(secret.Data["apiToken"])))
 	})
-})
+}
