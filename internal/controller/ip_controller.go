@@ -134,7 +134,7 @@ func (r *IPReconciler) handleStatic(ip *cloudflareoperatoriov1.IP) error {
 		return errors.New("Address is required for static IPs")
 	}
 	if net.ParseIP(ip.Spec.Address) == nil {
-		return errors.New("Address is not a valid IP address")
+		return fmt.Errorf("IP address %q is not valid", ip.Spec.Address)
 	}
 	return nil
 }
