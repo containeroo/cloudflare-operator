@@ -37,6 +37,9 @@ jobs:
           cache: true
 
       - name: Set up Kind Cluster
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ZONE_ID: ${{ secrets.CF_ZONE_ID }}
         run: |
           make kind
 
