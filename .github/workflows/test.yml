@@ -6,13 +6,6 @@ on:
   pull_request:
     branches:
       - master
-    paths:
-      - "cmd/**"
-      - "internal/**"
-      - "test/**"
-      - "go.mod"
-      - "go.sum"
-      - "Dockerfile"
   workflow_dispatch:
 
 env:
