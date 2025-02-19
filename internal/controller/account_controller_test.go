@@ -33,12 +33,14 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 )
 
 func NewTestScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
 	utilruntime.Must(v1.AddToScheme(s))
 	utilruntime.Must(cloudflareoperatoriov1.AddToScheme(s))
+	utilruntime.Must(networkingv1.AddToScheme(s))
 	return s
 }
 
