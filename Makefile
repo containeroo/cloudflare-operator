@@ -54,6 +54,10 @@ OPERATOR_SDK_VERSION ?= v1.39.1
 IMG ?= controller:latest
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.32.1
+UNAME := $(shell uname -s | tr '[:upper:]' '[:lower:]')
+KIND_BINARY := kind-$(UNAME)-amd64
+KIND = $(LOCALBIN)/kind
+KIND_VERSION ?= 0.26.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
@@ -118,7 +122,22 @@ test: manifests generate fmt vet envtest ## Run tests.
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e:
-	go test ./test/e2e/ -v -ginkgo.v
+	USE_EXISTING_CLUSTER=true go test ./test/e2e/ -v -ginkgo.v
+
+.PHONY: kind
+kind: $(KIND) ## Create a Kind cluster.
+	@echo "Setting up Kind cluster..."
+	@$(KIND) create cluster --name cloudflare-operator-test --wait 60s
+	@kubectl cluster-info
+
+.PHONY: kind
+$(KIND): $(LOCALBIN)
+	@if [ ! -f $(KIND) ]; then \
+		echo "Downloading Kind v$(KIND_VERSION) for $(UNAME)..."; \
+		curl -L -o $(KIND) https://github.com/kubernetes-sigs/kind/releases/download/v$(KIND_VERSION)/$(KIND_BINARY); \
+		chmod +x $(KIND); \
+		echo "Kind v$(KIND_VERSION) installed at $(KIND)."; \
+	fi
 
 GOLANGCI_LINT = $(shell pwd)/bin/golangci-lint
 GOLANGCI_LINT_VERSION ?= v1.64.5

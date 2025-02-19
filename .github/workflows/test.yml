@@ -1,0 +1,49 @@
+---
+name: Run tests
+
+on:
+  workflow_call:
+  pull_request:
+    branches:
+      - master
+    paths:
+      - "cmd/**"
+      - "internal/**"
+      - "test/**"
+      - "go.mod"
+      - "go.sum"
+      - "Dockerfile"
+  workflow_dispatch:
+
+env:
+  KUBERNETES_VERSION: "1.32.0"
+
+jobs:
+  tests:
+    name: Run Tests
+    runs-on: ubuntu-latest
+
+    permissions:
+      contents: read
+
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          submodules: recursive
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: "go.mod"
+          check-latest: true
+          cache: true
+
+      - name: Set up Kind Cluster
+        run: |
+          make kind
+
+      - name: Run Unit Tests
+        run: |
+          make test
