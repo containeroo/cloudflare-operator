@@ -4,6 +4,7 @@ go 1.24.0
 
 require (
 	github.com/cloudflare/cloudflare-go v0.115.0
+	github.com/cloudflare/cloudflare-go/v4 v4.1.0
 	github.com/fluxcd/pkg/runtime v0.53.1
 	github.com/itchyny/gojq v0.12.17
 	github.com/prometheus/client_golang v1.20.5
