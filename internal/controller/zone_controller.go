@@ -119,6 +119,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 
 	if zone.Spec.Prune {
 		if err := r.handlePrune(ctx, zone); err != nil {
+			common.MarkFalse(zone, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 	}
@@ -155,8 +156,8 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 		}
 
 		if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
-			if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cfDnsRecord.ID); err != nil {
-				common.MarkFalse(zone, err)
+			if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cfDnsRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
+				return err
 			}
 			log.Info("Deleted DNS record on Cloudflare", "name", cfDnsRecord.Name)
 		}
