@@ -52,6 +52,24 @@ OPERATOR_SDK_VERSION ?= v1.39.1
 
 # Image URL to use all building/pushing image targets
 IMG ?= controller:latest
+
+## Location to install dependencies to
+LOCALBIN ?= $(shell pwd)/bin
+$(LOCALBIN):
+	mkdir -p $(LOCALBIN)
+
+## Tool Binaries
+KUBECTL ?= kubectl
+KUSTOMIZE ?= $(LOCALBIN)/kustomize
+CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+GEN_CRD_API_REFERENCE_DOCS ?= $(LOCALBIN)/gen-crd-api-reference-docs
+GEN_API_REF_DOCS_VERSION ?= 71fefeed89106e8d2879b9797e5991d414336182
+
+## Tool Versions
+KUSTOMIZE_VERSION ?= v5.6.0
+CONTROLLER_TOOLS_VERSION ?= v0.17.2
+
 # ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
 ENVTEST_K8S_VERSION = 1.32.1
 UNAME := $(shell uname -s | tr '[:upper:]' '[:lower:]')
@@ -217,23 +235,6 @@ undeploy: ## Undeploy controller from the K8s cluster specified in ~/.kube/confi
 	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(ignore-not-found) -f -
 
 ##@ Build Dependencies
-
-## Location to install dependencies to
-LOCALBIN ?= $(shell pwd)/bin
-$(LOCALBIN):
-	mkdir -p $(LOCALBIN)
-
-## Tool Binaries
-KUBECTL ?= kubectl
-KUSTOMIZE ?= $(LOCALBIN)/kustomize
-CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(LOCALBIN)/setup-envtest
-GEN_CRD_API_REFERENCE_DOCS ?= $(LOCALBIN)/gen-crd-api-reference-docs
-GEN_API_REF_DOCS_VERSION ?= 71fefeed89106e8d2879b9797e5991d414336182
-
-## Tool Versions
-KUSTOMIZE_VERSION ?= v5.6.0
-CONTROLLER_TOOLS_VERSION ?= v0.17.2
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary. If wrong version is installed, it will be removed before downloading.
