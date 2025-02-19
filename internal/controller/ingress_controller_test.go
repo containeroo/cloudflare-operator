@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"testing"
+	"time"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	. "github.com/onsi/gomega"
@@ -92,5 +93,26 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 
 		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("*.containeroo-test.org")))
 		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("1.1.1.1")))
+	})
+
+	t.Run("ingress annotation parsing", func(t *testing.T) {
+		g := NewWithT(t)
+		ingress.Annotations = map[string]string{
+			"cloudflare-operator.io/content":  "1.1.1.1",
+			"cloudflare-operator.io/ip-ref":   "ip",
+			"cloudflare-operator.io/proxied":  "true",
+			"cloudflare-operator.io/ttl":      "120", // Expecting to return 1 because proxied is true
+			"cloudflare-operator.io/type":     "A",
+			"cloudflare-operator.io/interval": "10s",
+		}
+
+		parsedSpec := r.parseAnnotations(ingress.Annotations)
+
+		g.Expect(parsedSpec).To(HaveField("Content", Equal("1.1.1.1")))
+		g.Expect(parsedSpec.IPRef).To(HaveField("Name", Equal("ip")))
+		g.Expect(parsedSpec).To(HaveField("Proxied", Equal(&[]bool{true}[0])))
+		g.Expect(parsedSpec).To(HaveField("TTL", Equal(1)))
+		g.Expect(parsedSpec).To(HaveField("Type", Equal("A")))
+		g.Expect(parsedSpec.Interval.Duration).To(Equal(10 * time.Second))
 	})
 }
