@@ -27,6 +27,7 @@ import (
 
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	v1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
@@ -158,5 +159,32 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
 		_, err = cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
 		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
+	})
+
+	t.Run("compare dns record", func(t *testing.T) {
+		g := NewWithT(t)
+
+		dnsRecordSpec := cloudflareoperatoriov1.DNSRecordSpec{
+			Name:     "dnstest.containeroo-test.org",
+			Type:     "A",
+			Content:  "1.1.1.1",
+			Proxied:  &[]bool{true}[0],
+			Priority: &[]uint16{10}[0],
+			Data: &v1.JSON{
+				Raw: []byte(`{"key":"value"}`),
+			},
+		}
+
+		cfDnsRecord := cloudflare.DNSRecord{
+			Name:     dnsRecordSpec.Name,
+			Type:     dnsRecordSpec.Type,
+			Content:  dnsRecordSpec.Content,
+			Proxied:  dnsRecordSpec.Proxied,
+			Priority: dnsRecordSpec.Priority,
+			Data:     map[string]interface{}{"key": "value"},
+		}
+
+		isEqual := r.compareDNSRecord(dnsRecordSpec, cfDnsRecord)
+		g.Expect(isEqual).To(BeTrue())
 	})
 }

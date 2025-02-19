@@ -212,7 +212,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 		dnsrecord.Status.RecordID = newDNSRecord.ID
-	} else if !compareDNSRecord(dnsrecord.Spec, existingRecord) {
+	} else if !r.compareDNSRecord(dnsrecord.Spec, existingRecord) {
 		if _, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.UpdateDNSRecordParams{
 			ID:       dnsrecord.Status.RecordID,
 			Name:     dnsrecord.Spec.Name,
@@ -234,7 +234,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 }
 
 // compareDNSRecord compares the DNS record to the DNSRecord object
-func compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
+func (r *DNSRecordReconciler) compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
 	var isEqual bool = true
 
 	if dnsRecordSpec.Name != existingRecord.Name {
