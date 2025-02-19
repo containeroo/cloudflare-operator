@@ -23,7 +23,7 @@ import (
 
 	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
-	v1 "k8s.io/api/core/v1"
+	corev1 "k8s.io/api/core/v1"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -38,7 +38,7 @@ import (
 
 func NewTestScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
-	utilruntime.Must(v1.AddToScheme(s))
+	utilruntime.Must(corev1.AddToScheme(s))
 	utilruntime.Must(cloudflareoperatoriov1.AddToScheme(s))
 	utilruntime.Must(networkingv1.AddToScheme(s))
 	return s
@@ -50,7 +50,7 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 	t.Run("reconcile account", func(t *testing.T) {
 		g := NewWithT(t)
 
-		secret := &v1.Secret{
+		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "secret",
 				Namespace: "default",
@@ -66,7 +66,7 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 			},
 			Spec: cloudflareoperatoriov1.AccountSpec{
 				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
-					SecretRef: v1.SecretReference{
+					SecretRef: corev1.SecretReference{
 						Name:      "secret",
 						Namespace: "default",
 					},
@@ -89,5 +89,79 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 		}))
 
 		g.Expect(cf.APIToken).To(Equal(string(secret.Data["apiToken"])))
+	})
+
+	t.Run("econcile account error secret not found", func(t *testing.T) {
+		g := NewWithT(t)
+
+		account := &cloudflareoperatoriov1.Account{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "account",
+			},
+			Spec: cloudflareoperatoriov1.AccountSpec{
+				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
+					SecretRef: corev1.SecretReference{
+						Name:      "secret",
+						Namespace: "default",
+					},
+				},
+			},
+		}
+
+		r := &AccountReconciler{
+			Client: fake.NewClientBuilder().
+				WithScheme(NewTestScheme()).
+				WithObjects(account).
+				Build(),
+			Cf: &cf,
+		}
+
+		_ = r.reconcileAccount(context.TODO(), account)
+
+		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "secrets \"secret\" not found"),
+		}))
+	})
+
+	t.Run("reconcile account error key not found in secret", func(t *testing.T) {
+		g := NewWithT(t)
+
+		secret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "secret",
+				Namespace: "default",
+			},
+			Data: map[string][]byte{
+				"invalid": []byte("invalid"),
+			},
+		}
+
+		account := &cloudflareoperatoriov1.Account{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "account",
+			},
+			Spec: cloudflareoperatoriov1.AccountSpec{
+				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
+					SecretRef: corev1.SecretReference{
+						Name:      "secret",
+						Namespace: "default",
+					},
+				},
+			},
+		}
+
+		r := &AccountReconciler{
+			Client: fake.NewClientBuilder().
+				WithScheme(NewTestScheme()).
+				WithObjects(secret, account).
+				Build(),
+			Cf: &cf,
+		}
+
+		_ = r.reconcileAccount(context.TODO(), account)
+
+		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "Secret has no key named \"apiToken\""),
+		}))
 	})
 }
