@@ -233,34 +233,6 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 	return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}
 }
 
-// comparePriority compares the priority nil safe
-func comparePriority(a, b *uint16) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-
-	return *a == *b
-}
-
-// compareData compares the data nil safe
-func compareData(a interface{}, b *apiextensionsv1.JSON) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
-	}
-	var bb interface{}
-	if err := json.Unmarshal(b.Raw, &bb); err != nil {
-		return false
-	}
-
-	return reflect.DeepEqual(a, bb)
-}
-
 // compareDNSRecord compares the DNS record to the DNSRecord object
 func compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
 	var isEqual bool = true
@@ -290,6 +262,34 @@ func compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existi
 	}
 
 	return isEqual
+}
+
+// comparePriority compares the priority nil safe
+func comparePriority(a, b *uint16) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+
+	return *a == *b
+}
+
+// compareData compares the data nil safe
+func compareData(a interface{}, b *apiextensionsv1.JSON) bool {
+	if a == nil && b == nil {
+		return true
+	}
+	if a == nil || b == nil {
+		return false
+	}
+	var bb interface{}
+	if err := json.Unmarshal(b.Raw, &bb); err != nil {
+		return false
+	}
+
+	return reflect.DeepEqual(a, bb)
 }
 
 // requestsForIPChange returns a list of reconcile.Requests for DNSRecords that need to be reconciled if the IP changes
