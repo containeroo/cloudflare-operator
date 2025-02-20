@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
-	"github.com/containeroo/cloudflare-operator/internal/common"
+	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	"github.com/fluxcd/pkg/runtime/patch"
 )
@@ -107,13 +107,13 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 // reconcileZone reconciles the zone
 func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
 	if r.Cf.APIToken == "" {
-		common.MarkUnknown(zone, "Cloudflare account is not ready")
+		intconditions.MarkUnknown(zone, "Cloudflare account is not ready")
 		return ctrl.Result{RequeueAfter: time.Second * 5}
 	}
 
 	zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
 	if err != nil {
-		common.MarkFalse(zone, err)
+		intconditions.MarkFalse(zone, err)
 		return ctrl.Result{}
 	}
 
@@ -121,12 +121,12 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 
 	if zone.Spec.Prune {
 		if err := r.handlePrune(ctx, zone); err != nil {
-			common.MarkFalse(zone, err)
+			intconditions.MarkFalse(zone, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 	}
 
-	common.MarkTrue(zone, "Zone is ready")
+	intconditions.MarkTrue(zone, "Zone is ready")
 
 	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}
 }
@@ -143,7 +143,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 
 	cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
 	if err != nil {
-		common.MarkFalse(zone, err)
+		intconditions.MarkFalse(zone, err)
 		return err
 	}
 

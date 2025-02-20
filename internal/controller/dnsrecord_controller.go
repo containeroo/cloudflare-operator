@@ -41,7 +41,7 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
-	"github.com/containeroo/cloudflare-operator/internal/common"
+	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	intpredicates "github.com/containeroo/cloudflare-operator/internal/predicates"
 )
@@ -126,7 +126,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if len(zones.Items) == 0 {
-		common.MarkFalse(dnsrecord, fmt.Errorf("Zone %q not found", zoneName))
+		intconditions.MarkFalse(dnsrecord, fmt.Errorf("Zone %q not found", zoneName))
 		return ctrl.Result{}, nil
 	}
 
@@ -151,12 +151,12 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // reconcileDNSRecord reconciles the dnsrecord
 func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
 	if r.Cf.APIToken == "" {
-		common.MarkUnknown(dnsrecord, "Cloudflare account is not ready")
+		intconditions.MarkUnknown(dnsrecord, "Cloudflare account is not ready")
 		return ctrl.Result{RequeueAfter: time.Second * 5}
 	}
 
 	if !conditions.IsTrue(zone, cloudflareoperatoriov1.ConditionTypeReady) {
-		common.MarkUnknown(dnsrecord, "Zone is not ready")
+		intconditions.MarkUnknown(dnsrecord, "Zone is not ready")
 		return ctrl.Result{RequeueAfter: time.Second * 5}
 	}
 
@@ -165,7 +165,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		var err error
 		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), dnsrecord.Status.RecordID)
 		if err != nil {
-			common.MarkFalse(dnsrecord, err)
+			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{}
 		}
 	} else {
@@ -175,7 +175,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Content: dnsrecord.Spec.Content,
 		})
 		if err != nil {
-			common.MarkFalse(dnsrecord, err)
+			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{}
 		}
 		if len(cfExistingRecords) > 0 {
@@ -187,14 +187,14 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 	if (dnsrecord.Spec.Type == "A" || dnsrecord.Spec.Type == "AAAA") && dnsrecord.Spec.IPRef.Name != "" {
 		ip := &cloudflareoperatoriov1.IP{}
 		if err := r.Get(ctx, client.ObjectKey{Name: dnsrecord.Spec.IPRef.Name}, ip); err != nil {
-			common.MarkFalse(dnsrecord, err)
+			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 		dnsrecord.Spec.Content = ip.Spec.Address
 	}
 
 	if *dnsrecord.Spec.Proxied && dnsrecord.Spec.TTL != 1 {
-		common.MarkFalse(dnsrecord, errors.New("TTL must be 1 when proxied"))
+		intconditions.MarkFalse(dnsrecord, errors.New("TTL must be 1 when proxied"))
 		return ctrl.Result{}
 	}
 
@@ -209,7 +209,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Data:     dnsrecord.Spec.Data,
 		})
 		if err != nil {
-			common.MarkFalse(dnsrecord, err)
+			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 		dnsrecord.Status.RecordID = newDNSRecord.ID
@@ -224,12 +224,12 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Priority: dnsrecord.Spec.Priority,
 			Data:     dnsrecord.Spec.Data,
 		}); err != nil {
-			common.MarkFalse(dnsrecord, err)
+			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 	}
 
-	common.MarkTrue(dnsrecord, "DNS record synced")
+	intconditions.MarkTrue(dnsrecord, "DNS record synced")
 
 	return ctrl.Result{RequeueAfter: dnsrecord.Spec.Interval.Duration}
 }

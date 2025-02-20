@@ -33,7 +33,7 @@ import (
 	"time"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
-	"github.com/containeroo/cloudflare-operator/internal/common"
+	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	"github.com/fluxcd/pkg/runtime/patch"
 	"github.com/itchyny/gojq"
@@ -111,17 +111,17 @@ func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatorio
 	switch ip.Spec.Type {
 	case "static":
 		if err := r.handleStatic(ip); err != nil {
-			common.MarkFalse(ip, err)
+			intconditions.MarkFalse(ip, err)
 			return ctrl.Result{}
 		}
 	case "dynamic":
 		if err := r.handleDynamic(ctx, ip); err != nil {
-			common.MarkFalse(ip, err)
+			intconditions.MarkFalse(ip, err)
 			return ctrl.Result{}
 		}
 	}
 
-	common.MarkTrue(ip, "IP is ready")
+	intconditions.MarkTrue(ip, "IP is ready")
 
 	if ip.Spec.Type == "dynamic" {
 		return ctrl.Result{RequeueAfter: ip.Spec.Interval.Duration}

@@ -35,7 +35,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
-	"github.com/containeroo/cloudflare-operator/internal/common"
+	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
@@ -102,26 +102,26 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloudflareoperatoriov1.Account) ctrl.Result {
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
-		common.MarkFalse(account, err)
+		intconditions.MarkFalse(account, err)
 		return ctrl.Result{RequeueAfter: time.Second * 30}
 	}
 
 	cfApiToken := string(secret.Data["apiToken"])
 	if cfApiToken == "" {
-		common.MarkFalse(account, errors.New("Secret has no key named \"apiToken\""))
+		intconditions.MarkFalse(account, errors.New("Secret has no key named \"apiToken\""))
 		return ctrl.Result{RequeueAfter: time.Second * 30}
 	}
 
 	if r.Cf.APIToken != cfApiToken {
 		cf, err := cloudflare.NewWithAPIToken(cfApiToken)
 		if err != nil {
-			common.MarkFalse(account, err)
+			intconditions.MarkFalse(account, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
 		*r.Cf = *cf
 	}
 
-	common.MarkTrue(account, "Account is ready")
+	intconditions.MarkTrue(account, "Account is ready")
 
 	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}
 }
