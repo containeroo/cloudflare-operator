@@ -25,12 +25,15 @@ import (
 	"time"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	intpredicates "github.com/containeroo/cloudflare-operator/internal/predicates"
 	networkingv1 "k8s.io/api/networking/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // IngressReconciler reconciles an Ingress object
@@ -42,8 +45,8 @@ type IngressReconciler struct {
 // SetupWithManager sets up the controller with the Manager.
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&networkingv1.Ingress{}).
-		Owns(&cloudflareoperatoriov1.DNSRecord{}).
+		For(&networkingv1.Ingress{}, builder.WithPredicates(intpredicates.DNSFromIngressPredicate{})).
+		Owns(&cloudflareoperatoriov1.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
@@ -56,11 +59,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 	ingress := &networkingv1.Ingress{}
 	if err := r.Get(ctx, req.NamespacedName, ingress); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
-	}
-
-	annotations := ingress.GetAnnotations()
-	if annotations["cloudflare-operator.io/content"] == "" && annotations["cloudflare-operator.io/ip-ref"] == "" {
-		return ctrl.Result{}, nil
 	}
 
 	return r.reconcileIngress(ctx, ingress)

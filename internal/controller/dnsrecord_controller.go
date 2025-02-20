@@ -32,15 +32,18 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/containeroo/cloudflare-operator/internal/common"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
+	intpredicates "github.com/containeroo/cloudflare-operator/internal/predicates"
 )
 
 // DNSRecordReconciler reconciles a DNSRecord object
@@ -78,8 +81,8 @@ func (r *DNSRecordReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.DNSRecord{}).
-		Watches(&cloudflareoperatoriov1.IP{}, handler.EnqueueRequestsFromMapFunc(r.requestsForIPChange)).
+		For(&cloudflareoperatoriov1.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&cloudflareoperatoriov1.IP{}, handler.EnqueueRequestsFromMapFunc(r.requestsForIPChange), builder.WithPredicates(intpredicates.IPAddressChangedPredicate{})).
 		Complete(r)
 }
 
@@ -187,9 +190,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			common.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
-		if ip.Spec.Address != dnsrecord.Spec.Content {
-			dnsrecord.Spec.Content = ip.Spec.Address
-		}
+		dnsrecord.Spec.Content = ip.Spec.Address
 	}
 
 	if *dnsrecord.Spec.Proxied && dnsrecord.Spec.TTL != 1 {
@@ -318,7 +319,7 @@ func (r *DNSRecordReconciler) requestsForIPChange(ctx context.Context, o client.
 
 // reconcileDelete reconciles the deletion of the dnsrecord
 func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zoneID string, dnsrecord *cloudflareoperatoriov1.DNSRecord) error {
-	if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zoneID), dnsrecord.Status.RecordID); err != nil && err.Error() != "Record does not exist. (81044)" {
+	if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zoneID), dnsrecord.Status.RecordID); err != nil && err.Error() != "Record does not exist. (81044)" && dnsrecord.Status.RecordID != "" {
 		return err
 	}
 	metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)
