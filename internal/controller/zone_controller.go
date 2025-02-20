@@ -25,7 +25,9 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -56,7 +58,7 @@ func (r *ZoneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager)
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.Zone{}).
+		For(&cloudflareoperatoriov1.Zone{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
