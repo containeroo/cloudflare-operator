@@ -90,8 +90,8 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return ctrl.Result{}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(account, common.CloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(account, common.CloudflareOperatorFinalizer)
+	if !controllerutil.ContainsFinalizer(account, cloudflareoperatoriov1.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(account, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -129,5 +129,5 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 // reconcileDelete reconciles the deletion of the account
 func (r *AccountReconciler) reconcileDelete(account *cloudflareoperatoriov1.Account) {
 	metrics.AccountFailureCounter.DeleteLabelValues(account.Name)
-	controllerutil.RemoveFinalizer(account, common.CloudflareOperatorFinalizer)
+	controllerutil.RemoveFinalizer(account, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 }

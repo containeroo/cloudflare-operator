@@ -98,8 +98,8 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result 
 		return ctrl.Result{}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(ip, common.CloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(ip, common.CloudflareOperatorFinalizer)
+	if !controllerutil.ContainsFinalizer(ip, cloudflareoperatoriov1.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(ip, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -279,5 +279,5 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 // reconcileDelete reconciles the deletion of the ip
 func (r *IPReconciler) reconcileDelete(ip *cloudflareoperatoriov1.IP) {
 	metrics.IpFailureCounter.DeleteLabelValues(ip.Name, ip.Spec.Type)
-	controllerutil.RemoveFinalizer(ip, common.CloudflareOperatorFinalizer)
+	controllerutil.RemoveFinalizer(ip, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 }

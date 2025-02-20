@@ -14,6 +14,6 @@ See the License for the specific language governing permissions and
 limitations under the License.
 */
 
-package common
+package v1
 
 const CloudflareOperatorFinalizer = "cloudflare-operator.io/finalizer"

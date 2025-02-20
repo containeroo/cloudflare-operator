@@ -96,8 +96,8 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 		return ctrl.Result{}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(zone, common.CloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(zone, common.CloudflareOperatorFinalizer)
+	if !controllerutil.ContainsFinalizer(zone, cloudflareoperatoriov1.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(zone, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -170,5 +170,5 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 // reconcileDelete reconciles the deletion of the zone
 func (r *ZoneReconciler) reconcileDelete(zone *cloudflareoperatoriov1.Zone) {
 	metrics.ZoneFailureCounter.DeleteLabelValues(zone.Name, zone.Spec.Name)
-	controllerutil.RemoveFinalizer(zone, common.CloudflareOperatorFinalizer)
+	controllerutil.RemoveFinalizer(zone, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 }

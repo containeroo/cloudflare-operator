@@ -140,8 +140,8 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(dnsrecord, common.CloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(dnsrecord, common.CloudflareOperatorFinalizer)
+	if !controllerutil.ContainsFinalizer(dnsrecord, cloudflareoperatoriov1.CloudflareOperatorFinalizer) {
+		controllerutil.AddFinalizer(dnsrecord, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -323,7 +323,7 @@ func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zoneID string
 		return err
 	}
 	metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)
-	controllerutil.RemoveFinalizer(dnsrecord, common.CloudflareOperatorFinalizer)
+	controllerutil.RemoveFinalizer(dnsrecord, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 
 	return nil
 }
