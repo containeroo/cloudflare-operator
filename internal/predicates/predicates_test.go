@@ -24,13 +24,14 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
+	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
 func TestPredicate(t *testing.T) {
 	predicate := DNSFromIngressPredicate{}
 
-	t.Run("createa ingress annotation predicate with no annotations", func(t *testing.T) {
+	t.Run("create ingress annotation predicate with no annotations", func(t *testing.T) {
 		g := NewWithT(t)
 
 		ingress := &networkingv1.Ingress{
@@ -132,6 +133,27 @@ func TestPredicate(t *testing.T) {
 
 		predicate := DNSFromIngressPredicate{}
 		result := predicate.Update(event.UpdateEvent{ObjectOld: oldIngress, ObjectNew: newIngress})
+
+		g.Expect(result).To(BeTrue())
+	})
+
+	t.Run("update ip dnsrecord predicate", func(t *testing.T) {
+		g := NewWithT(t)
+
+		oldIP := &cloudflareoperatoriov1.IP{
+			Spec: cloudflareoperatoriov1.IPSpec{
+				Address: "1.1.1.1",
+			},
+		}
+
+		newIP := &cloudflareoperatoriov1.IP{
+			Spec: cloudflareoperatoriov1.IPSpec{
+				Address: "2.2.2.2",
+			},
+		}
+
+		predicate := IPAddressChangedPredicate{}
+		result := predicate.Update(event.UpdateEvent{ObjectOld: oldIP, ObjectNew: newIP})
 
 		g.Expect(result).To(BeTrue())
 	})

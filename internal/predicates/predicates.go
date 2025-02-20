@@ -19,7 +19,7 @@ package predicates
 import (
 	"reflect"
 
-	cloudflareoperatorv1 "github.com/containeroo/cloudflare-operator/api/v1"
+	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -65,8 +65,8 @@ type IPAddressChangedPredicate struct {
 }
 
 func (IPAddressChangedPredicate) Update(e event.UpdateEvent) bool {
-	oldObj := e.ObjectOld.(*cloudflareoperatorv1.IP)
-	newObj := e.ObjectNew.(*cloudflareoperatorv1.IP)
+	oldObj := e.ObjectOld.(*cloudflareoperatoriov1.IP)
+	newObj := e.ObjectNew.(*cloudflareoperatoriov1.IP)
 
 	return oldObj.Spec.Address != newObj.Spec.Address
 }
