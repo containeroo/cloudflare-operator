@@ -29,13 +29,10 @@ const (
 	prometheusOperatorVersion = "v0.68.0"
 	prometheusOperatorURL     = "https://github.com/prometheus-operator/prometheus-operator/" +
 		"releases/download/%s/bundle.yaml"
-
-	certmanagerVersion = "v1.5.3"
-	certmanagerURLTmpl = "https://github.com/jetstack/cert-manager/releases/download/%s/cert-manager.yaml"
 )
 
 func warnError(err error) {
-	fmt.Fprintf(GinkgoWriter, "warning: %v\n", err)
+	fmt.Fprintf(GinkgoWriter, "warning: %v\n", err) // nolint:errcheck
 }
 
 // InstallPrometheusOperator installs the prometheus Operator to be used to export the enabled metrics.
@@ -52,12 +49,12 @@ func Run(cmd *exec.Cmd) ([]byte, error) {
 	cmd.Dir = dir
 
 	if err := os.Chdir(cmd.Dir); err != nil {
-		fmt.Fprintf(GinkgoWriter, "chdir dir: %s\n", err)
+		fmt.Fprintf(GinkgoWriter, "chdir dir: %s\n", err) // nolint:errcheck
 	}
 
 	cmd.Env = append(os.Environ(), "GO111MODULE=on")
 	command := strings.Join(cmd.Args, " ")
-	fmt.Fprintf(GinkgoWriter, "running: %s\n", command)
+	fmt.Fprintf(GinkgoWriter, "running: %s\n", command) // nolint:errcheck
 	output, err := cmd.CombinedOutput()
 	if err != nil {
 		return output, fmt.Errorf("%s failed with error: (%v) %s", command, err, string(output))
@@ -75,37 +72,9 @@ func UninstallPrometheusOperator() {
 	}
 }
 
-// UninstallCertManager uninstalls the cert manager
-func UninstallCertManager() {
-	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
-	cmd := exec.Command("kubectl", "delete", "-f", url)
-	if _, err := Run(cmd); err != nil {
-		warnError(err)
-	}
-}
-
-// InstallCertManager installs the cert manager bundle.
-func InstallCertManager() error {
-	url := fmt.Sprintf(certmanagerURLTmpl, certmanagerVersion)
-	cmd := exec.Command("kubectl", "apply", "-f", url)
-	if _, err := Run(cmd); err != nil {
-		return err
-	}
-	// Wait for cert-manager-webhook to be ready, which can take time if cert-manager
-	// was re-installed after uninstalling on a cluster.
-	cmd = exec.Command("kubectl", "wait", "deployment.apps/cert-manager-webhook",
-		"--for", "condition=Available",
-		"--namespace", "cert-manager",
-		"--timeout", "5m",
-	)
-
-	_, err := Run(cmd)
-	return err
-}
-
 // LoadImageToKindCluster loads a local docker image to the kind cluster
 func LoadImageToKindClusterWithName(name string) error {
-	cluster := "kind"
+	cluster := "cloudflare-operator-test"
 	if v, ok := os.LookupEnv("KIND_CLUSTER"); ok {
 		cluster = v
 	}
@@ -119,8 +88,7 @@ func LoadImageToKindClusterWithName(name string) error {
 // according to line breakers, and ignores the empty elements in it.
 func GetNonEmptyLines(output string) []string {
 	var res []string
-	elements := strings.Split(output, "\n")
-	for _, element := range elements {
+	for element := range strings.SplitSeq(output, "\n") {
 		if element != "" {
 			res = append(res, element)
 		}
@@ -137,4 +105,46 @@ func GetProjectDir() (string, error) {
 	}
 	wd = strings.Replace(wd, "/test/e2e", "", -1)
 	return wd, nil
+}
+
+func VerifyObjectReady(objType, objName string) error {
+	cmd := exec.Command(
+		"kubectl",
+		"get",
+		objType,
+		objName,
+		"-n",
+		"cloudflare-operator-system",
+		"-o",
+		"jsonpath={.status.conditions[?(@.type=='Ready')].status}",
+	)
+	status, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	if string(status) != "True" {
+		return fmt.Errorf("%s %s is not ready", objType, objName)
+	}
+	return nil
+}
+
+func VerifyDNSRecordContent(objName, expectedContent string) error {
+	cmd := exec.Command(
+		"kubectl",
+		"get",
+		"dnsrecord",
+		objName,
+		"-n",
+		"cloudflare-operator-system",
+		"-o",
+		"jsonpath={.spec.content}",
+	)
+	ip, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	if string(ip) != expectedContent {
+		return fmt.Errorf("dnsrecord has unexpected content: %s", ip)
+	}
+	return nil
 }

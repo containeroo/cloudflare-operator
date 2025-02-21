@@ -1,20 +1,25 @@
+---
 apiVersion: cloudflare-operator.io/v1
 kind: DNSRecord
 metadata:
-  labels:
-    app.kubernetes.io/name: dnsrecord
-    app.kubernetes.io/instance: dnsrecord-sample
-    app.kubernetes.io/part-of: cloudflare-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: cloudflare-operator
   name: dnsrecord-sample
+  namespace: cloudflare-operator-system
 spec:
-  name: example.com
-  content: 1.1.1.1
-  type: A # or CNAME
-  # optionally, you can also reference an IP object
-  # ipRef:
-  #   name: ip-sample
-  proxied: true # or false
-  ttl: 1 # for auto or between 120 and 86400
-  interval: 5m
+  name: containeroo-test.org
+  content: 9.9.9.9
+  type: A
+  proxied: false
+  ttl: 1
+---
+apiVersion: cloudflare-operator.io/v1
+kind: DNSRecord
+metadata:
+  name: dnsrecord-ip-ref-sample
+  namespace: cloudflare-operator-system
+spec:
+  name: containeroo-test.org
+  type: A
+  ipRef:
+    name: ip-sample
+  proxied: false
+  ttl: 1

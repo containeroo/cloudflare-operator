@@ -1,0 +1,20 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ingress-sample
+  namespace: cloudflare-operator-system
+  annotations:
+    cloudflare-operator.io/content: "144.144.144.144"
+spec:
+  rules:
+    - host: ingress.containeroo-test.org
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: service1
+                port:
+                  number: 80

@@ -34,9 +34,6 @@ var _ = Describe("controller", Ordered, func() {
 		By("installing prometheus operator")
 		Expect(utils.InstallPrometheusOperator()).To(Succeed())
 
-		By("installing the cert-manager")
-		Expect(utils.InstallCertManager()).To(Succeed())
-
 		By("creating manager namespace")
 		cmd := exec.Command("kubectl", "create", "ns", namespace)
 		_, _ = utils.Run(cmd)
@@ -46,11 +43,28 @@ var _ = Describe("controller", Ordered, func() {
 		By("uninstalling the Prometheus manager bundle")
 		utils.UninstallPrometheusOperator()
 
-		By("uninstalling the cert-manager bundle")
-		utils.UninstallCertManager()
+		By("removing all ingresses")
+		cmd := exec.Command("kubectl", "delete", "ingresses", "--all", "--all-namespaces")
+		_, _ = utils.Run(cmd)
+
+		By("removing all dnsrecords")
+		cmd = exec.Command("kubectl", "delete", "dnsrecords", "--all", "--all-namespaces")
+		_, _ = utils.Run(cmd)
+
+		By("removing all ips")
+		cmd = exec.Command("kubectl", "delete", "ips", "--all", "--all-namespaces")
+		_, _ = utils.Run(cmd)
+
+		By("removing all zones")
+		cmd = exec.Command("kubectl", "delete", "zones", "--all", "--all-namespaces")
+		_, _ = utils.Run(cmd)
+
+		By("removing all accounts")
+		cmd = exec.Command("kubectl", "delete", "accounts", "--all", "--all-namespaces")
+		_, _ = utils.Run(cmd)
 
 		By("removing manager namespace")
-		cmd := exec.Command("kubectl", "delete", "ns", namespace)
+		cmd = exec.Command("kubectl", "delete", "ns", namespace)
 		_, _ = utils.Run(cmd)
 	})
 
@@ -60,7 +74,7 @@ var _ = Describe("controller", Ordered, func() {
 			var err error
 
 			// projectimage stores the name of the image used in the example
-			projectimage := "example.com/cloudflare-operator:v0.0.1"
+			projectimage := "containeroo/cloudflare-operator:test"
 
 			By("building the manager(Operator) image")
 			cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectimage))
@@ -74,6 +88,7 @@ var _ = Describe("controller", Ordered, func() {
 			By("installing CRDs")
 			cmd = exec.Command("make", "install")
 			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
 			By("deploying the controller-manager")
 			cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectimage))
@@ -116,5 +131,75 @@ var _ = Describe("controller", Ordered, func() {
 			}
 			EventuallyWithOffset(1, verifyControllerUp, time.Minute, time.Second).Should(Succeed())
 		})
+	})
+
+	It("should reconcile account", func() {
+		command := "envsubst < config/samples/cloudflareoperatorio_v1_account.yaml | kubectl apply -f -"
+		cmd := exec.Command("sh", "-c", command)
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
+			WithArguments("account", "account-sample").Should(Succeed())
+	})
+
+	It("should reconcile zone", func() {
+		cmd := exec.Command("kubectl", "apply", "-f", "config/samples/cloudflareoperatorio_v1_zone.yaml")
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).WithArguments("zone", "zone-sample").Should(Succeed())
+	})
+
+	It("should reconcile ip", func() {
+		cmd := exec.Command("kubectl", "apply", "-f", "config/samples/cloudflareoperatorio_v1_ip.yaml")
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
+			WithArguments("ip", "ip-sample").Should(Succeed())
+	})
+
+	It("should reconcile dnsreocrd", func() {
+		cmd := exec.Command("kubectl", "apply", "-f", "config/samples/cloudflareoperatorio_v1_dnsrecord.yaml")
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
+			WithArguments("dnsrecord", "dnsrecord-sample").Should(Succeed())
+	})
+
+	It("should reconcile dnsrecord with ipRef", func() {
+		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
+			WithArguments("dnsrecord-ip-ref-sample", "1.1.1.1").Should(Succeed())
+	})
+
+	It("should reconcile dnsrecord with ipRef when ip changes", func() {
+		cmd := exec.Command("kubectl", "patch", "ip", "ip-sample", "--type=merge", "-p", `{"spec":{"address":"9.9.9.9"}}`)
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
+			WithArguments("dnsrecord-ip-ref-sample", "9.9.9.9").Should(Succeed())
+	})
+
+	It("should create dnsrecord from an ingress", func() {
+		cmd := exec.Command("kubectl", "apply", "-f", "config/samples/networking_v1_ingress.yaml")
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
+			WithArguments("dnsrecord", "ingress-containeroo-test-org").Should(Succeed())
+	})
+
+	It("should update dnsrecord when ingress annotations change", func() {
+		cmd := exec.Command(
+			"kubectl", "-n", namespace, "patch", "ingress", "ingress-sample",
+			"--type=merge", "-p", `{"metadata":{"annotations":{"cloudflare-operator.io/content":"145.145.145.145"}}}`)
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
+			WithArguments("ingress-containeroo-test-org", "145.145.145.145").Should(Succeed())
 	})
 })

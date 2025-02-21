@@ -1,13 +1,8 @@
+---
 apiVersion: cloudflare-operator.io/v1
 kind: Zone
 metadata:
-  labels:
-    app.kubernetes.io/name: zone
-    app.kubernetes.io/instance: zone-sample
-    app.kubernetes.io/part-of: cloudflare-operator
-    app.kubernetes.io/managed-by: kustomize
-    app.kubernetes.io/created-by: cloudflare-operator
   name: zone-sample
 spec:
-  name: example.com
+  name: containeroo-test.org
   prune: false
