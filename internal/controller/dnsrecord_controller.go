@@ -278,14 +278,14 @@ func comparePriority(a, b *uint16) bool {
 }
 
 // compareData compares the data nil safe
-func compareData(a interface{}, b *apiextensionsv1.JSON) bool {
+func compareData(a any, b *apiextensionsv1.JSON) bool {
 	if a == nil && b == nil {
 		return true
 	}
 	if a == nil || b == nil {
 		return false
 	}
-	var bb interface{}
+	var bb any
 	if err := json.Unmarshal(b.Raw, &bb); err != nil {
 		return false
 	}

@@ -237,7 +237,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 
 	extractedIP := string(response)
 	if source.ResponseJQFilter != "" {
-		var jsonResponse interface{}
+		var jsonResponse any
 		if err := json.Unmarshal(response, &jsonResponse); err != nil {
 			return "", fmt.Errorf("failed to get IP from %s: %s", source.URL, err)
 		}
