@@ -54,6 +54,9 @@ import (
 type IPReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	HTTPClientTimeout        time.Duration
+	DefaultReconcileInterval time.Duration
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -144,7 +147,7 @@ func (r *IPReconciler) handleStatic(ip *cloudflareoperatoriov1.IP) error {
 // handleDynamic handles the dynamic ip
 func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperatoriov1.IP) error {
 	if ip.Spec.Interval == nil {
-		ip.Spec.Interval = &metav1.Duration{Duration: time.Minute * 5}
+		ip.Spec.Interval = &metav1.Duration{Duration: r.DefaultReconcileInterval}
 	}
 	if len(ip.Spec.IPSources) == 0 {
 		return errors.New("IP sources are required for dynamic IPs")
@@ -214,7 +217,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 		}
 	}
 
-	httpClient.Timeout = time.Second * 30
+	httpClient.Timeout = r.HTTPClientTimeout
 	req.Header.Add("User-Agent", "cloudflare-operator")
 
 	resp, err := httpClient.Do(req)
