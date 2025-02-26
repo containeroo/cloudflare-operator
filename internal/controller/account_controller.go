@@ -45,7 +45,10 @@ import (
 type AccountReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Cf     *cloudflare.API
+
+	RetryInterval time.Duration
+
+	CloudflareAPI *cloudflare.API
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -103,22 +106,22 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
 		intconditions.MarkFalse(account, err)
-		return ctrl.Result{RequeueAfter: time.Second * 30}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}
 	}
 
-	cfApiToken := string(secret.Data["apiToken"])
-	if cfApiToken == "" {
+	cloudflareAPIToken := string(secret.Data["apiToken"])
+	if cloudflareAPIToken == "" {
 		intconditions.MarkFalse(account, errors.New("Secret has no key named \"apiToken\""))
-		return ctrl.Result{RequeueAfter: time.Second * 30}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}
 	}
 
-	if r.Cf.APIToken != cfApiToken {
-		cf, err := cloudflare.NewWithAPIToken(cfApiToken)
+	if r.CloudflareAPI.APIToken != cloudflareAPIToken {
+		cloudflareAPI, err := cloudflare.NewWithAPIToken(cloudflareAPIToken)
 		if err != nil {
 			intconditions.MarkFalse(account, err)
 			return ctrl.Result{RequeueAfter: time.Second * 30}
 		}
-		*r.Cf = *cf
+		*r.CloudflareAPI = *cloudflareAPI
 	}
 
 	intconditions.MarkTrue(account, "Account is ready")

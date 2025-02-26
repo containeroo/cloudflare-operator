@@ -50,7 +50,10 @@ import (
 type DNSRecordReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Cf     *cloudflare.API
+
+	RetryInterval time.Duration
+
+	CloudflareAPI *cloudflare.API
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -122,7 +125,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	zones := &cloudflareoperatoriov1.ZoneList{}
 	if err := r.List(ctx, zones, client.MatchingFields{cloudflareoperatoriov1.ZoneNameIndexKey: zoneName}); err != nil {
 		log.Error(err, "Failed to list zones")
-		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
 	if len(zones.Items) == 0 {
@@ -150,26 +153,26 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 // reconcileDNSRecord reconciles the dnsrecord
 func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
-	if r.Cf.APIToken == "" {
+	if r.CloudflareAPI.APIToken == "" {
 		intconditions.MarkUnknown(dnsrecord, "Cloudflare account is not ready")
-		return ctrl.Result{RequeueAfter: time.Second * 5}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}
 	}
 
 	if !conditions.IsTrue(zone, cloudflareoperatoriov1.ConditionTypeReady) {
 		intconditions.MarkUnknown(dnsrecord, "Zone is not ready")
-		return ctrl.Result{RequeueAfter: time.Second * 5}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}
 	}
 
 	var existingRecord cloudflare.DNSRecord
 	if dnsrecord.Status.RecordID != "" {
 		var err error
-		existingRecord, err = r.Cf.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), dnsrecord.Status.RecordID)
+		existingRecord, err = r.CloudflareAPI.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), dnsrecord.Status.RecordID)
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{}
 		}
 	} else {
-		cfExistingRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{
+		cloudflareExistingRecord, _, err := r.CloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{
 			Type:    dnsrecord.Spec.Type,
 			Name:    dnsrecord.Spec.Name,
 			Content: dnsrecord.Spec.Content,
@@ -178,8 +181,8 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{}
 		}
-		if len(cfExistingRecords) > 0 {
-			existingRecord = cfExistingRecords[0]
+		if len(cloudflareExistingRecord) > 0 {
+			existingRecord = cloudflareExistingRecord[0]
 		}
 		dnsrecord.Status.RecordID = existingRecord.ID
 	}
@@ -188,7 +191,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		ip := &cloudflareoperatoriov1.IP{}
 		if err := r.Get(ctx, client.ObjectKey{Name: dnsrecord.Spec.IPRef.Name}, ip); err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
-			return ctrl.Result{RequeueAfter: time.Second * 30}
+			return ctrl.Result{RequeueAfter: r.RetryInterval}
 		}
 		dnsrecord.Spec.Content = ip.Spec.Address
 	}
@@ -199,7 +202,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 	}
 
 	if existingRecord.ID == "" {
-		newDNSRecord, err := r.Cf.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.CreateDNSRecordParams{
+		newDNSRecord, err := r.CloudflareAPI.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.CreateDNSRecordParams{
 			Name:     dnsrecord.Spec.Name,
 			Type:     dnsrecord.Spec.Type,
 			Content:  dnsrecord.Spec.Content,
@@ -210,11 +213,11 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		})
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
-			return ctrl.Result{RequeueAfter: time.Second * 30}
+			return ctrl.Result{RequeueAfter: r.RetryInterval}
 		}
 		dnsrecord.Status.RecordID = newDNSRecord.ID
 	} else if !r.compareDNSRecord(dnsrecord.Spec, existingRecord) {
-		if _, err := r.Cf.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.UpdateDNSRecordParams{
+		if _, err := r.CloudflareAPI.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.UpdateDNSRecordParams{
 			ID:       dnsrecord.Status.RecordID,
 			Name:     dnsrecord.Spec.Name,
 			Type:     dnsrecord.Spec.Type,
@@ -225,7 +228,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Data:     dnsrecord.Spec.Data,
 		}); err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
-			return ctrl.Result{RequeueAfter: time.Second * 30}
+			return ctrl.Result{RequeueAfter: r.RetryInterval}
 		}
 	}
 
@@ -319,7 +322,7 @@ func (r *DNSRecordReconciler) requestsForIPChange(ctx context.Context, o client.
 
 // reconcileDelete reconciles the deletion of the dnsrecord
 func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zoneID string, dnsrecord *cloudflareoperatoriov1.DNSRecord) error {
-	if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zoneID), dnsrecord.Status.RecordID); err != nil && err.Error() != "Record does not exist. (81044)" && dnsrecord.Status.RecordID != "" {
+	if err := r.CloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zoneID), dnsrecord.Status.RecordID); err != nil && err.Error() != "Record does not exist. (81044)" && dnsrecord.Status.RecordID != "" {
 		return err
 	}
 	metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)

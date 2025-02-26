@@ -20,6 +20,7 @@ import (
 	"crypto/tls"
 	"flag"
 	"os"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
@@ -55,11 +56,18 @@ func init() {
 }
 
 func main() {
-	var metricsAddr string
-	var enableLeaderElection bool
-	var probeAddr string
-	var secureMetrics bool
-	var enableHTTP2 bool
+	var (
+		metricsAddr                   string
+		enableLeaderElection          bool
+		probeAddr                     string
+		secureMetrics                 bool
+		enableHTTP2                   bool
+		retryInterval                 time.Duration
+		ipReconcilerHTTPClientTimeout time.Duration
+		defaultReconcileInterval      time.Duration
+		cloudflareAPI                 cloudflare.API
+		ctx                           = ctrl.SetupSignalHandler()
+	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
 	flag.StringVar(&probeAddr, "health-probe-bind-address", ":8081", "The address the probe endpoint binds to.")
 	flag.BoolVar(&enableLeaderElection, "leader-elect", false,
@@ -69,6 +77,11 @@ func main() {
 		"If set the metrics endpoint is served securely")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
+	flag.DurationVar(&ipReconcilerHTTPClientTimeout, "ip-reconciler-http-client-timeout", 10*time.Second,
+		"The HTTP client timeout for the IP reconciler")
+	flag.DurationVar(&retryInterval, "retry-interval", 10*time.Second, "The interval at which to retry failed operations")
+	flag.DurationVar(&defaultReconcileInterval, "default-reconcile-interval", 5*time.Minute,
+		"The default interval at which to reconcile resources")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -115,43 +128,47 @@ func main() {
 		os.Exit(1)
 	}
 
-	cf := cloudflare.API{}
-	ctx := ctrl.SetupSignalHandler()
-
 	if err = (&controller.AccountReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Cf:     &cf,
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		CloudflareAPI: &cloudflareAPI,
+		RetryInterval: retryInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Account")
 		os.Exit(1)
 	}
 	if err = (&controller.ZoneReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Cf:     &cf,
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		CloudflareAPI: &cloudflareAPI,
+		RetryInterval: retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Zone")
 		os.Exit(1)
 	}
 	if err = (&controller.IPReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		HTTPClientTimeout:        ipReconcilerHTTPClientTimeout,
+		DefaultReconcileInterval: defaultReconcileInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IP")
 		os.Exit(1)
 	}
 	if err = (&controller.IngressReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:                   mgr.GetClient(),
+		Scheme:                   mgr.GetScheme(),
+		RetryInterval:            retryInterval,
+		DefaultReconcileInterval: defaultReconcileInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
 		os.Exit(1)
 	}
 	if err = (&controller.DNSRecordReconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Cf:     &cf,
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		CloudflareAPI: &cloudflareAPI,
+		RetryInterval: retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)
