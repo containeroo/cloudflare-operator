@@ -45,7 +45,10 @@ import (
 type AccountReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Cf     *cloudflare.API
+
+	RetryInterval time.Duration
+
+	CloudflareAPI *cloudflare.API
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -95,35 +98,31 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	return r.reconcileAccount(ctx, account), nil
+	return r.reconcileAccount(ctx, account)
 }
 
 // reconcileAccount reconciles the account
-func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloudflareoperatoriov1.Account) ctrl.Result {
+func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloudflareoperatoriov1.Account) (ctrl.Result, error) {
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
 		intconditions.MarkFalse(account, err)
-		return ctrl.Result{RequeueAfter: time.Second * 30}
+		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	cfApiToken := string(secret.Data["apiToken"])
-	if cfApiToken == "" {
+	cloudflareAPIToken := string(secret.Data["apiToken"])
+	if cloudflareAPIToken == "" {
 		intconditions.MarkFalse(account, errors.New("Secret has no key named \"apiToken\""))
-		return ctrl.Result{RequeueAfter: time.Second * 30}
+		return ctrl.Result{}, nil
 	}
 
-	if r.Cf.APIToken != cfApiToken {
-		cf, err := cloudflare.NewWithAPIToken(cfApiToken)
-		if err != nil {
-			intconditions.MarkFalse(account, err)
-			return ctrl.Result{RequeueAfter: time.Second * 30}
-		}
-		*r.Cf = *cf
+	if r.CloudflareAPI.APIToken != cloudflareAPIToken {
+		cloudflareAPI, _ := cloudflare.NewWithAPIToken(cloudflareAPIToken)
+		*r.CloudflareAPI = *cloudflareAPI
 	}
 
 	intconditions.MarkTrue(account, "Account is ready")
 
-	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}
+	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}, nil
 }
 
 // reconcileDelete reconciles the deletion of the account

@@ -47,7 +47,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 			WithScheme(NewTestScheme()).
 			WithObjects(zone).
 			Build(),
-		Cf: &cf,
+		CloudflareAPI: &cloudflareAPI,
 	}
 
 	zoneID := os.Getenv("CF_ZONE_ID")
@@ -57,7 +57,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		g := NewWithT(t)
 
 		var err error
-		testRecord, err = cf.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+		testRecord, err = cloudflareAPI.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
 			Name:    "test.containeroo-test.org",
 			Content: "1.1.1.1",
 			Type:    "A",
@@ -70,14 +70,15 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 
 		zone.Spec.Prune = false
 
-		_ = r.reconcileZone(context.TODO(), zone)
+		_, err := r.reconcileZone(context.TODO(), zone)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Zone is ready"),
 		}))
 		g.Expect(zone.Status.ID).To(Equal(zoneID))
 
-		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), testRecord.ID)
+		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), testRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -86,14 +87,15 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 
 		zone.Spec.Prune = true
 
-		_ = r.reconcileZone(context.TODO(), zone)
+		_, err := r.reconcileZone(context.TODO(), zone)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Zone is ready"),
 		}))
 		g.Expect(zone.Status.ID).To(Equal(zoneID))
 
-		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), testRecord.ID)
+		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), testRecord.ID)
 		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
 	})
 
@@ -102,7 +104,8 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 
 		zone.Spec.Name = "not-found.org"
 
-		_ = r.reconcileZone(context.TODO(), zone)
+		_, err := r.reconcileZone(context.TODO(), zone)
+		g.Expect(err).To(HaveOccurred())
 
 		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "zone could not be found"),
@@ -112,9 +115,10 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 	t.Run("reconcile zone error account not ready", func(t *testing.T) {
 		g := NewWithT(t)
 
-		cf.APIToken = ""
+		cloudflareAPI.APIToken = ""
 
-		_ = r.reconcileZone(context.TODO(), zone)
+		_, err := r.reconcileZone(context.TODO(), zone)
+		g.Expect(err).To(Equal(errWaitForAccount))
 
 		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.UnknownCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonNotReady, "Cloudflare account is not ready"),

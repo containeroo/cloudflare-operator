@@ -44,7 +44,7 @@ func NewTestScheme() *runtime.Scheme {
 	return s
 }
 
-var cf cloudflare.API
+var cloudflareAPI cloudflare.API
 
 func TestAccountReconciler_reconcileAccount(t *testing.T) {
 	t.Run("reconcile account", func(t *testing.T) {
@@ -79,16 +79,17 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 				WithScheme(NewTestScheme()).
 				WithObjects(secret, account).
 				Build(),
-			Cf: &cf,
+			CloudflareAPI: &cloudflareAPI,
 		}
 
-		_ = r.reconcileAccount(context.TODO(), account)
+		_, err := r.reconcileAccount(context.TODO(), account)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Account is ready"),
 		}))
 
-		g.Expect(cf.APIToken).To(Equal(string(secret.Data["apiToken"])))
+		g.Expect(cloudflareAPI.APIToken).To(Equal(string(secret.Data["apiToken"])))
 	})
 
 	t.Run("econcile account error secret not found", func(t *testing.T) {
@@ -113,10 +114,11 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 				WithScheme(NewTestScheme()).
 				WithObjects(account).
 				Build(),
-			Cf: &cf,
+			CloudflareAPI: &cloudflareAPI,
 		}
 
-		_ = r.reconcileAccount(context.TODO(), account)
+		_, err := r.reconcileAccount(context.TODO(), account)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "secrets \"secret\" not found"),
@@ -155,10 +157,11 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 				WithScheme(NewTestScheme()).
 				WithObjects(secret, account).
 				Build(),
-			Cf: &cf,
+			CloudflareAPI: &cloudflareAPI,
 		}
 
-		_ = r.reconcileAccount(context.TODO(), account)
+		_, err := r.reconcileAccount(context.TODO(), account)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "Secret has no key named \"apiToken\""),

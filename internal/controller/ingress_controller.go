@@ -40,6 +40,9 @@ import (
 type IngressReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
+
+	RetryInterval            time.Duration
+	DefaultReconcileInterval time.Duration
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -71,7 +74,7 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 	dnsRecords, err := r.getDNSRecords(ctx, ingress)
 	if err != nil {
 		log.Error(err, "Failed to list DNSRecords")
-		return ctrl.Result{RequeueAfter: time.Second * 30}, nil
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
 	annotations := ingress.GetAnnotations()
@@ -173,7 +176,7 @@ func (r *IngressReconciler) parseAnnotations(annotations map[string]string) clou
 
 	intervalDuration, err := time.ParseDuration(annotations["cloudflare-operator.io/interval"])
 	if err != nil {
-		intervalDuration = 5 * time.Minute
+		intervalDuration = r.DefaultReconcileInterval
 	}
 	dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
 

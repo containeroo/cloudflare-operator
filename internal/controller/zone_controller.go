@@ -36,6 +36,7 @@ import (
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
+	interrors "github.com/containeroo/cloudflare-operator/internal/errors"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	"github.com/fluxcd/pkg/runtime/patch"
 )
@@ -44,8 +45,16 @@ import (
 type ZoneReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Cf     *cloudflare.API
+
+	RetryInterval time.Duration
+
+	CloudflareAPI *cloudflare.API
 }
+
+var (
+	errWaitForAccount = errors.New("must wait for account")
+	errWaitForZone    = errors.New("must wait for zone")
+)
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ZoneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
@@ -83,6 +92,13 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 			patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		}
 
+		// We do not want to return these errors, but rather wait for the
+		// designated RequeueAfter to expire and try again.
+		// However, not returning an error will cause the patch helper to
+		// patch the observed generation, which we do not want. So we ignore
+		// these errors here after patching.
+		retErr = interrors.Ignore(retErr, errWaitForAccount, errWaitForZone)
+
 		if err := patchHelper.Patch(ctx, zone, patchOpts...); err != nil {
 			if !zone.DeletionTimestamp.IsZero() {
 				err = apierrutil.FilterOut(err, func(e error) bool { return apierrors.IsNotFound(e) })
@@ -101,20 +117,20 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	return r.reconcileZone(ctx, zone), nil
+	return r.reconcileZone(ctx, zone)
 }
 
 // reconcileZone reconciles the zone
-func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
-	if r.Cf.APIToken == "" {
+func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) (ctrl.Result, error) {
+	if r.CloudflareAPI.APIToken == "" {
 		intconditions.MarkUnknown(zone, "Cloudflare account is not ready")
-		return ctrl.Result{RequeueAfter: time.Second * 5}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForAccount
 	}
 
-	zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
+	zoneID, err := r.CloudflareAPI.ZoneIDByName(zone.Spec.Name)
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
-		return ctrl.Result{}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForZone
 	}
 
 	zone.Status.ID = zoneID
@@ -122,13 +138,13 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 	if zone.Spec.Prune {
 		if err := r.handlePrune(ctx, zone); err != nil {
 			intconditions.MarkFalse(zone, err)
-			return ctrl.Result{RequeueAfter: time.Second * 30}
+			return ctrl.Result{}, err
 		}
 	}
 
 	intconditions.MarkTrue(zone, "Zone is ready")
 
-	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}
+	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}, nil
 }
 
 // handlePrune deletes DNS records that are not managed by the operator if enabled
@@ -141,7 +157,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 		return err
 	}
 
-	cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
+	cloudflareDNSRecord, _, err := r.CloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
 		return err
@@ -152,16 +168,16 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 		dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
 	}
 
-	for _, cfDnsRecord := range cfDnsRecords {
-		if cfDnsRecord.Type == "TXT" && strings.HasPrefix(cfDnsRecord.Name, "_acme-challenge") {
+	for _, cloudflareDNSRecord := range cloudflareDNSRecord {
+		if cloudflareDNSRecord.Type == "TXT" && strings.HasPrefix(cloudflareDNSRecord.Name, "_acme-challenge") {
 			continue
 		}
 
-		if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
-			if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cfDnsRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
+		if _, found := dnsRecordMap[cloudflareDNSRecord.ID]; !found {
+			if err := r.CloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflareDNSRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
 				return err
 			}
-			log.Info("Deleted DNS record on Cloudflare", "name", cfDnsRecord.Name)
+			log.Info("Deleted DNS record on Cloudflare", "name", cloudflareDNSRecord.Name)
 		}
 	}
 	return nil
