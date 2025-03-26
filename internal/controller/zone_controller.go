@@ -40,6 +40,16 @@ import (
 	"github.com/fluxcd/pkg/runtime/patch"
 )
 
+// ignoredRecords are records that should not be pruned
+// the key is the record type and the value is a list of prefixes
+// TODO: make this configurable in the Zone CR
+var ignoredRecords = map[string][]string{
+	"TXT": {
+		"_acme-challenge",     // Let's Encrypt DNS-01 challenge
+		"cf2024-1._domainkey", // Cloudflare Email Routing DKIM
+	},
+}
+
 // ZoneReconciler reconciles a Zone object
 type ZoneReconciler struct {
 	client.Client
@@ -153,7 +163,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 	}
 
 	for _, cfDnsRecord := range cfDnsRecords {
-		if cfDnsRecord.Type == "TXT" && strings.HasPrefix(cfDnsRecord.Name, "_acme-challenge") {
+		if _, found := ignoredRecords[cfDnsRecord.Type]; found && hasPrefix(cfDnsRecord.Name, ignoredRecords[cfDnsRecord.Type]) {
 			continue
 		}
 
@@ -171,4 +181,14 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 func (r *ZoneReconciler) reconcileDelete(zone *cloudflareoperatoriov1.Zone) {
 	metrics.ZoneFailureCounter.DeleteLabelValues(zone.Name, zone.Spec.Name)
 	controllerutil.RemoveFinalizer(zone, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
+}
+
+// hasPrefix checks if the name has any of the prefixes
+func hasPrefix(name string, prefixes []string) bool {
+	for _, prefix := range prefixes {
+		if strings.HasPrefix(name, prefix) {
+			return true
+		}
+	}
+	return false
 }

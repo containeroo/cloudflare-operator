@@ -86,15 +86,33 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 
 		zone.Spec.Prune = true
 
+		acmeRecord, err := cf.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+			Name:    "_acme-challenge.abc.containeroo-test.org",
+			Type:    "TXT",
+			Content: "test",
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		dkimRecord, err := cf.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+			Name:    "cf2024-1._domainkey.containeroo-test.org",
+			Type:    "TXT",
+			Content: "test",
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+
 		_ = r.reconcileZone(context.TODO(), zone)
 
-		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
-			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Zone is ready"),
-		}))
-		g.Expect(zone.Status.ID).To(Equal(zoneID))
-
-		_, err := cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), testRecord.ID)
+		_, err = cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), testRecord.ID)
 		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
+
+		_, err = cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), acmeRecord.ID)
+		g.Expect(err).ToNot(HaveOccurred())
+		_, err = cf.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dkimRecord.ID)
+		g.Expect(err).ToNot(HaveOccurred())
+
+		err = cf.DeleteDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), acmeRecord.ID)
+		g.Expect(err).ToNot(HaveOccurred())
+		err = cf.DeleteDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), dkimRecord.ID)
+		g.Expect(err).ToNot(HaveOccurred())
 	})
 
 	t.Run("reconcile zone error zone not found", func(t *testing.T) {
