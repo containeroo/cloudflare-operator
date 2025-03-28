@@ -54,7 +54,10 @@ var ignoredRecords = map[string][]string{
 type ZoneReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
-	Cf     *cloudflare.API
+
+	RetryInterval time.Duration
+
+	CloudflareAPI *cloudflare.API
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -116,12 +119,12 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 
 // reconcileZone reconciles the zone
 func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
-	if r.Cf.APIToken == "" {
+	if r.CloudflareAPI.APIToken == "" {
 		intconditions.MarkUnknown(zone, "Cloudflare account is not ready")
-		return ctrl.Result{RequeueAfter: time.Second * 5}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}
 	}
 
-	zoneID, err := r.Cf.ZoneIDByName(zone.Spec.Name)
+	zoneID, err := r.CloudflareAPI.ZoneIDByName(zone.Spec.Name)
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
 		return ctrl.Result{}
@@ -132,7 +135,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 	if zone.Spec.Prune {
 		if err := r.handlePrune(ctx, zone); err != nil {
 			intconditions.MarkFalse(zone, err)
-			return ctrl.Result{RequeueAfter: time.Second * 30}
+			return ctrl.Result{RequeueAfter: r.RetryInterval}
 		}
 	}
 
@@ -151,7 +154,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 		return err
 	}
 
-	cfDnsRecords, _, err := r.Cf.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
+	cloudflareDNSRecords, _, err := r.CloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
 		return err
@@ -162,16 +165,16 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 		dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
 	}
 
-	for _, cfDnsRecord := range cfDnsRecords {
-		if _, found := ignoredRecords[cfDnsRecord.Type]; found && hasPrefix(cfDnsRecord.Name, ignoredRecords[cfDnsRecord.Type]) {
+	for _, cloudflareDNSRecord := range cloudflareDNSRecords {
+		if _, found := ignoredRecords[cloudflareDNSRecord.Type]; found && hasPrefix(cloudflareDNSRecord.Name, ignoredRecords[cloudflareDNSRecord.Type]) {
 			continue
 		}
 
-		if _, found := dnsRecordMap[cfDnsRecord.ID]; !found {
-			if err := r.Cf.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cfDnsRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
+		if _, found := dnsRecordMap[cloudflareDNSRecord.ID]; !found {
+			if err := r.CloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflareDNSRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
 				return err
 			}
-			log.Info("Deleted DNS record on Cloudflare", "name", cfDnsRecord.Name)
+			log.Info("Deleted DNS record on Cloudflare", "name", cloudflareDNSRecord.Name)
 		}
 	}
 	return nil
