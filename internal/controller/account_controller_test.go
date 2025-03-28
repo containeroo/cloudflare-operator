@@ -82,7 +82,8 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 			CloudflareAPI: &cloudflareAPI,
 		}
 
-		_ = r.reconcileAccount(context.TODO(), account)
+		_, err := r.reconcileAccount(context.TODO(), account)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Account is ready"),
@@ -116,7 +117,8 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 			CloudflareAPI: &cloudflareAPI,
 		}
 
-		_ = r.reconcileAccount(context.TODO(), account)
+		_, err := r.reconcileAccount(context.TODO(), account)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "secrets \"secret\" not found"),
@@ -158,7 +160,8 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 			CloudflareAPI: &cloudflareAPI,
 		}
 
-		_ = r.reconcileAccount(context.TODO(), account)
+		_, err := r.reconcileAccount(context.TODO(), account)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "secret has no key named \"apiToken\""),
