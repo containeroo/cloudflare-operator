@@ -85,7 +85,8 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			Proxied: new(bool),
 		}
 
-		_ = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		_, err := r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "DNS record synced"),
@@ -113,7 +114,8 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			},
 		}
 
-		_ = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		_, err := r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "DNS record synced"),
@@ -148,7 +150,8 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			Proxied: cloudflareDNSRecord.Proxied,
 		}
 
-		_ = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		_, err = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "DNS record synced"),
