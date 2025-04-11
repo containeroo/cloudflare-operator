@@ -199,7 +199,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 		_ = r.reconcileIP(context.TODO(), ip)
 
 		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
-			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "Address is required for static IPs"),
+			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "address is required for static IPs"),
 		}))
 	})
 

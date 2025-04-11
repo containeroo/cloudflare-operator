@@ -161,7 +161,7 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 		_ = r.reconcileAccount(context.TODO(), account)
 
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
-			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "Secret has no key named \"apiToken\""),
+			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "secret has no key named \"apiToken\""),
 		}))
 	})
 }
