@@ -169,7 +169,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		existingRecord, err = r.CloudflareAPI.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), dnsrecord.Status.RecordID)
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
-			return ctrl.Result{}
+			return ctrl.Result{RequeueAfter: r.RetryInterval}
 		}
 	} else {
 		cloudflareExistingRecord, _, err := r.CloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{
@@ -179,7 +179,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		})
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
-			return ctrl.Result{}
+			return ctrl.Result{RequeueAfter: r.RetryInterval}
 		}
 		if len(cloudflareExistingRecord) > 0 {
 			existingRecord = cloudflareExistingRecord[0]
