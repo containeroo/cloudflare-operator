@@ -129,7 +129,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if len(zones.Items) == 0 {
-		intconditions.MarkFalse(dnsrecord, fmt.Errorf("Zone %q not found", zoneName))
+		intconditions.MarkFalse(dnsrecord, fmt.Errorf("zone %q not found", zoneName))
 		return ctrl.Result{}, nil
 	}
 
@@ -239,33 +239,31 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 
 // compareDNSRecord compares the DNS record to the DNSRecord object
 func (r *DNSRecordReconciler) compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
-	var isEqual bool = true
-
 	if dnsRecordSpec.Name != existingRecord.Name {
-		isEqual = false
+		return false
 	}
 	if dnsRecordSpec.Type != existingRecord.Type {
-		isEqual = false
+		return false
 	}
 	if dnsRecordSpec.Type != "SRV" && dnsRecordSpec.Type != "LOC" && dnsRecordSpec.Type != "CAA" {
 		if dnsRecordSpec.Content != existingRecord.Content {
-			isEqual = false
+			return false
 		}
 	}
 	if dnsRecordSpec.TTL != existingRecord.TTL {
-		isEqual = false
+		return false
 	}
 	if *dnsRecordSpec.Proxied != *existingRecord.Proxied {
-		isEqual = false
+		return false
 	}
 	if !comparePriority(dnsRecordSpec.Priority, existingRecord.Priority) {
-		isEqual = false
+		return false
 	}
 	if !compareData(existingRecord.Data, dnsRecordSpec.Data) {
-		isEqual = false
+		return false
 	}
 
-	return isEqual
+	return true
 }
 
 // comparePriority compares the priority nil safe

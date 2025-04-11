@@ -136,7 +136,7 @@ func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatorio
 // handleStatic handles the static ip
 func (r *IPReconciler) handleStatic(ip *cloudflareoperatoriov1.IP) error {
 	if ip.Spec.Address == "" {
-		return errors.New("Address is required for static IPs")
+		return errors.New("address is required for static IPs")
 	}
 	if net.ParseIP(ip.Spec.Address) == nil {
 		return fmt.Errorf("IP address %q is not valid", ip.Spec.Address)

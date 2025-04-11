@@ -111,7 +111,7 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 
 	cloudflareAPIToken := string(secret.Data["apiToken"])
 	if cloudflareAPIToken == "" {
-		intconditions.MarkFalse(account, errors.New("Secret has no key named \"apiToken\""))
+		intconditions.MarkFalse(account, errors.New("secret has no key named \"apiToken\""))
 		return ctrl.Result{RequeueAfter: r.RetryInterval}
 	}
 
