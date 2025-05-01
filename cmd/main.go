@@ -46,7 +46,7 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
-const version = "v1.4.3"
+const version = "v1.5.1"
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
