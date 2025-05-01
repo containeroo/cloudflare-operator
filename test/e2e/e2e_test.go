@@ -202,4 +202,24 @@ var _ = Describe("controller", Ordered, func() {
 		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
 			WithArguments("ingress-containeroo-test-org", "145.145.145.145").Should(Succeed())
 	})
+
+	It("should recreate dnsrecord when it gets deleted", func() {
+		cmd := exec.Command("kubectl", "-n", namespace, "delete", "dnsrecord", "ingress-containeroo-test-org")
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
+			WithArguments("dnsrecord", "ingress-containeroo-test-org").Should(Succeed())
+	})
+
+	It("should delete dnsrecord when ingress annotations are absent", func() {
+		cmd := exec.Command(
+			"kubectl", "-n", namespace, "patch", "ingress", "ingress-sample",
+			"--type=json", "-p", `[{"op": "remove", "path": "/metadata/annotations"}]`)
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
+			WithArguments("ingress-containeroo-test-org").Should(Succeed())
+	})
 })

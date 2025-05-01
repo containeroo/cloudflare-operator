@@ -25,6 +25,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	networkingv1 "k8s.io/api/networking/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -77,6 +78,23 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("1.1.1.1")))
 	})
 
+	t.Run("change dnsrecord spec when annotations change", func(t *testing.T) {
+		g := NewWithT(t)
+		ingress.Annotations = map[string]string{
+			"cloudflare-operator.io/content": "2.2.2.2",
+		}
+
+		_, err := r.reconcileIngress(context.TODO(), ingress)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "ingtest-containeroo-test-org"}, dnsRecord)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("ingtest.containeroo-test.org")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
+	})
+
 	t.Run("reconcile ingress wildcard", func(t *testing.T) {
 		g := NewWithT(t)
 		ingress.Spec = networkingv1.IngressSpec{
@@ -92,7 +110,19 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("*.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("1.1.1.1")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
+	})
+
+	t.Run("remove dnsrecord when annotations are absent", func(t *testing.T) {
+		g := NewWithT(t)
+		ingress.Annotations = map[string]string{}
+
+		_, err := r.reconcileIngress(context.TODO(), ingress)
+		g.Expect(err).NotTo(HaveOccurred())
+
+		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "wildcard-containeroo-test-org"}, dnsRecord)
+		g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
 	})
 
 	t.Run("ingress annotation parsing", func(t *testing.T) {
