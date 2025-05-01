@@ -19,6 +19,7 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -36,6 +37,7 @@ import (
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
+	interrors "github.com/containeroo/cloudflare-operator/internal/errors"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	"github.com/fluxcd/pkg/runtime/patch"
 )
@@ -59,6 +61,8 @@ type ZoneReconciler struct {
 
 	CloudflareAPI *cloudflare.API
 }
+
+var errWaitForZone = errors.New("must wait for zone")
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ZoneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
@@ -96,6 +100,13 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 			patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		}
 
+		// We do not want to return these errors, but rather wait for the
+		// designated RequeueAfter to expire and try again.
+		// However, not returning an error will cause the patch helper to
+		// patch the observed generation, which we do not want. So we ignore
+		// these errors here after patching.
+		retErr = interrors.Ignore(retErr, errWaitForAccount, errWaitForZone)
+
 		if err := patchHelper.Patch(ctx, zone, patchOpts...); err != nil {
 			if !zone.DeletionTimestamp.IsZero() {
 				err = apierrutil.FilterOut(err, func(e error) bool { return apierrors.IsNotFound(e) })
@@ -114,34 +125,34 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	return r.reconcileZone(ctx, zone), nil
+	return r.reconcileZone(ctx, zone)
 }
 
 // reconcileZone reconciles the zone
-func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) ctrl.Result {
+func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) (ctrl.Result, error) {
 	if r.CloudflareAPI.APIToken == "" {
 		intconditions.MarkUnknown(zone, "Cloudflare account is not ready")
-		return ctrl.Result{RequeueAfter: r.RetryInterval}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForAccount
 	}
 
 	zoneID, err := r.CloudflareAPI.ZoneIDByName(zone.Spec.Name)
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
-		return ctrl.Result{}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForZone
 	}
 
 	zone.Status.ID = zoneID
 
 	if zone.Spec.Prune {
 		if err := r.handlePrune(ctx, zone); err != nil {
-			intconditions.MarkFalse(zone, err)
-			return ctrl.Result{RequeueAfter: r.RetryInterval}
+			intconditions.MarkFalse(zone, fmt.Errorf("failed to prune DNS records: %v", err))
+			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 		}
 	}
 
 	intconditions.MarkTrue(zone, "Zone is ready")
 
-	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}
+	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}, nil
 }
 
 // handlePrune deletes DNS records that are not managed by the operator if enabled
@@ -151,7 +162,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords); err != nil {
 		log.Error(err, "Failed to list DNSRecords")
-		return err
+		return client.IgnoreNotFound(err)
 	}
 
 	cloudflareDNSRecords, _, err := r.CloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})

@@ -150,6 +150,7 @@ func main() {
 		Client:                   mgr.GetClient(),
 		Scheme:                   mgr.GetScheme(),
 		HTTPClientTimeout:        ipReconcilerHTTPClientTimeout,
+		RetryInterval:            retryInterval,
 		DefaultReconcileInterval: defaultReconcileInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "IP")

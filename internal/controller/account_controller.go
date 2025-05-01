@@ -51,6 +51,8 @@ type AccountReconciler struct {
 	CloudflareAPI *cloudflare.API
 }
 
+var errWaitForAccount = errors.New("must wait for account")
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
@@ -98,35 +100,42 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		return ctrl.Result{Requeue: true}, nil
 	}
 
-	return r.reconcileAccount(ctx, account), nil
+	return r.reconcileAccount(ctx, account)
 }
 
 // reconcileAccount reconciles the account
-func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloudflareoperatoriov1.Account) ctrl.Result {
+func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloudflareoperatoriov1.Account) (ctrl.Result, error) {
 	secret := &corev1.Secret{}
-	if err := r.Get(ctx, client.ObjectKey{Namespace: account.Spec.ApiToken.SecretRef.Namespace, Name: account.Spec.ApiToken.SecretRef.Name}, secret); err != nil {
+	if err := r.Get(ctx, client.ObjectKey{
+		Namespace: account.Spec.ApiToken.SecretRef.Namespace,
+		Name:      account.Spec.ApiToken.SecretRef.Name,
+	}, secret); err != nil {
 		intconditions.MarkFalse(account, err)
-		return ctrl.Result{RequeueAfter: r.RetryInterval}
+		if apierrors.IsNotFound(err) {
+			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
+		}
+		return ctrl.Result{}, err
 	}
 
 	cloudflareAPIToken := string(secret.Data["apiToken"])
 	if cloudflareAPIToken == "" {
 		intconditions.MarkFalse(account, errors.New("secret has no key named \"apiToken\""))
-		return ctrl.Result{RequeueAfter: r.RetryInterval}
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
 	if r.CloudflareAPI.APIToken != cloudflareAPIToken {
 		cloudflareAPI, err := cloudflare.NewWithAPIToken(cloudflareAPIToken)
 		if err != nil {
 			intconditions.MarkFalse(account, err)
-			return ctrl.Result{RequeueAfter: time.Second * 30}
+			return ctrl.Result{}, err
 		}
+
 		*r.CloudflareAPI = *cloudflareAPI
 	}
 
 	intconditions.MarkTrue(account, "Account is ready")
 
-	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}
+	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}, nil
 }
 
 // reconcileDelete reconciles the deletion of the account

@@ -99,7 +99,7 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 
 	if err := r.reconcileDNSRecords(ctx, ingress, dnsRecordSpec, existingRecords, ingressHosts); err != nil {
 		log.Error(err, "Failed to reconcile DNS records")
-		return ctrl.Result{}, err
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
 	return ctrl.Result{}, nil

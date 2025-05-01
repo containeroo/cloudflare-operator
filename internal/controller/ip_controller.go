@@ -57,6 +57,8 @@ type IPReconciler struct {
 
 	HTTPClientTimeout        time.Duration
 	DefaultReconcileInterval time.Duration
+
+	RetryInterval time.Duration
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -120,7 +122,7 @@ func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatorio
 	case "dynamic":
 		if err := r.handleDynamic(ctx, ip); err != nil {
 			intconditions.MarkFalse(ip, err)
-			return ctrl.Result{}
+			return ctrl.Result{RequeueAfter: r.RetryInterval}
 		}
 	}
 
