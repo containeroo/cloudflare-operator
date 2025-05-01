@@ -148,3 +148,22 @@ func VerifyDNSRecordContent(objName, expectedContent string) error {
 	}
 	return nil
 }
+
+func VerifyDNSRecordAbsent(objName string) error {
+	cmd := exec.Command(
+		"kubectl",
+		"get",
+		"dnsrecord",
+		objName,
+		"-n",
+		"cloudflare-operator-system",
+	)
+	status, err := Run(cmd)
+	if err != nil {
+		if strings.Contains(string(status), "NotFound") {
+			return nil
+		}
+		return err
+	}
+	return fmt.Errorf("dnsrecord %s still exists", objName)
+}

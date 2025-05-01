@@ -79,6 +79,16 @@ func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *netwo
 
 	annotations := ingress.GetAnnotations()
 
+	if annotations["cloudflare-operator.io/content"] == "" && annotations["cloudflare-operator.io/ip-ref"] == "" {
+		for _, record := range dnsRecords.Items {
+			if err := r.Delete(ctx, &record); err != nil {
+				log.Error(err, "Failed to delete DNSRecord", "name", record.Name)
+			}
+		}
+
+		return ctrl.Result{}, nil
+	}
+
 	dnsRecordSpec := r.parseAnnotations(annotations)
 	existingRecords := make(map[string]cloudflareoperatoriov1.DNSRecord)
 	for _, record := range dnsRecords.Items {

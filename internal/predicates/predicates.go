@@ -18,6 +18,7 @@ package predicates
 
 import (
 	"reflect"
+	"slices"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -46,13 +47,28 @@ func (DNSFromIngressPredicate) Update(e event.UpdateEvent) bool {
 	oldAnnotations := e.ObjectOld.GetAnnotations()
 	newAnnotations := e.ObjectNew.GetAnnotations()
 
+	oldObjectHadRequiredAnnotations := ingressHasRequiredAnnotations(oldAnnotations)
+	newObjectHasRequiredAnnotations := ingressHasRequiredAnnotations(newAnnotations)
+
 	oldObj := e.ObjectOld.(*networkingv1.Ingress)
 	newObj := e.ObjectNew.(*networkingv1.Ingress)
 
 	annotationsChanged := !reflect.DeepEqual(oldAnnotations, newAnnotations)
-	rulesChanged := !reflect.DeepEqual(oldObj.Spec.Rules, newObj.Spec.Rules)
+	oldHosts := []string{}
+	for _, rule := range oldObj.Spec.Rules {
+		oldHosts = append(oldHosts, rule.Host)
+	}
+	newHosts := []string{}
+	for _, rule := range newObj.Spec.Rules {
+		newHosts = append(newHosts, rule.Host)
+	}
 
-	return ingressHasRequiredAnnotations(newAnnotations) && (annotationsChanged || rulesChanged)
+	slices.Sort(oldHosts)
+	slices.Sort(newHosts)
+
+	hostsChanged := !reflect.DeepEqual(oldHosts, newHosts)
+
+	return (newObjectHasRequiredAnnotations && (annotationsChanged || hostsChanged)) || (oldObjectHadRequiredAnnotations && !newObjectHasRequiredAnnotations)
 }
 
 func (DNSFromIngressPredicate) Delete(e event.DeleteEvent) bool {
