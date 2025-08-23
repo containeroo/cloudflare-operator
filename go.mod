@@ -6,7 +6,7 @@ require (
 	github.com/cloudflare/cloudflare-go v0.115.0
 	github.com/fluxcd/pkg/runtime v0.80.0
 	github.com/itchyny/gojq v0.12.17
-	github.com/onsi/ginkgo/v2 v2.23.4
+	github.com/onsi/ginkgo/v2 v2.25.1
 	github.com/onsi/gomega v1.37.0
 	github.com/prometheus/client_golang v1.22.0
 	golang.org/x/net v0.43.0
@@ -18,6 +18,7 @@ require (
 )
 
 require (
+	github.com/Masterminds/semver/v3 v3.3.1 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/blang/semver/v4 v4.0.0 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -65,7 +66,7 @@ require (
 	golang.org/x/term v0.34.0 // indirect
 	golang.org/x/text v0.28.0 // indirect
 	golang.org/x/time v0.12.0 // indirect
-	golang.org/x/tools v0.35.0 // indirect
+	golang.org/x/tools v0.36.0 // indirect
 	gomodules.xyz/jsonpatch/v2 v2.5.0 // indirect
 	google.golang.org/protobuf v1.36.6 // indirect
 	gopkg.in/evanphx/json-patch.v4 v4.12.0 // indirect
