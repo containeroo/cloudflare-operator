@@ -60,6 +60,10 @@ type DNSRecordSpec struct {
 	// +kubebuilder:validation:Maximum=65535
 	// +optional
 	Priority *uint16 `json:"priority,omitempty"`
+	// Comments or notes about the DNS record. This field has no effect on DNS responses.
+	// +kubebuilder:validation:MaxLength=100
+	// +optional
+	Comment string `json:"comment,omitempty"`
 	// Interval to check DNSRecord
 	// +kubebuilder:default="5m"
 	// +optional
