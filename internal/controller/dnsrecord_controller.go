@@ -218,6 +218,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Proxied:  dnsrecord.Spec.Proxied,
 			Priority: dnsrecord.Spec.Priority,
 			Data:     dnsrecord.Spec.Data,
+			Comment:  dnsrecord.Spec.Comment,
 		})
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
@@ -234,6 +235,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Proxied:  dnsrecord.Spec.Proxied,
 			Priority: dnsrecord.Spec.Priority,
 			Data:     dnsrecord.Spec.Data,
+			Comment:  &dnsrecord.Spec.Comment,
 		}); err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
@@ -268,6 +270,9 @@ func (r *DNSRecordReconciler) compareDNSRecord(dnsRecordSpec cloudflareoperatori
 		return false
 	}
 	if !compareData(existingRecord.Data, dnsRecordSpec.Data) {
+		return false
+	}
+	if dnsRecordSpec.Comment != existingRecord.Comment {
 		return false
 	}
 

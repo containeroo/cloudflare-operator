@@ -185,6 +185,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			Proxied:  dnsRecordSpec.Proxied,
 			Priority: dnsRecordSpec.Priority,
 			Data:     map[string]any{"key": "value"},
+			Comment:  dnsRecordSpec.Comment,
 		}
 
 		isEqual := r.compareDNSRecord(dnsRecordSpec, cloudflareDNSRecord)
