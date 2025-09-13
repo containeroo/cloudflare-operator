@@ -235,7 +235,7 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			Proxied:  dnsrecord.Spec.Proxied,
 			Priority: dnsrecord.Spec.Priority,
 			Data:     dnsrecord.Spec.Data,
-			Comment:  &dnsrecord.Spec.Comment,
+			Comment:  cloudflare.StringPtr(dnsrecord.Spec.Comment),
 		}); err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
