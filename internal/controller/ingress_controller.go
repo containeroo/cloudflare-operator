@@ -190,6 +190,8 @@ func (r *IngressReconciler) parseAnnotations(annotations map[string]string) clou
 	}
 	dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
 
+	dnsRecordSpec.Comment = annotations["cloudflare-operator.io/comment"]
+
 	return dnsRecordSpec
 }
 
