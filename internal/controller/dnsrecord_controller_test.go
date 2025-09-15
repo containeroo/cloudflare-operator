@@ -176,6 +176,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			Data: &v1.JSON{
 				Raw: []byte(`{"key":"value"}`),
 			},
+			Comment: "This is a comment",
 		}
 
 		cloudflareDNSRecord := cloudflare.DNSRecord{
