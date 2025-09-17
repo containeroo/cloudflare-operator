@@ -1,10 +1,6 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Required env vars:
-# CLOUDFLARE_API_TOKEN - API token with "Zone.DNS Edit" permission
-# CLOUDFLARE_ZONE_ID   - Zone identifier (you can find it in Cloudflare dashboard)
-
 if [[ -z "${CF_API_TOKEN:-}" ]]; then
   echo "❌ CF_API_TOKEN is not set"
   exit 1
