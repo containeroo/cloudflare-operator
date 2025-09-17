@@ -54,6 +54,10 @@ spec:
                   items:
                     type: string
                   type: array
+                default:
+                  TXT:
+                  - _acme-challenge
+                  - cf2024-1._domainkey
                 description: |-
                   IgnoredRecords are DNS records that should be ignored by the operator when prune is enabled
                   It has no effect when prune is disabled

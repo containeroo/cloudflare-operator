@@ -86,6 +86,10 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		g := NewWithT(t)
 
 		zone.Spec.Prune = true
+		zone.Spec.IgnoredRecords = map[string][]string{
+			"TXT": {"_acme-challenge", "cf2024-1._domainkey"},
+			"A":   {"^mytest.*$"},
+		}
 
 		acmeRecord, err := cloudflareAPI.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
 			Name:    "_acme-challenge.abc.containeroo-test.org",
@@ -99,6 +103,12 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 			Content: "test",
 		})
 		g.Expect(err).ToNot(HaveOccurred())
+		aRecord, err := cloudflareAPI.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+			Name:    "mytestabc.containeroo-test.org",
+			Type:    "A",
+			Content: "1.1.1.1",
+		})
+		g.Expect(err).ToNot(HaveOccurred())
 
 		_, _ = r.reconcileZone(context.TODO(), zone)
 
@@ -109,10 +119,14 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dkimRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
+		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), aRecord.ID)
+		g.Expect(err).ToNot(HaveOccurred())
 
 		err = cloudflareAPI.DeleteDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), acmeRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
 		err = cloudflareAPI.DeleteDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), dkimRecord.ID)
+		g.Expect(err).ToNot(HaveOccurred())
+		err = cloudflareAPI.DeleteDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), aRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
 	})
 

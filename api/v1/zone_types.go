@@ -36,6 +36,7 @@ type ZoneSpec struct {
 	// It has no effect when prune is disabled
 	// Each key represents a record type, and the value is a list of record names
 	// Lines starting with a '^' are treated as regex, otherwise they are treated as prefixes
+	// +kubebuilder:default={TXT:{"_acme-challenge","cf2024-1._domainkey"}}
 	// +optional
 	IgnoredRecords map[string][]string `json:"ignoredRecords,omitempty"`
 }
