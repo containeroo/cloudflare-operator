@@ -6,3 +6,8 @@ metadata:
 spec:
   name: containeroo-test.org
   prune: false
+  ignoredRecords:
+    A:
+      - ^ignore-me.*$
+    TXT:
+      - _acme-challenge.containeroo-test.org

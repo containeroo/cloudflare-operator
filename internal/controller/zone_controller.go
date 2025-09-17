@@ -20,6 +20,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -41,16 +42,6 @@ import (
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	"github.com/fluxcd/pkg/runtime/patch"
 )
-
-// ignoredRecords are records that should not be pruned
-// the key is the record type and the value is a list of prefixes
-// TODO: make this configurable in the Zone CR
-var ignoredRecords = map[string][]string{
-	"TXT": {
-		"_acme-challenge",     // Let's Encrypt DNS-01 challenge
-		"cf2024-1._domainkey", // Cloudflare Email Routing DKIM
-	},
-}
 
 // ZoneReconciler reconciles a Zone object
 type ZoneReconciler struct {
@@ -177,7 +168,8 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 	}
 
 	for _, cloudflareDNSRecord := range cloudflareDNSRecords {
-		if _, found := ignoredRecords[cloudflareDNSRecord.Type]; found && hasPrefix(cloudflareDNSRecord.Name, ignoredRecords[cloudflareDNSRecord.Type]) {
+		if patterns, found := zone.Spec.IgnoredRecords[cloudflareDNSRecord.Type]; found &&
+			matchesIgnored(cloudflareDNSRecord.Name, patterns, ctx) {
 			continue
 		}
 
@@ -197,11 +189,25 @@ func (r *ZoneReconciler) reconcileDelete(zone *cloudflareoperatoriov1.Zone) {
 	controllerutil.RemoveFinalizer(zone, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 }
 
-// hasPrefix checks if the name has any of the prefixes
-func hasPrefix(name string, prefixes []string) bool {
-	for _, prefix := range prefixes {
-		if strings.HasPrefix(name, prefix) {
-			return true
+// matchesIgnored checks if the name matches any of the ignored patterns
+func matchesIgnored(name string, patterns []string, ctx context.Context) bool {
+	log := ctrl.LoggerFrom(ctx)
+
+	for _, p := range patterns {
+		if strings.HasPrefix(p, "^") {
+			// regex
+			re, err := regexp.Compile(p)
+			if err != nil {
+				log.Error(err, "Failed to compile regex", "pattern", p)
+				continue
+			}
+			if re.MatchString(name) {
+				return true
+			}
+		} else {
+			if strings.HasPrefix(name, p) {
+				return true
+			}
 		}
 	}
 	return false

@@ -340,3 +340,7 @@ crd: generate ## Generate CRD to file
 # Generate API reference documentation
 api-docs: gen-crd-api-reference-docs
 	$(GEN_CRD_API_REFERENCE_DOCS) -api-dir=./api/v1 -config=./hack/api-docs/config.json -template-dir=./hack/api-docs/template -out-file=./api-ref.html
+
+.PHONY: clean-test-dns-records
+clean-test-dns-records: ## Clean up any DNS records created during e2e tests
+	bash ./hack/clean-test-dns-records.sh

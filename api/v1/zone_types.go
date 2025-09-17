@@ -32,6 +32,13 @@ type ZoneSpec struct {
 	// +kubebuilder:default="5m"
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
+	// IgnoredRecords are DNS records that should be ignored by the operator when prune is enabled
+	// It has no effect when prune is disabled
+	// Each key represents a record type, and the value is a list of record names
+	// Lines starting with a '^' are treated as regex, otherwise they are treated as prefixes
+	// +kubebuilder:default={TXT:{"_acme-challenge","cf2024-1._domainkey"}}
+	// +optional
+	IgnoredRecords map[string][]string `json:"ignoredRecords,omitempty"`
 }
 
 // ZoneStatus defines the observed state of Zone

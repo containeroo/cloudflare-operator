@@ -10,6 +10,7 @@ spec:
   type: A
   proxied: false
   ttl: 1
+  comment: this is a sample dns record
 ---
 apiVersion: cloudflare-operator.io/v1
 kind: DNSRecord
