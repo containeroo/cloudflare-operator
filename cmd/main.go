@@ -37,6 +37,7 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	cloudflareoperatoriov2 "github.com/containeroo/cloudflare-operator/api/v2"
 	"github.com/containeroo/cloudflare-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
 )
@@ -52,6 +53,7 @@ func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(cloudflareoperatoriov1.AddToScheme(scheme))
+	utilruntime.Must(cloudflareoperatoriov2.AddToScheme(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -128,13 +130,30 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.AccountReconciler{
+	if err = (&controller.AccountReconciler[*cloudflareoperatoriov1.Account]{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
 		CloudflareAPI: &cloudflareAPI,
 		RetryInterval: retryInterval,
+		Finalizer:     cloudflareoperatoriov1.CloudflareOperatorFinalizer,
+		NewAccount: func() *cloudflareoperatoriov1.Account {
+			return &cloudflareoperatoriov1.Account{}
+		},
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Account")
+		setupLog.Error(err, "unable to create controller", "controller", "Account (v1)")
+		os.Exit(1)
+	}
+	if err = (&controller.AccountReconciler[*cloudflareoperatoriov2.Account]{
+		Client:        mgr.GetClient(),
+		Scheme:        mgr.GetScheme(),
+		CloudflareAPI: &cloudflareAPI,
+		RetryInterval: retryInterval,
+		Finalizer:     cloudflareoperatoriov2.CloudflareOperatorFinalizer,
+		NewAccount: func() *cloudflareoperatoriov2.Account {
+			return &cloudflareoperatoriov2.Account{}
+		},
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Account (v2)")
 		os.Exit(1)
 	}
 	if err = (&controller.ZoneReconciler{

@@ -26,37 +26,53 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/cloudflare/cloudflare-go"
+	fluxconditions "github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/fluxcd/pkg/runtime/patch"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 )
 
+// AccountObject describes the subset of account fields required by the reconciler.
+type AccountObject interface {
+	client.Object
+	fluxconditions.Setter
+	GetApiTokenSecretRef() corev1.SecretReference
+	GetInterval() metav1.Duration
+}
+
 // AccountReconciler reconciles an Account object
-type AccountReconciler struct {
+type AccountReconciler[T AccountObject] struct {
 	client.Client
 	Scheme *runtime.Scheme
 
 	RetryInterval time.Duration
 
 	CloudflareAPI *cloudflare.API
+
+	Finalizer  string
+	NewAccount func() T
 }
 
 var errWaitForAccount = errors.New("must wait for account")
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *AccountReconciler[T]) SetupWithManager(mgr ctrl.Manager) error {
+	if r.NewAccount == nil {
+		return errors.New("account reconciler requires a constructor")
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.Account{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(r.NewAccount(), builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
@@ -67,8 +83,8 @@ func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, retErr error) {
-	account := &cloudflareoperatoriov1.Account{}
+func (r *AccountReconciler[T]) Reconcile(ctx context.Context, req ctrl.Request) (result ctrl.Result, retErr error) {
+	account := r.NewAccount()
 	if err := r.Get(ctx, req.NamespacedName, account); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
@@ -83,20 +99,20 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 		}
 
 		if err := patchHelper.Patch(ctx, account, patchOpts...); err != nil {
-			if !account.DeletionTimestamp.IsZero() {
+			if !account.GetDeletionTimestamp().IsZero() {
 				err = apierrutil.FilterOut(err, func(e error) bool { return apierrors.IsNotFound(e) })
 			}
 			retErr = apierrutil.Reduce(apierrutil.NewAggregate([]error{retErr, err}))
 		}
 	}()
 
-	if !account.DeletionTimestamp.IsZero() {
+	if !account.GetDeletionTimestamp().IsZero() {
 		r.reconcileDelete(account)
 		return ctrl.Result{}, nil
 	}
 
-	if !controllerutil.ContainsFinalizer(account, cloudflareoperatoriov1.CloudflareOperatorFinalizer) {
-		controllerutil.AddFinalizer(account, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
+	if r.Finalizer != "" && !controllerutil.ContainsFinalizer(account, r.Finalizer) {
+		controllerutil.AddFinalizer(account, r.Finalizer)
 		return ctrl.Result{Requeue: true}, nil
 	}
 
@@ -104,11 +120,17 @@ func (r *AccountReconciler) Reconcile(ctx context.Context, req ctrl.Request) (re
 }
 
 // reconcileAccount reconciles the account
-func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloudflareoperatoriov1.Account) (ctrl.Result, error) {
+func (r *AccountReconciler[T]) reconcileAccount(ctx context.Context, account T) (ctrl.Result, error) {
+	secretRef := account.GetApiTokenSecretRef()
+	secretNamespace := secretRef.Namespace
+	if secretNamespace == "" {
+		secretNamespace = account.GetNamespace()
+	}
+
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
-		Namespace: account.Spec.ApiToken.SecretRef.Namespace,
-		Name:      account.Spec.ApiToken.SecretRef.Name,
+		Namespace: secretNamespace,
+		Name:      secretRef.Name,
 	}, secret); err != nil {
 		intconditions.MarkFalse(account, err)
 		if apierrors.IsNotFound(err) {
@@ -135,11 +157,18 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 
 	intconditions.MarkTrue(account, "Account is ready")
 
-	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}, nil
+	interval := account.GetInterval().Duration
+	if interval == 0 {
+		interval = r.RetryInterval
+	}
+
+	return ctrl.Result{RequeueAfter: interval}, nil
 }
 
 // reconcileDelete reconciles the deletion of the account
-func (r *AccountReconciler) reconcileDelete(account *cloudflareoperatoriov1.Account) {
-	metrics.AccountFailureCounter.DeleteLabelValues(account.Name)
-	controllerutil.RemoveFinalizer(account, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
+func (r *AccountReconciler[T]) reconcileDelete(account T) {
+	metrics.AccountFailureCounter.DeleteLabelValues(account.GetNamespace(), account.GetName())
+	if r.Finalizer != "" {
+		controllerutil.RemoveFinalizer(account, r.Finalizer)
+	}
 }

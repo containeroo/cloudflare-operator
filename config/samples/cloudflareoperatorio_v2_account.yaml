@@ -8,11 +8,11 @@ type: Opaque
 stringData:
   apiToken: ${CF_API_TOKEN}
 ---
-apiVersion: cloudflare-operator.io/v1
+apiVersion: cloudflare-operator.io/v2
 kind: Account
 metadata:
-  namespace: cloudflare-operator-system
   name: account-sample
+  namespace: cloudflare-operator-system
 spec:
   apiToken:
     secretRef:

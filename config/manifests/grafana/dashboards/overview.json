@@ -130,7 +130,7 @@
             "type": "prometheus",
             "uid": "${DS_PROMETHEUS}"
           },
-          "expr": "cloudflare_operator_account_status",
+          "expr": "sum(cloudflare_operator_account_status)",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -207,7 +207,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "cloudflare_operator_account_status + cloudflare_operator_dns_record_status + cloudflare_operator_ip_status + cloudflare_operator_zone_status",
+          "expr": "sum(cloudflare_operator_account_status) + sum(cloudflare_operator_dns_record_status) + sum(cloudflare_operator_ip_status) + sum(cloudflare_operator_zone_status)",
           "interval": "",
           "legendFormat": "",
           "refId": "A"

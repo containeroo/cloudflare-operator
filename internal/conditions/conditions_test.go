@@ -21,6 +21,7 @@ import (
 	"testing"
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	cloudflareoperatoriov2 "github.com/containeroo/cloudflare-operator/api/v2"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -37,6 +38,14 @@ func TestPredicate(t *testing.T) {
 		g.Expect(testAccount.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "test"),
 		}))
+
+		v2Account := &cloudflareoperatoriov2.Account{}
+
+		MarkTrue(v2Account, "test")
+
+		g.Expect(v2Account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(cloudflareoperatoriov2.ConditionTypeReady, cloudflareoperatoriov2.ConditionReasonReady, "test"),
+		}))
 	})
 
 	t.Run("set false condition", func(t *testing.T) {
@@ -49,6 +58,14 @@ func TestPredicate(t *testing.T) {
 		g.Expect(testAccount.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "test"),
 		}))
+
+		v2Account := &cloudflareoperatoriov2.Account{}
+
+		MarkFalse(v2Account, errors.New("test"))
+
+		g.Expect(v2Account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.FalseCondition(cloudflareoperatoriov2.ConditionTypeReady, cloudflareoperatoriov2.ConditionReasonFailed, "test"),
+		}))
 	})
 
 	t.Run("set unknown condition", func(t *testing.T) {
@@ -60,6 +77,14 @@ func TestPredicate(t *testing.T) {
 
 		g.Expect(testAccount.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.UnknownCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonNotReady, "test"),
+		}))
+
+		v2Account := &cloudflareoperatoriov2.Account{}
+
+		MarkUnknown(v2Account, "test")
+
+		g.Expect(v2Account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.UnknownCondition(cloudflareoperatoriov2.ConditionTypeReady, cloudflareoperatoriov2.ConditionReasonNotReady, "test"),
 		}))
 	})
 }

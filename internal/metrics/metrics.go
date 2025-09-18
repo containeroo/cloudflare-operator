@@ -27,7 +27,7 @@ var (
 			Name: "cloudflare_operator_account_status",
 			Help: "Cloudflare account status",
 		},
-		[]string{"name"},
+		[]string{"namespace", "name"},
 	)
 	DnsRecordFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{

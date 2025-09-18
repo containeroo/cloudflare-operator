@@ -18,8 +18,10 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
@@ -33,6 +35,7 @@ import (
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
+	cloudflareoperatoriov2 "github.com/containeroo/cloudflare-operator/api/v2"
 	networkingv1 "k8s.io/api/networking/v1"
 )
 
@@ -40,6 +43,7 @@ func NewTestScheme() *runtime.Scheme {
 	s := runtime.NewScheme()
 	utilruntime.Must(corev1.AddToScheme(s))
 	utilruntime.Must(cloudflareoperatoriov1.AddToScheme(s))
+	utilruntime.Must(cloudflareoperatoriov2.AddToScheme(s))
 	utilruntime.Must(networkingv1.AddToScheme(s))
 	return s
 }
@@ -47,124 +51,166 @@ func NewTestScheme() *runtime.Scheme {
 var cloudflareAPI cloudflare.API
 
 func TestAccountReconciler_reconcileAccount(t *testing.T) {
-	t.Run("reconcile account", func(t *testing.T) {
+	runAccountReconcilerTests[*cloudflareoperatoriov1.Account](t, "v1", func() *cloudflareoperatoriov1.Account {
+		return &cloudflareoperatoriov1.Account{}
+	})
+	runAccountReconcilerTests[*cloudflareoperatoriov2.Account](t, "v2", func() *cloudflareoperatoriov2.Account {
+		return &cloudflareoperatoriov2.Account{}
+	})
+}
+
+func runAccountReconcilerTests[T AccountObject](t *testing.T, version string, newAccount func() T) {
+	t.Helper()
+
+	t.Run(fmt.Sprintf("%s reconcile account", version), func(t *testing.T) {
 		g := NewWithT(t)
+		cloudflareAPI = cloudflare.API{}
 
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{
-				"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
-			},
-		}
+		account := newAccount()
+		secret := configureAccountAndSecret(account, map[string][]byte{
+			"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
+		})
 
-		account := &cloudflareoperatoriov1.Account{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "account",
-			},
-			Spec: cloudflareoperatoriov1.AccountSpec{
-				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
-					SecretRef: corev1.SecretReference{
-						Name:      "secret",
-						Namespace: "default",
-					},
-				},
-			},
-		}
-
-		r := &AccountReconciler{
+		r := &AccountReconciler[T]{
 			Client: fake.NewClientBuilder().
 				WithScheme(NewTestScheme()).
 				WithObjects(secret, account).
 				Build(),
 			CloudflareAPI: &cloudflareAPI,
+			RetryInterval: time.Second,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
-			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Account is ready"),
+		condType, reasonReady, _, _ := accountConditionConstantsFromAccount(account)
+		g.Expect(account.GetConditions()).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.TrueCondition(condType, reasonReady, "Account is ready"),
 		}))
 
 		g.Expect(cloudflareAPI.APIToken).To(Equal(string(secret.Data["apiToken"])))
 	})
 
-	t.Run("econcile account error secret not found", func(t *testing.T) {
+	t.Run(fmt.Sprintf("%s reconcile account error secret not found", version), func(t *testing.T) {
 		g := NewWithT(t)
+		cloudflareAPI = cloudflare.API{}
 
-		account := &cloudflareoperatoriov1.Account{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "account",
-			},
-			Spec: cloudflareoperatoriov1.AccountSpec{
-				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
-					SecretRef: corev1.SecretReference{
-						Name:      "secret",
-						Namespace: "default",
-					},
-				},
-			},
-		}
+		account := newAccount()
+		_ = configureAccountAndSecret(account, map[string][]byte{
+			"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
+		})
 
-		r := &AccountReconciler{
+		r := &AccountReconciler[T]{
 			Client: fake.NewClientBuilder().
 				WithScheme(NewTestScheme()).
 				WithObjects(account).
 				Build(),
 			CloudflareAPI: &cloudflareAPI,
+			RetryInterval: time.Second,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
-			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "secrets \"secret\" not found"),
-		}))
+		condType, _, _, reasonFailed := accountConditionConstantsFromAccount(account)
+		g.Expect(account.GetConditions()).To(HaveLen(1))
+		condition := account.GetConditions()[0]
+		g.Expect(condition.Type).To(Equal(condType))
+		g.Expect(condition.Status).To(Equal(metav1.ConditionFalse))
+		g.Expect(condition.Reason).To(Equal(reasonFailed))
+		g.Expect(condition.Message).To(ContainSubstring("secret"))
 	})
 
-	t.Run("reconcile account error key not found in secret", func(t *testing.T) {
+	t.Run(fmt.Sprintf("%s reconcile account error key not found in secret", version), func(t *testing.T) {
 		g := NewWithT(t)
+		cloudflareAPI = cloudflare.API{}
 
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{
-				"invalid": []byte("invalid"),
-			},
-		}
+		account := newAccount()
+		secret := configureAccountAndSecret(account, map[string][]byte{
+			"invalid": []byte("invalid"),
+		})
 
-		account := &cloudflareoperatoriov1.Account{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "account",
-			},
-			Spec: cloudflareoperatoriov1.AccountSpec{
-				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
-					SecretRef: corev1.SecretReference{
-						Name:      "secret",
-						Namespace: "default",
-					},
-				},
-			},
-		}
-
-		r := &AccountReconciler{
+		r := &AccountReconciler[T]{
 			Client: fake.NewClientBuilder().
 				WithScheme(NewTestScheme()).
 				WithObjects(secret, account).
 				Build(),
 			CloudflareAPI: &cloudflareAPI,
+			RetryInterval: time.Second,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
-			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "secret has no key named \"apiToken\""),
-		}))
+		condType, _, _, reasonFailed := accountConditionConstantsFromAccount(account)
+		g.Expect(account.GetConditions()).To(HaveLen(1))
+		condition := account.GetConditions()[0]
+		g.Expect(condition.Type).To(Equal(condType))
+		g.Expect(condition.Status).To(Equal(metav1.ConditionFalse))
+		g.Expect(condition.Reason).To(Equal(reasonFailed))
+		g.Expect(condition.Message).To(Equal("secret has no key named \"apiToken\""))
 	})
+}
+
+func configureAccountAndSecret[T AccountObject](account T, data map[string][]byte) *corev1.Secret {
+	secretData := data
+	if secretData == nil {
+		secretData = map[string][]byte{}
+	}
+
+	switch a := any(account).(type) {
+	case *cloudflareoperatoriov1.Account:
+		a.ObjectMeta = metav1.ObjectMeta{
+			Name:      "account",
+			Namespace: "default",
+		}
+		a.Spec = cloudflareoperatoriov1.AccountSpec{
+			ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
+				SecretRef: corev1.SecretReference{
+					Name:      "secret",
+					Namespace: "default",
+				},
+			},
+		}
+	case *cloudflareoperatoriov2.Account:
+		a.ObjectMeta = metav1.ObjectMeta{
+			Name:      "account",
+			Namespace: "default",
+		}
+		a.Spec = cloudflareoperatoriov2.AccountSpec{
+			ApiToken: cloudflareoperatoriov2.AccountSpecApiToken{
+				SecretRef: corev1.SecretReference{
+					Name:      "secret",
+					Namespace: "default",
+				},
+			},
+		}
+	default:
+		panic("unsupported account type")
+	}
+
+	return &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "secret",
+			Namespace: "default",
+		},
+		Data: secretData,
+	}
+}
+
+func accountConditionConstantsFromAccount[T AccountObject](account T) (condType, reasonReady, reasonNotReady, reasonFailed string) {
+	switch any(account).(type) {
+	case *cloudflareoperatoriov2.Account:
+		return cloudflareoperatoriov2.ConditionTypeReady,
+			cloudflareoperatoriov2.ConditionReasonReady,
+			cloudflareoperatoriov2.ConditionReasonNotReady,
+			cloudflareoperatoriov2.ConditionReasonFailed
+	case *cloudflareoperatoriov1.Account:
+		return cloudflareoperatoriov1.ConditionTypeReady,
+			cloudflareoperatoriov1.ConditionReasonReady,
+			cloudflareoperatoriov1.ConditionReasonNotReady,
+			cloudflareoperatoriov1.ConditionReasonFailed
+	default:
+		panic("unsupported account type")
+	}
 }

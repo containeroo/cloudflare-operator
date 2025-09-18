@@ -3,5 +3,6 @@ resources:
 - cloudflareoperatorio_v1_dnsrecord.yaml
 - cloudflareoperatorio_v1_ip.yaml
 - cloudflareoperatorio_v1_account.yaml
+- cloudflareoperatorio_v2_account.yaml
 - cloudflareoperatorio_v1_zone.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples
