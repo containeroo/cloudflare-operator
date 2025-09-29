@@ -17,3 +17,5 @@ spec:
     secretRef:
       name: api-token-sample
       namespace: cloudflare-operator-system
+  managedZones:
+    - containeroo-test.org
