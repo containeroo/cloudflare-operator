@@ -48,7 +48,7 @@ type AccountReconciler struct {
 
 	RetryInterval time.Duration
 
-	CloudflareAPI *cloudflare.API
+	AccountManager *AccountManager
 }
 
 var errWaitForAccount = errors.New("must wait for account")
@@ -123,15 +123,13 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
-	if r.CloudflareAPI.APIToken != cloudflareAPIToken {
-		cloudflareAPI, err := cloudflare.NewWithAPIToken(cloudflareAPIToken)
-		if err != nil {
-			intconditions.MarkFalse(account, err)
-			return ctrl.Result{}, err
-		}
-
-		*r.CloudflareAPI = *cloudflareAPI
+	cloudflareAPI, err := cloudflare.NewWithAPIToken(cloudflareAPIToken)
+	if err != nil {
+		intconditions.MarkFalse(account, err)
+		return ctrl.Result{}, err
 	}
+
+	r.AccountManager.UpsertAccount(account.Name, cloudflareAPI, cloudflareAPIToken, account.Spec.ManagedZones)
 
 	intconditions.MarkTrue(account, "Account is ready")
 
@@ -142,4 +140,5 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 func (r *AccountReconciler) reconcileDelete(account *cloudflareoperatoriov1.Account) {
 	metrics.AccountFailureCounter.DeleteLabelValues(account.Name)
 	controllerutil.RemoveFinalizer(account, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
+	r.AccountManager.RemoveAccount(account.Name)
 }

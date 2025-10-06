@@ -12,6 +12,8 @@ cloudflare-operator helps to:
 - Keep Cloudflare DNS records up to date
 - Update your external IP address on Cloudflare DNS records
 
+> **Heads-up:** every `Account` custom resource must list the zones it is allowed to manage in `spec.managedZones`. Zones and DNS records are matched to accounts automatically using this list.
+
 ## What can I do with cloudflare-operator?
 
 cloudflare-operator is based on a set of Kubernetes API extensions ("custom resources"), which control Cloudflare DNS records.

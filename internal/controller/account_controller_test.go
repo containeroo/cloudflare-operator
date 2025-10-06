@@ -31,7 +31,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -43,8 +42,6 @@ func NewTestScheme() *runtime.Scheme {
 	utilruntime.Must(networkingv1.AddToScheme(s))
 	return s
 }
-
-var cloudflareAPI cloudflare.API
 
 func TestAccountReconciler_reconcileAccount(t *testing.T) {
 	t.Run("reconcile account", func(t *testing.T) {
@@ -74,12 +71,14 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 			},
 		}
 
+		accountManager := NewAccountManager()
+
 		r := &AccountReconciler{
 			Client: fake.NewClientBuilder().
 				WithScheme(NewTestScheme()).
 				WithObjects(secret, account).
 				Build(),
-			CloudflareAPI: &cloudflareAPI,
+			AccountManager: accountManager,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)
@@ -89,7 +88,10 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Account is ready"),
 		}))
 
-		g.Expect(cloudflareAPI.APIToken).To(Equal(string(secret.Data["apiToken"])))
+		api, token, ok := accountManager.GetAccount(account.Name)
+		g.Expect(ok).To(BeTrue())
+		g.Expect(token).To(Equal(string(secret.Data["apiToken"])))
+		g.Expect(api).ToNot(BeNil())
 	})
 
 	t.Run("econcile account error secret not found", func(t *testing.T) {
@@ -109,12 +111,14 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 			},
 		}
 
+		accountManager := NewAccountManager()
+
 		r := &AccountReconciler{
 			Client: fake.NewClientBuilder().
 				WithScheme(NewTestScheme()).
 				WithObjects(account).
 				Build(),
-			CloudflareAPI: &cloudflareAPI,
+			AccountManager: accountManager,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)
@@ -152,12 +156,14 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 			},
 		}
 
+		accountManager := NewAccountManager()
+
 		r := &AccountReconciler{
 			Client: fake.NewClientBuilder().
 				WithScheme(NewTestScheme()).
 				WithObjects(secret, account).
 				Build(),
-			CloudflareAPI: &cloudflareAPI,
+			AccountManager: accountManager,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)

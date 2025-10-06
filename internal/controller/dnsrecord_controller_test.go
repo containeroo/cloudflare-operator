@@ -34,6 +34,14 @@ import (
 )
 
 func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
+	g := NewWithT(t)
+
+	apiToken := os.Getenv("CF_API_TOKEN")
+	g.Expect(apiToken).ToNot(BeEmpty(), "CF_API_TOKEN must be set for this test")
+
+	cloudflareAPI, err := cloudflare.NewWithAPIToken(apiToken)
+	g.Expect(err).ToNot(HaveOccurred())
+
 	zone := &cloudflareoperatoriov1.Zone{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "zone",
@@ -51,6 +59,10 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			}},
 		},
 	}
+	g.Expect(zone.Status.ID).ToNot(BeEmpty(), "CF_ZONE_ID must be set for this test")
+
+	accountManager := NewAccountManager()
+	accountManager.UpsertAccount("account", cloudflareAPI, apiToken, []string{zone.Spec.Name})
 
 	dnsRecord := &cloudflareoperatoriov1.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{
@@ -73,7 +85,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			WithScheme(NewTestScheme()).
 			WithObjects(dnsRecord, ip).
 			Build(),
-		CloudflareAPI: &cloudflareAPI,
+		AccountManager: accountManager,
 	}
 
 	t.Run("reconcile dnsrecord", func(t *testing.T) {
@@ -85,7 +97,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			Proxied: new(bool),
 		}
 
-		_, err := r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		_, err := r.reconcileDNSRecord(context.TODO(), dnsRecord, zone, cloudflareAPI)
 		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
@@ -97,7 +109,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 
 		g.Expect(dnsRecord.Status.RecordID).To(Equal(cloudflareDNSRecord.ID))
 
-		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
+		_ = r.reconcileDelete(context.TODO(), cloudflareAPI, zone.Status.ID, dnsRecord)
 		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
 		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
 	})
@@ -114,7 +126,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			},
 		}
 
-		_, err := r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		_, err := r.reconcileDNSRecord(context.TODO(), dnsRecord, zone, cloudflareAPI)
 		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
@@ -127,7 +139,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		g.Expect(dnsRecord.Status.RecordID).To(Equal(cloudflareDNSRecord.ID))
 		g.Expect(cloudflareDNSRecord.Content).To(Equal(ip.Spec.Address))
 
-		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
+		_ = r.reconcileDelete(context.TODO(), cloudflareAPI, zone.Status.ID, dnsRecord)
 		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
 		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
 	})
@@ -150,7 +162,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			Proxied: cloudflareDNSRecord.Proxied,
 		}
 
-		_, err = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone)
+		_, err = r.reconcileDNSRecord(context.TODO(), dnsRecord, zone, cloudflareAPI)
 		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(dnsRecord.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
@@ -159,7 +171,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 
 		g.Expect(dnsRecord.Status.RecordID).To(Equal(cloudflareDNSRecord.ID))
 
-		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
+		_ = r.reconcileDelete(context.TODO(), cloudflareAPI, zone.Status.ID, dnsRecord)
 		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
 		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
 	})
