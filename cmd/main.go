@@ -35,7 +35,6 @@ import (
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
-	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/containeroo/cloudflare-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
@@ -65,7 +64,6 @@ func main() {
 		retryInterval                 time.Duration
 		ipReconcilerHTTPClientTimeout time.Duration
 		defaultReconcileInterval      time.Duration
-		cloudflareAPI                 cloudflare.API
 		ctx                           = ctrl.SetupSignalHandler()
 	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -128,20 +126,22 @@ func main() {
 		os.Exit(1)
 	}
 
+	accountManager := controller.NewAccountManager()
+
 	if err = (&controller.AccountReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
-		RetryInterval: retryInterval,
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		AccountManager: accountManager,
+		RetryInterval:  retryInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Account")
 		os.Exit(1)
 	}
 	if err = (&controller.ZoneReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
-		RetryInterval: retryInterval,
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		AccountManager: accountManager,
+		RetryInterval:  retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Zone")
 		os.Exit(1)
@@ -166,10 +166,10 @@ func main() {
 		os.Exit(1)
 	}
 	if err = (&controller.DNSRecordReconciler{
-		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
-		RetryInterval: retryInterval,
+		Client:         mgr.GetClient(),
+		Scheme:         mgr.GetScheme(),
+		AccountManager: accountManager,
+		RetryInterval:  retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")
 		os.Exit(1)

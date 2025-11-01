@@ -33,6 +33,14 @@ import (
 )
 
 func TestZoneReconciler_reconcileZone(t *testing.T) {
+	g := NewWithT(t)
+
+	apiToken := os.Getenv("CF_API_TOKEN")
+	g.Expect(apiToken).ToNot(BeEmpty(), "CF_API_TOKEN must be set for this test")
+
+	cloudflareAPI, err := cloudflare.NewWithAPIToken(apiToken)
+	g.Expect(err).ToNot(HaveOccurred())
+
 	zone := &cloudflareoperatoriov1.Zone{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "zone",
@@ -42,15 +50,20 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		},
 	}
 
+	accountManager := NewAccountManager()
+	accountManager.UpsertAccount("account", cloudflareAPI, apiToken, []string{zone.Spec.Name})
+
 	r := &ZoneReconciler{
 		Client: fake.NewClientBuilder().
 			WithScheme(NewTestScheme()).
 			WithObjects(zone).
 			Build(),
-		CloudflareAPI: &cloudflareAPI,
+		AccountManager: accountManager,
 	}
 
 	zoneID := os.Getenv("CF_ZONE_ID")
+	g.Expect(zoneID).ToNot(BeEmpty(), "CF_ZONE_ID must be set for this test")
+
 	var testRecord cloudflare.DNSRecord
 
 	t.Run("create dns record for testing", func(t *testing.T) {
@@ -134,6 +147,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		g := NewWithT(t)
 
 		zone.Spec.Name = "not-found.org"
+		accountManager.UpsertAccount("account", cloudflareAPI, apiToken, []string{zone.Spec.Name})
 
 		_, err := r.reconcileZone(context.TODO(), zone)
 		g.Expect(err).To(HaveOccurred())
@@ -146,13 +160,13 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 	t.Run("reconcile zone error account not ready", func(t *testing.T) {
 		g := NewWithT(t)
 
-		cloudflareAPI.APIToken = ""
+		accountManager.RemoveAccount("account")
 
 		_, err := r.reconcileZone(context.TODO(), zone)
 		g.Expect(err).To(Equal(errWaitForAccount))
 
 		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
-			*conditions.UnknownCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonNotReady, "Cloudflare account is not ready"),
+			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "no Cloudflare account manages zone \"not-found.org\""),
 		}))
 	})
 }

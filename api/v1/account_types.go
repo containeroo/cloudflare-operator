@@ -35,9 +35,8 @@ type AccountSpec struct {
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
 	// List of zone names that should be managed by cloudflare-operator
-	// Deprecated and will be removed in a future release
+	// Used to automatically match zones with the correct account
 	// +optional
-	// +deprecated
 	ManagedZones []string `json:"managedZones,omitempty"`
 }
 
