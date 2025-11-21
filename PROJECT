@@ -25,6 +25,12 @@ resources:
   kind: Ingress
   path: k8s.io/api/networking/v1
   version: v1
+- controller: true
+  domain: networking.k8s.io
+  group: gateway
+  kind: HTTPRoute
+  path: sigs.k8s.io/gateway-api/apis/v1
+  version: v1
 - api:
     crdVersion: v1
   controller: true

@@ -86,7 +86,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result 
 	defer func() {
 		patchOpts := []patch.Option{}
 
-		if errors.Is(retErr, reconcile.TerminalError(nil)) || (retErr == nil && (result.IsZero() || !result.Requeue)) {
+		if errors.Is(retErr, reconcile.TerminalError(nil)) || (retErr == nil && result.RequeueAfter <= 0) {
 			patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		}
 
@@ -105,7 +105,7 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result 
 
 	if !controllerutil.ContainsFinalizer(ip, cloudflareoperatoriov1.CloudflareOperatorFinalizer) {
 		controllerutil.AddFinalizer(ip, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	return r.reconcileIP(ctx, ip), nil

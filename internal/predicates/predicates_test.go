@@ -26,6 +26,7 @@ import (
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 func TestPredicate(t *testing.T) {
@@ -133,6 +134,57 @@ func TestPredicate(t *testing.T) {
 
 		predicate := DNSFromIngressPredicate{}
 		result := predicate.Update(event.UpdateEvent{ObjectOld: oldIngress, ObjectNew: newIngress})
+
+		g.Expect(result).To(BeTrue())
+	})
+
+	t.Run("create httproute annotation predicate with annotation", func(t *testing.T) {
+		g := NewWithT(t)
+
+		httpRoute := &gatewayv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "httproute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+		}
+
+		predicate := DNSFromHTTPRoutePredicate{}
+		result := predicate.Create(event.CreateEvent{Object: httpRoute})
+
+		g.Expect(result).To(BeTrue())
+	})
+
+	t.Run("update httproute hostname predicate", func(t *testing.T) {
+		g := NewWithT(t)
+
+		oldHTTPRoute := &gatewayv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "httproute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+			Spec: gatewayv1.HTTPRouteSpec{
+				Hostnames: []gatewayv1.Hostname{"test.containeroo-test.org"},
+			},
+		}
+
+		newHTTPRoute := &gatewayv1.HTTPRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "httproute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+			Spec: gatewayv1.HTTPRouteSpec{
+				Hostnames: []gatewayv1.Hostname{"test-new.containeroo-test.org"},
+			},
+		}
+
+		predicate := DNSFromHTTPRoutePredicate{}
+		result := predicate.Update(event.UpdateEvent{ObjectOld: oldHTTPRoute, ObjectNew: newHTTPRoute})
 
 		g.Expect(result).To(BeTrue())
 	})

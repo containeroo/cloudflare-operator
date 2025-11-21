@@ -87,7 +87,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 	defer func() {
 		patchOpts := []patch.Option{}
 
-		if errors.Is(retErr, reconcile.TerminalError(nil)) || (retErr == nil && (result.IsZero() || !result.Requeue)) {
+		if errors.Is(retErr, reconcile.TerminalError(nil)) || (retErr == nil && result.RequeueAfter <= 0) {
 			patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		}
 
@@ -113,7 +113,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 
 	if !controllerutil.ContainsFinalizer(zone, cloudflareoperatoriov1.CloudflareOperatorFinalizer) {
 		controllerutil.AddFinalizer(zone, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	return r.reconcileZone(ctx, zone)
