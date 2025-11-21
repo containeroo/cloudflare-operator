@@ -34,6 +34,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
 	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
@@ -46,12 +47,13 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 )
 
-const version = "v1.7.0"
+var Version = "dev"
 
 func init() {
 	utilruntime.Must(clientgoscheme.AddToScheme(scheme))
 
 	utilruntime.Must(cloudflareoperatoriov1.AddToScheme(scheme))
+	utilruntime.Must(gatewayv1.Install(scheme))
 	// +kubebuilder:scaffold:scheme
 }
 
@@ -65,6 +67,7 @@ func main() {
 		retryInterval                 time.Duration
 		ipReconcilerHTTPClientTimeout time.Duration
 		defaultReconcileInterval      time.Duration
+		enableGatewayAPI              bool
 		cloudflareAPI                 cloudflare.API
 		ctx                           = ctrl.SetupSignalHandler()
 	)
@@ -82,6 +85,8 @@ func main() {
 	flag.DurationVar(&retryInterval, "retry-interval", 10*time.Second, "The interval at which to retry failed operations")
 	flag.DurationVar(&defaultReconcileInterval, "default-reconcile-interval", 5*time.Minute,
 		"The default interval at which to reconcile resources")
+	flag.BoolVar(&enableGatewayAPI, "enable-gateway-api", false,
+		"Enable reconciliation for Gateway API HTTPRoute resources")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -165,6 +170,25 @@ func main() {
 		setupLog.Error(err, "unable to create controller", "controller", "Ingress")
 		os.Exit(1)
 	}
+	if enableGatewayAPI {
+		_, restMappingErr := mgr.GetRESTMapper().RESTMapping(
+			gatewayv1.SchemeGroupVersion.WithKind("HTTPRoute").GroupKind(),
+			gatewayv1.SchemeGroupVersion.Version,
+		)
+		if restMappingErr != nil {
+			setupLog.Error(restMappingErr, "gateway API CRD not found; install Gateway API or disable --enable-gateway-api")
+			os.Exit(1)
+		}
+		if err = (&controller.HTTPRouteReconciler{
+			Client:                   mgr.GetClient(),
+			Scheme:                   mgr.GetScheme(),
+			RetryInterval:            retryInterval,
+			DefaultReconcileInterval: defaultReconcileInterval,
+		}).SetupWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create controller", "controller", "HTTPRoute")
+			os.Exit(1)
+		}
+	}
 	if err = (&controller.DNSRecordReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
@@ -185,7 +209,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting cloudflare-operator " + version)
+	setupLog.Info("starting cloudflare-operator " + Version)
 	if err := mgr.Start(ctx); err != nil {
 		setupLog.Error(err, "problem running manager")
 		os.Exit(1)

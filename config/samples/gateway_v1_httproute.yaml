@@ -1,0 +1,17 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: sample-httproute
+  namespace: cloudflare-operator-system
+  annotations:
+    cloudflare-operator.io/content: 1.1.1.1
+    cloudflare-operator.io/proxied: "false"
+spec:
+  hostnames:
+    - sample.containeroo-test.org
+  parentRefs:
+    - name: sample-gateway
+  rules:
+    - backendRefs:
+        - name: sample-service
+          port: 80

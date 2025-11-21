@@ -24,6 +24,7 @@ import (
 	networkingv1 "k8s.io/api/networking/v1"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
 // DNSFromIngressPredicate detects if an Ingress object has the required annotations,
@@ -32,7 +33,7 @@ type DNSFromIngressPredicate struct {
 	predicate.Funcs
 }
 
-func ingressHasRequiredAnnotations(annotations map[string]string) bool {
+func hasRequiredDNSAnnotations(annotations map[string]string) bool {
 	if annotations == nil {
 		return false
 	}
@@ -40,15 +41,15 @@ func ingressHasRequiredAnnotations(annotations map[string]string) bool {
 }
 
 func (DNSFromIngressPredicate) Create(e event.CreateEvent) bool {
-	return ingressHasRequiredAnnotations(e.Object.GetAnnotations())
+	return hasRequiredDNSAnnotations(e.Object.GetAnnotations())
 }
 
 func (DNSFromIngressPredicate) Update(e event.UpdateEvent) bool {
 	oldAnnotations := e.ObjectOld.GetAnnotations()
 	newAnnotations := e.ObjectNew.GetAnnotations()
 
-	oldObjectHadRequiredAnnotations := ingressHasRequiredAnnotations(oldAnnotations)
-	newObjectHasRequiredAnnotations := ingressHasRequiredAnnotations(newAnnotations)
+	oldObjectHadRequiredAnnotations := hasRequiredDNSAnnotations(oldAnnotations)
+	newObjectHasRequiredAnnotations := hasRequiredDNSAnnotations(newAnnotations)
 
 	oldObj := e.ObjectOld.(*networkingv1.Ingress)
 	newObj := e.ObjectNew.(*networkingv1.Ingress)
@@ -72,6 +73,48 @@ func (DNSFromIngressPredicate) Update(e event.UpdateEvent) bool {
 }
 
 func (DNSFromIngressPredicate) Delete(e event.DeleteEvent) bool {
+	return false
+}
+
+// DNSFromHTTPRoutePredicate detects if an HTTPRoute object has the required annotations,
+// has changed annotations or has changed hostnames.
+type DNSFromHTTPRoutePredicate struct {
+	predicate.Funcs
+}
+
+func (DNSFromHTTPRoutePredicate) Create(e event.CreateEvent) bool {
+	return hasRequiredDNSAnnotations(e.Object.GetAnnotations())
+}
+
+func (DNSFromHTTPRoutePredicate) Update(e event.UpdateEvent) bool {
+	oldAnnotations := e.ObjectOld.GetAnnotations()
+	newAnnotations := e.ObjectNew.GetAnnotations()
+
+	oldObjectHadRequiredAnnotations := hasRequiredDNSAnnotations(oldAnnotations)
+	newObjectHasRequiredAnnotations := hasRequiredDNSAnnotations(newAnnotations)
+
+	oldObj := e.ObjectOld.(*gatewayv1.HTTPRoute)
+	newObj := e.ObjectNew.(*gatewayv1.HTTPRoute)
+
+	annotationsChanged := !reflect.DeepEqual(oldAnnotations, newAnnotations)
+	oldHosts := []string{}
+	for _, hostname := range oldObj.Spec.Hostnames {
+		oldHosts = append(oldHosts, string(hostname))
+	}
+	newHosts := []string{}
+	for _, hostname := range newObj.Spec.Hostnames {
+		newHosts = append(newHosts, string(hostname))
+	}
+
+	slices.Sort(oldHosts)
+	slices.Sort(newHosts)
+
+	hostsChanged := !reflect.DeepEqual(oldHosts, newHosts)
+
+	return (newObjectHasRequiredAnnotations && (annotationsChanged || hostsChanged)) || (oldObjectHadRequiredAnnotations && !newObjectHasRequiredAnnotations)
+}
+
+func (DNSFromHTTPRoutePredicate) Delete(e event.DeleteEvent) bool {
 	return false
 }
 

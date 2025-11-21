@@ -23,29 +23,34 @@ import (
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	. "github.com/onsi/gomega"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	networkingv1 "k8s.io/api/networking/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-func TestIngressReconciler_reconcileIngress(t *testing.T) {
-	ingress := &networkingv1.Ingress{
+func TestHTTPRouteReconciler_reconcileHTTPRoute(t *testing.T) {
+	httpRoute := &gatewayv1.HTTPRoute{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "ingress",
+			Name:      "httproute",
 			Namespace: "default",
 			Annotations: map[string]string{
 				"cloudflare-operator.io/content": "1.1.1.1",
 			},
 		},
+		Spec: gatewayv1.HTTPRouteSpec{
+			Hostnames: []gatewayv1.Hostname{
+				"app.containeroo-test.org",
+			},
+		},
 	}
 
-	r := &IngressReconciler{
+	r := &HTTPRouteReconciler{
 		Client: fake.NewClientBuilder().
 			WithScheme(NewTestScheme()).
-			WithObjects(ingress).
+			WithObjects(httpRoute).
 			WithIndex(&cloudflareoperatoriov1.DNSRecord{}, cloudflareoperatoriov1.OwnerRefUIDIndexKey, func(obj client.Object) []string {
 				dnsRecord, ok := obj.(*cloudflareoperatoriov1.DNSRecord)
 				if !ok {
@@ -57,52 +62,47 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 				return []string{string(dnsRecord.OwnerReferences[0].UID)}
 			}).
 			Build(),
-		Scheme: NewTestScheme(),
+		Scheme:                   NewTestScheme(),
+		DefaultReconcileInterval: time.Minute,
 	}
 
-	t.Run("reconcile ingress", func(t *testing.T) {
+	t.Run("reconcile httproute", func(t *testing.T) {
 		g := NewWithT(t)
-		ingress.Spec = networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{{
-				Host: "ingtest.containeroo-test.org",
-			}},
-		}
-		_, err := r.reconcileIngress(context.TODO(), ingress)
+		httpRoute.Spec.Hostnames = []gatewayv1.Hostname{"app.containeroo-test.org"}
+
+		_, err := r.reconcileHTTPRoute(context.TODO(), httpRoute)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "ingtest-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "app-containeroo-test-org"}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("ingtest.containeroo-test.org")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("app.containeroo-test.org")))
 		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("1.1.1.1")))
 	})
 
 	t.Run("change dnsrecord spec when annotations change", func(t *testing.T) {
 		g := NewWithT(t)
-		ingress.Annotations = map[string]string{
+		httpRoute.Annotations = map[string]string{
 			"cloudflare-operator.io/content": "2.2.2.2",
 		}
 
-		_, err := r.reconcileIngress(context.TODO(), ingress)
+		_, err := r.reconcileHTTPRoute(context.TODO(), httpRoute)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "ingtest-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "app-containeroo-test-org"}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("ingtest.containeroo-test.org")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("app.containeroo-test.org")))
 		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
 	})
 
-	t.Run("reconcile ingress wildcard", func(t *testing.T) {
+	t.Run("reconcile httproute wildcard", func(t *testing.T) {
 		g := NewWithT(t)
-		ingress.Spec = networkingv1.IngressSpec{
-			Rules: []networkingv1.IngressRule{{
-				Host: "*.containeroo-test.org",
-			}},
-		}
-		_, err := r.reconcileIngress(context.TODO(), ingress)
+		httpRoute.Spec.Hostnames = []gatewayv1.Hostname{"*.containeroo-test.org"}
+
+		_, err := r.reconcileHTTPRoute(context.TODO(), httpRoute)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
@@ -115,34 +115,13 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 
 	t.Run("remove dnsrecord when annotations are absent", func(t *testing.T) {
 		g := NewWithT(t)
-		ingress.Annotations = map[string]string{}
+		httpRoute.Annotations = map[string]string{}
 
-		_, err := r.reconcileIngress(context.TODO(), ingress)
+		_, err := r.reconcileHTTPRoute(context.TODO(), httpRoute)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
 		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "wildcard-containeroo-test-org"}, dnsRecord)
 		g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
-	})
-
-	t.Run("ingress annotation parsing", func(t *testing.T) {
-		g := NewWithT(t)
-		ingress.Annotations = map[string]string{
-			"cloudflare-operator.io/content":  "1.1.1.1",
-			"cloudflare-operator.io/ip-ref":   "ip",
-			"cloudflare-operator.io/proxied":  "true",
-			"cloudflare-operator.io/ttl":      "120", // Expecting to return 1 because proxied is true
-			"cloudflare-operator.io/type":     "A",
-			"cloudflare-operator.io/interval": "10s",
-		}
-
-		parsedSpec := parseDNSAnnotations(ingress.Annotations, 30*time.Second)
-
-		g.Expect(parsedSpec).To(HaveField("Content", Equal("1.1.1.1")))
-		g.Expect(parsedSpec.IPRef).To(HaveField("Name", Equal("ip")))
-		g.Expect(parsedSpec).To(HaveField("Proxied", Equal(&[]bool{true}[0])))
-		g.Expect(parsedSpec).To(HaveField("TTL", Equal(1)))
-		g.Expect(parsedSpec).To(HaveField("Type", Equal("A")))
-		g.Expect(parsedSpec.Interval.Duration).To(Equal(10 * time.Second))
 	})
 }

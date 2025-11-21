@@ -4,4 +4,6 @@ resources:
 - cloudflareoperatorio_v1_ip.yaml
 - cloudflareoperatorio_v1_account.yaml
 - cloudflareoperatorio_v1_zone.yaml
+- networking_v1_ingress.yaml
+- gateway_v1_httproute.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

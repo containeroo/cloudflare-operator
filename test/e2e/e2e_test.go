@@ -47,6 +47,10 @@ var _ = Describe("controller", Ordered, func() {
 		cmd := exec.Command("kubectl", "delete", "ingresses", "--all", "--all-namespaces")
 		_, _ = utils.Run(cmd)
 
+		By("removing all httproutes")
+		cmd = exec.Command("kubectl", "delete", "httproutes", "--all", "--all-namespaces")
+		_, _ = utils.Run(cmd)
+
 		By("removing all dnsrecords")
 		cmd = exec.Command("kubectl", "delete", "dnsrecords", "--all", "--all-namespaces")
 		_, _ = utils.Run(cmd)
@@ -92,6 +96,40 @@ var _ = Describe("controller", Ordered, func() {
 
 			By("deploying the controller-manager")
 			cmd = exec.Command("make", "deploy", fmt.Sprintf("IMG=%s", projectimage))
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			By("installing Gateway API CRDs")
+			cmd = exec.Command(
+				"kubectl",
+				"apply",
+				"-f",
+				"https://github.com/kubernetes-sigs/gateway-api/releases/download/v1.4.0/standard-install.yaml",
+			)
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			By("enabling gateway-api feature flag")
+			cmd = exec.Command(
+				"kubectl", "-n", namespace, "patch", "deployment", "cloudflare-operator-controller-manager",
+				"--type=json",
+				"-p",
+				`[{"op":"add","path":"/spec/template/spec/containers/1/args/-","value":"--enable-gateway-api"}]`,
+			)
+			_, err = utils.Run(cmd)
+			ExpectWithOffset(1, err).NotTo(HaveOccurred())
+
+			By("waiting for controller-manager rollout")
+			cmd = exec.Command(
+				"kubectl",
+				"-n",
+				namespace,
+				"rollout",
+				"status",
+				"deployment/cloudflare-operator-controller-manager",
+				"--timeout",
+				"2m",
+			)
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
 
@@ -221,5 +259,36 @@ var _ = Describe("controller", Ordered, func() {
 
 		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
 			WithArguments("ingress-containeroo-test-org").Should(Succeed())
+	})
+
+	It("should create dnsrecord from an httproute", func() {
+		cmd := exec.Command("kubectl", "apply", "-f", "config/samples/gateway_v1_httproute.yaml")
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
+			WithArguments("dnsrecord", "sample-containeroo-test-org").Should(Succeed())
+	})
+
+	It("should update dnsrecord when httproute annotations change", func() {
+		cmd := exec.Command(
+			"kubectl", "-n", namespace, "patch", "httproute", "sample-httproute",
+			"--type=merge", "-p", `{"metadata":{"annotations":{"cloudflare-operator.io/content":"155.155.155.155"}}}`)
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
+			WithArguments("sample-containeroo-test-org", "155.155.155.155").Should(Succeed())
+	})
+
+	It("should delete dnsrecord when httproute annotations are absent", func() {
+		cmd := exec.Command(
+			"kubectl", "-n", namespace, "patch", "httproute", "sample-httproute",
+			"--type=json", "-p", `[{"op": "remove", "path": "/metadata/annotations"}]`)
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
+			WithArguments("sample-containeroo-test-org").Should(Succeed())
 	})
 })

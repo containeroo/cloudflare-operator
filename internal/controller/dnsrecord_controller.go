@@ -72,7 +72,7 @@ func (r *DNSRecordReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 			ownerReferences := obj.GetOwnerReferences()
 			var ownerReferencesUID string
 			for _, ownerReference := range ownerReferences {
-				if ownerReference.Kind != "Ingress" {
+				if ownerReference.Kind != "Ingress" && ownerReference.Kind != "HTTPRoute" {
 					continue
 				}
 				ownerReferencesUID = string(ownerReference.UID)
@@ -109,7 +109,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	defer func() {
 		patchOpts := []patch.Option{}
 
-		if errors.Is(retErr, reconcile.TerminalError(nil)) || (retErr == nil && (result.IsZero() || !result.Requeue)) {
+		if errors.Is(retErr, reconcile.TerminalError(nil)) || (retErr == nil && result.RequeueAfter <= 0) {
 			patchOpts = append(patchOpts, patch.WithStatusObservedGeneration{})
 		}
 
@@ -150,7 +150,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 
 	if !controllerutil.ContainsFinalizer(dnsrecord, cloudflareoperatoriov1.CloudflareOperatorFinalizer) {
 		controllerutil.AddFinalizer(dnsrecord, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
-		return ctrl.Result{Requeue: true}, nil
+		return ctrl.Result{RequeueAfter: time.Second}, nil
 	}
 
 	return r.reconcileDNSRecord(ctx, dnsrecord, zone)

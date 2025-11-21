@@ -22,16 +22,16 @@ import (
 
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	intpredicates "github.com/containeroo/cloudflare-operator/internal/predicates"
-	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-// IngressReconciler reconciles an Ingress object
-type IngressReconciler struct {
+// HTTPRouteReconciler reconciles a Gateway API HTTPRoute object
+type HTTPRouteReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -40,44 +40,44 @@ type IngressReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *HTTPRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&networkingv1.Ingress{}, builder.WithPredicates(intpredicates.DNSFromIngressPredicate{})).
+		For(&gatewayv1.HTTPRoute{}, builder.WithPredicates(intpredicates.DNSFromHTTPRoutePredicate{})).
 		Owns(&cloudflareoperatoriov1.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
-// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses,verbs=get;list;watch
-// +kubebuilder:rbac:groups=networking.k8s.io,resources=ingresses/finalizers,verbs=update
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=httproutes/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	ingress := &networkingv1.Ingress{}
-	if err := r.Get(ctx, req.NamespacedName, ingress); err != nil {
+func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	httpRoute := &gatewayv1.HTTPRoute{}
+	if err := r.Get(ctx, req.NamespacedName, httpRoute); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	return r.reconcileIngress(ctx, ingress)
+	return r.reconcileHTTPRoute(ctx, httpRoute)
 }
 
-// reconcileIngress reconciles the ingress
-func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *networkingv1.Ingress) (ctrl.Result, error) {
+// reconcileHTTPRoute reconciles the HTTPRoute
+func (r *HTTPRouteReconciler) reconcileHTTPRoute(ctx context.Context, httpRoute *gatewayv1.HTTPRoute) (ctrl.Result, error) {
 	hostReconciler := DNSHostReconciler{
 		Client:                   r.Client,
 		Scheme:                   r.Scheme,
 		RetryInterval:            r.RetryInterval,
 		DefaultReconcileInterval: r.DefaultReconcileInterval,
 	}
-	return hostReconciler.Reconcile(ctx, ingress, ingress.GetAnnotations(), r.getIngressHosts(ingress))
+	return hostReconciler.Reconcile(ctx, httpRoute, httpRoute.GetAnnotations(), r.getRouteHosts(httpRoute))
 }
 
-// getIngressHosts returns a map of hosts from the ingress rules
-func (r *IngressReconciler) getIngressHosts(ingress *networkingv1.Ingress) map[string]struct{} {
+// getRouteHosts returns a map of hosts from the HTTPRoute hostnames
+func (r *HTTPRouteReconciler) getRouteHosts(httpRoute *gatewayv1.HTTPRoute) map[string]struct{} {
 	hosts := make(map[string]struct{})
-	for _, rule := range ingress.Spec.Rules {
-		if rule.Host != "" {
-			hosts[rule.Host] = struct{}{}
+	for _, hostname := range httpRoute.Spec.Hostnames {
+		if hostname != "" {
+			hosts[string(hostname)] = struct{}{}
 		}
 	}
 	return hosts
