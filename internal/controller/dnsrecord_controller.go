@@ -22,11 +22,11 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strings"
 	"time"
 
 	"github.com/fluxcd/pkg/runtime/conditions"
 	"github.com/fluxcd/pkg/runtime/patch"
-	"golang.org/x/net/publicsuffix"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -128,20 +128,17 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		}
 	}()
 
-	zoneName, _ := publicsuffix.EffectiveTLDPlusOne(dnsrecord.Spec.Name)
-
 	zones := &cloudflareoperatoriov1.ZoneList{}
-	if err := r.List(ctx, zones, client.MatchingFields{cloudflareoperatoriov1.ZoneNameIndexKey: zoneName}); err != nil {
+	if err := r.List(ctx, zones); err != nil {
 		log.Error(err, "Failed to list zones")
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
-	if len(zones.Items) == 0 {
-		intconditions.MarkFalse(dnsrecord, fmt.Errorf("zone %q not found", zoneName))
+	zone := findZoneForDNSRecord(dnsrecord.Spec.Name, zones.Items)
+	if zone == nil {
+		intconditions.MarkFalse(dnsrecord, fmt.Errorf("zone for %q not found", dnsrecord.Spec.Name))
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
-
-	zone := &zones.Items[0]
 
 	if !dnsrecord.DeletionTimestamp.IsZero() {
 		if err := r.reconcileDelete(ctx, zone.Status.ID, dnsrecord); err != nil {
@@ -305,6 +302,20 @@ func compareData(a any, b *apiextensionsv1.JSON) bool {
 	}
 
 	return reflect.DeepEqual(a, bb)
+}
+
+// findZoneForDNSRecord returns the longest matching zone for a DNS record name.
+func findZoneForDNSRecord(dnsRecordName string, zones []cloudflareoperatoriov1.Zone) *cloudflareoperatoriov1.Zone {
+	var matchedZone *cloudflareoperatoriov1.Zone
+	for i := range zones {
+		zone := &zones[i]
+		if dnsRecordName == zone.Spec.Name || strings.HasSuffix(dnsRecordName, "."+zone.Spec.Name) {
+			if matchedZone == nil || len(zone.Spec.Name) > len(matchedZone.Spec.Name) {
+				matchedZone = zone
+			}
+		}
+	}
+	return matchedZone
 }
 
 // requestsForIPChange returns a list of reconcile.Requests for DNSRecords that need to be reconciled if the IP changes

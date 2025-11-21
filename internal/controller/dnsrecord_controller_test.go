@@ -192,4 +192,30 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		isEqual := r.compareDNSRecord(dnsRecordSpec, cloudflareDNSRecord)
 		g.Expect(isEqual).To(BeTrue())
 	})
+
+	t.Run("find longest matching zone", func(t *testing.T) {
+		g := NewWithT(t)
+
+		zones := []cloudflareoperatoriov1.Zone{
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "root"},
+				Spec:       cloudflareoperatoriov1.ZoneSpec{Name: "example.com"},
+			},
+			{
+				ObjectMeta: metav1.ObjectMeta{Name: "sub"},
+				Spec:       cloudflareoperatoriov1.ZoneSpec{Name: "tst.example.com"},
+			},
+		}
+
+		zone := findZoneForDNSRecord("podinfo.tst.example.com", zones)
+		g.Expect(zone).ToNot(BeNil())
+		g.Expect(zone.Spec.Name).To(Equal("tst.example.com"))
+
+		zone = findZoneForDNSRecord("foo.example.com", zones)
+		g.Expect(zone).ToNot(BeNil())
+		g.Expect(zone.Spec.Name).To(Equal("example.com"))
+
+		zone = findZoneForDNSRecord("no.match.test", zones)
+		g.Expect(zone).To(BeNil())
+	})
 }
