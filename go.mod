@@ -5,7 +5,7 @@ go 1.25.0
 require (
 	github.com/cloudflare/cloudflare-go v0.116.0
 	github.com/fluxcd/pkg/runtime v0.92.0
-	github.com/itchyny/gojq v0.12.17
+	github.com/itchyny/gojq v0.12.18
 	github.com/onsi/ginkgo/v2 v2.27.2
 	github.com/onsi/gomega v1.38.2
 	github.com/prometheus/client_golang v1.23.2
@@ -41,7 +41,7 @@ require (
 	github.com/google/go-querystring v1.1.0 // indirect
 	github.com/google/pprof v0.0.0-20250820193118-f64d9cf942d6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
-	github.com/itchyny/timefmt-go v0.1.6 // indirect
+	github.com/itchyny/timefmt-go v0.1.7 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
 	github.com/mailru/easyjson v0.9.0 // indirect
