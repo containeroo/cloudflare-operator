@@ -1,24 +1,43 @@
 {
-  "extends": ["config:recommended"],
-  "labels": ["dependency"],
-  "postUpdateOptions": ["gomodTidy"],
-  "regexManagers": [
+  "extends": [
+    "config:recommended"
+  ],
+  "labels": [
+    "dependency"
+  ],
+  "postUpdateOptions": [
+    "gomodTidy"
+  ],
+  "customManagers": [
     {
-      "fileMatch": ["^Makefile$"],
-      "matchStrings": ["OPERATOR_SDK_VERSION \\?= (?<currentValue>v[^\\s]+)"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "OPERATOR_SDK_VERSION \\?= (?<currentValue>v[^\\s]+)"
+      ],
       "depNameTemplate": "operator-framework/operator-sdk",
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver"
     },
     {
-      "fileMatch": ["^Makefile$"],
-      "matchStrings": ["KUSTOMIZE_VERSION \\?= (?<currentValue>v[^\\s]+)"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "KUSTOMIZE_VERSION \\?= (?<currentValue>v[^\\s]+)"
+      ],
       "depNameTemplate": "kubernetes-sigs/kustomize",
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver"
     },
     {
-      "fileMatch": ["^Makefile$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
       "matchStrings": [
         "CONTROLLER_TOOLS_VERSION \\?= (?<currentValue>v[^\\s]+)"
       ],
@@ -27,28 +46,46 @@
       "versioningTemplate": "semver"
     },
     {
-      "fileMatch": ["^Makefile$"],
-      "matchStrings": ["ENVTEST_K8S_VERSION = (?<currentValue>[^\\s]+)"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "ENVTEST_K8S_VERSION = (?<currentValue>[^\\s]+)"
+      ],
       "depNameTemplate": "kubernetes",
       "datasourceTemplate": "kubernetes",
       "versioningTemplate": "semver"
     },
     {
-      "fileMatch": ["^Makefile$"],
-      "matchStrings": ["KIND_VERSION \\?= (?<currentValue>[^\\s]+)"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "KIND_VERSION \\?= (?<currentValue>[^\\s]+)"
+      ],
       "depNameTemplate": "kubernetes-sigs/kind",
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver"
     },
     {
-      "fileMatch": ["^Makefile$"],
-      "matchStrings": ["GOLANGCI_LINT_VERSION \\?= (?<currentValue>v[^\\s]+)"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
+      "matchStrings": [
+        "GOLANGCI_LINT_VERSION \\?= (?<currentValue>v[^\\s]+)"
+      ],
       "depNameTemplate": "golangci/golangci-lint",
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver"
     },
     {
-      "fileMatch": ["^Makefile$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
       "matchStrings": [
         "GEN_API_REF_DOCS_VERSION \\?= (?<currentValue>[0-9a-f]{7,40})"
       ],
@@ -57,7 +94,10 @@
       "versioningTemplate": "git"
     },
     {
-      "fileMatch": ["^Makefile$"],
+      "customType": "regex",
+      "managerFilePatterns": [
+        "/^Makefile$/"
+      ],
       "matchStrings": [
         "operator-registry/releases/download/v(?<currentValue>[^/]+)/"
       ],
@@ -68,7 +108,9 @@
   ],
   "packageRules": [
     {
-      "matchPackageNames": ["k8s.io/client-go"],
+      "matchPackageNames": [
+        "k8s.io/client-go"
+      ],
       "allowedVersions": "< 1.0.0"
     }
   ]
