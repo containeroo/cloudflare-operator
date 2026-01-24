@@ -75,7 +75,7 @@ ENVTEST_K8S_VERSION = 1.34.1
 UNAME := $(shell uname -s | tr '[:upper:]' '[:lower:]')
 KIND_BINARY := kind-$(UNAME)-amd64
 KIND = $(LOCALBIN)/kind
-KIND_VERSION ?= 0.30.0
+KIND_VERSION ?= 0.31.0
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
