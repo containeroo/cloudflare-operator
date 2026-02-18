@@ -4,7 +4,7 @@ go 1.26.0
 
 require (
 	github.com/cloudflare/cloudflare-go v0.116.0
-	github.com/fluxcd/pkg/runtime v0.101.0
+	github.com/fluxcd/pkg/runtime v0.102.0
 	github.com/itchyny/gojq v0.12.18
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
