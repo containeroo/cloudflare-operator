@@ -114,7 +114,7 @@ var _ = Describe("controller", Ordered, func() {
 				"kubectl", "-n", namespace, "patch", "deployment", "cloudflare-operator-controller-manager",
 				"--type=json",
 				"-p",
-				`[{"op":"add","path":"/spec/template/spec/containers/1/args/-","value":"--enable-gateway-api"}]`,
+				`[{"op":"add","path":"/spec/template/spec/containers/0/args/-","value":"--enable-gateway-api"}]`,
 			)
 			_, err = utils.Run(cmd)
 			ExpectWithOffset(1, err).NotTo(HaveOccurred())
