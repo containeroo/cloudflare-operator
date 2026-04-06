@@ -150,6 +150,12 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperatoriov1.Zone) error {
 	log := ctrl.LoggerFrom(ctx)
 
+	zones := &cloudflareoperatoriov1.ZoneList{}
+	if err := r.List(ctx, zones); err != nil {
+		log.Error(err, "Failed to list Zones")
+		return client.IgnoreNotFound(err)
+	}
+
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords); err != nil {
 		log.Error(err, "Failed to list DNSRecords")
@@ -162,10 +168,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 		return err
 	}
 
-	dnsRecordMap := make(map[string]struct{})
-	for _, dnsRecord := range dnsRecords.Items {
-		dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
-	}
+	dnsRecordMap, dnsRecordSpecMap := managedDNSRecordKeysForZone(zone, dnsRecords.Items, zones.Items)
 
 	for _, cloudflareDNSRecord := range cloudflareDNSRecords {
 		if patterns, found := zone.Spec.IgnoredRecords[cloudflareDNSRecord.Type]; found &&
@@ -173,14 +176,41 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 			continue
 		}
 
-		if _, found := dnsRecordMap[cloudflareDNSRecord.ID]; !found {
-			if err := r.CloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflareDNSRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
-				return err
-			}
-			log.Info("Deleted DNS record on Cloudflare", "name", cloudflareDNSRecord.Name)
+		if _, found := dnsRecordMap[cloudflareDNSRecord.ID]; found {
+			continue
 		}
+		if _, found := dnsRecordSpecMap[dnsRecordKey(cloudflareDNSRecord.Type, cloudflareDNSRecord.Name)]; found {
+			continue
+		}
+
+		if err := r.CloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflareDNSRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
+			return err
+		}
+		log.Info("Deleted DNS record on Cloudflare", "name", cloudflareDNSRecord.Name)
 	}
 	return nil
+}
+
+func managedDNSRecordKeysForZone(zone *cloudflareoperatoriov1.Zone, dnsRecords []cloudflareoperatoriov1.DNSRecord, zones []cloudflareoperatoriov1.Zone) (map[string]struct{}, map[string]struct{}) {
+	dnsRecordMap := make(map[string]struct{})
+	dnsRecordSpecMap := make(map[string]struct{})
+
+	for _, dnsRecord := range dnsRecords {
+		if matchedZone := findZoneForDNSRecord(dnsRecord.Spec.Name, zones); matchedZone == nil || matchedZone.Name != zone.Name {
+			continue
+		}
+
+		if dnsRecord.Status.RecordID != "" {
+			dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
+		}
+		dnsRecordSpecMap[dnsRecordKey(dnsRecord.Spec.Type, dnsRecord.Spec.Name)] = struct{}{}
+	}
+
+	return dnsRecordMap, dnsRecordSpecMap
+}
+
+func dnsRecordKey(recordType, name string) string {
+	return recordType + "/" + name
 }
 
 // reconcileDelete reconciles the deletion of the zone

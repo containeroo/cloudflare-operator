@@ -156,3 +156,55 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		}))
 	})
 }
+
+func TestManagedDNSRecordKeysForZone(t *testing.T) {
+	g := NewWithT(t)
+
+	rootZone := cloudflareoperatoriov1.Zone{
+		ObjectMeta: metav1.ObjectMeta{Name: "root"},
+		Spec:       cloudflareoperatoriov1.ZoneSpec{Name: "example.com"},
+	}
+	subZone := cloudflareoperatoriov1.Zone{
+		ObjectMeta: metav1.ObjectMeta{Name: "sub"},
+		Spec:       cloudflareoperatoriov1.ZoneSpec{Name: "apps.example.com"},
+	}
+
+	managedByRecordID := cloudflareoperatoriov1.DNSRecord{
+		Spec: cloudflareoperatoriov1.DNSRecordSpec{
+			Name: "www.example.com",
+			Type: "A",
+		},
+		Status: cloudflareoperatoriov1.DNSRecordStatus{
+			RecordID: "record-id",
+		},
+	}
+	adoptableSubZoneRecord := cloudflareoperatoriov1.DNSRecord{
+		Spec: cloudflareoperatoriov1.DNSRecordSpec{
+			Name: "api.apps.example.com",
+			Type: "A",
+		},
+	}
+
+	recordIDs, specKeys := managedDNSRecordKeysForZone(&rootZone, []cloudflareoperatoriov1.DNSRecord{
+		managedByRecordID,
+		adoptableSubZoneRecord,
+	}, []cloudflareoperatoriov1.Zone{rootZone, subZone})
+
+	_, hasRecordID := recordIDs["record-id"]
+	g.Expect(hasRecordID).To(BeTrue())
+
+	_, protectsRootZoneRecord := specKeys[dnsRecordKey("A", "www.example.com")]
+	g.Expect(protectsRootZoneRecord).To(BeTrue())
+
+	_, protectsSubZoneRecord := specKeys[dnsRecordKey("A", "api.apps.example.com")]
+	g.Expect(protectsSubZoneRecord).To(BeFalse())
+
+	recordIDs, specKeys = managedDNSRecordKeysForZone(&subZone, []cloudflareoperatoriov1.DNSRecord{
+		managedByRecordID,
+		adoptableSubZoneRecord,
+	}, []cloudflareoperatoriov1.Zone{rootZone, subZone})
+
+	g.Expect(recordIDs).To(BeEmpty())
+	_, protectsAdoptableRecord := specKeys[dnsRecordKey("A", "api.apps.example.com")]
+	g.Expect(protectsAdoptableRecord).To(BeTrue())
+}
