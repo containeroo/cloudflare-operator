@@ -18,6 +18,7 @@ package utils
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
@@ -157,6 +158,21 @@ func VerifyDNSRecordContent(objName, expectedContent string) error {
 		"-n",
 		"cloudflare-operator-system",
 		"-o",
+		"jsonpath={.spec.name}",
+	)
+	recordName, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+
+	cmd = exec.Command(
+		"kubectl",
+		"get",
+		"dnsrecord",
+		objName,
+		"-n",
+		"cloudflare-operator-system",
+		"-o",
 		"jsonpath={.status.recordID}",
 	)
 	recordID, err := Run(cmd)
@@ -172,7 +188,12 @@ func VerifyDNSRecordContent(objName, expectedContent string) error {
 		return fmt.Errorf("failed to create Cloudflare API client: %w", err)
 	}
 
-	record, err := api.GetDNSRecord(context.Background(), cloudflare.ZoneIdentifier(os.Getenv("CF_ZONE_ID")), string(recordID))
+	zoneID, err := zoneIDForDNSRecordName(strings.TrimSpace(string(recordName)))
+	if err != nil {
+		return err
+	}
+
+	record, err := api.GetDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneID), strings.TrimSpace(string(recordID)))
 	if err != nil {
 		return fmt.Errorf("failed to get Cloudflare DNS record %s: %w", string(recordID), err)
 	}
@@ -180,6 +201,54 @@ func VerifyDNSRecordContent(objName, expectedContent string) error {
 		return fmt.Errorf("dnsrecord has unexpected content: %s", record.Content)
 	}
 	return nil
+}
+
+func zoneIDForDNSRecordName(dnsRecordName string) (string, error) {
+	if zoneID := strings.TrimSpace(os.Getenv("CF_ZONE_ID")); zoneID != "" {
+		return zoneID, nil
+	}
+
+	cmd := exec.Command("kubectl", "get", "zones", "-o", "json")
+	output, err := Run(cmd)
+	if err != nil {
+		return "", err
+	}
+
+	var zoneList struct {
+		Items []struct {
+			Spec struct {
+				Name string `json:"name"`
+			} `json:"spec"`
+			Status struct {
+				ID string `json:"id"`
+			} `json:"status"`
+		} `json:"items"`
+	}
+	if err := json.Unmarshal(output, &zoneList); err != nil {
+		return "", fmt.Errorf("failed to parse zones: %w", err)
+	}
+
+	longestMatch := ""
+	zoneID := ""
+	for _, zone := range zoneList.Items {
+		if dnsRecordName != zone.Spec.Name && !strings.HasSuffix(dnsRecordName, "."+zone.Spec.Name) {
+			continue
+		}
+		if len(zone.Spec.Name) <= len(longestMatch) {
+			continue
+		}
+		longestMatch = zone.Spec.Name
+		zoneID = zone.Status.ID
+	}
+
+	if zoneID == "" {
+		if longestMatch != "" {
+			return "", fmt.Errorf("zone %q matched DNS record %q but has no status.id yet", longestMatch, dnsRecordName)
+		}
+		return "", fmt.Errorf("no Zone matched DNS record %q and CF_ZONE_ID is not set", dnsRecordName)
+	}
+
+	return zoneID, nil
 }
 
 func VerifyDNSRecordAbsent(objName string) error {
