@@ -127,5 +127,5 @@ func (IPAddressChangedPredicate) Update(e event.UpdateEvent) bool {
 	oldObj := e.ObjectOld.(*cloudflareoperatoriov1.IP)
 	newObj := e.ObjectNew.(*cloudflareoperatoriov1.IP)
 
-	return oldObj.Spec.Address != newObj.Spec.Address
+	return oldObj.Status.Address != newObj.Status.Address
 }

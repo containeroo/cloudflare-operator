@@ -70,6 +70,11 @@ type IPSpec struct {
 
 // IPStatus defines the observed state of IP
 type IPStatus struct {
+	// Address contains the resolved IP address currently used by the operator.
+	// For static IPs this mirrors spec.address after validation, for dynamic IPs
+	// it is the last successfully discovered address.
+	// +optional
+	Address string `json:"address,omitempty"`
 	// Conditions contains the different condition statuses for the IP object.
 	// +optional
 	Conditions []metav1.Condition `json:"conditions"`
@@ -80,7 +85,7 @@ type IPStatus struct {
 // +kubebuilder:resource:scope=Cluster
 
 // IP is the Schema for the ips API
-// +kubebuilder:printcolumn:name="Address",type="string",JSONPath=".spec.address"
+// +kubebuilder:printcolumn:name="Address",type="string",JSONPath=".status.address"
 // +kubebuilder:printcolumn:name="Type",type="string",JSONPath=".spec.type"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type == "Ready")].status`
 type IP struct {

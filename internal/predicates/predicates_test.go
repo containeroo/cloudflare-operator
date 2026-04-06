@@ -193,13 +193,13 @@ func TestPredicate(t *testing.T) {
 		g := NewWithT(t)
 
 		oldIP := &cloudflareoperatoriov1.IP{
-			Spec: cloudflareoperatoriov1.IPSpec{
+			Status: cloudflareoperatoriov1.IPStatus{
 				Address: "1.1.1.1",
 			},
 		}
 
 		newIP := &cloudflareoperatoriov1.IP{
-			Spec: cloudflareoperatoriov1.IPSpec{
+			Status: cloudflareoperatoriov1.IPStatus{
 				Address: "2.2.2.2",
 			},
 		}
