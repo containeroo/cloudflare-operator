@@ -48,6 +48,21 @@ func NewTestScheme() *runtime.Scheme {
 
 var cloudflareAPI cloudflare.API
 
+func initTestCloudflareAPI(t *testing.T) {
+	t.Helper()
+
+	if cloudflareAPI.APIToken == os.Getenv("CF_API_TOKEN") && cloudflareAPI.APIToken != "" {
+		return
+	}
+
+	api, err := cloudflare.NewWithAPIToken(os.Getenv("CF_API_TOKEN"))
+	if err != nil {
+		t.Fatalf("failed to initialize test Cloudflare API: %v", err)
+	}
+
+	cloudflareAPI = *api
+}
+
 func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -79,6 +94,7 @@ func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
 func TestAccountReconciler_reconcileAccount(t *testing.T) {
 	t.Run("reconcile account", func(t *testing.T) {
 		g := NewWithT(t)
+		initTestCloudflareAPI(t)
 
 		secret, account := NewTestAccountObjects()
 
@@ -172,9 +188,10 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 	})
 }
 
-func TestCloudflareAPIFromAccount(t *testing.T) {
+func TestCloudflareAPIForAccountName(t *testing.T) {
 	t.Run("requires a single account resource", func(t *testing.T) {
 		g := NewWithT(t)
+		initTestCloudflareAPI(t)
 
 		secret, account := NewTestAccountObjects()
 		otherSecret := secret.DeepCopy()
@@ -189,7 +206,29 @@ func TestCloudflareAPIFromAccount(t *testing.T) {
 			WithObjects(secret, account, otherSecret, otherAccount).
 			Build()
 
-		_, err := cloudflareAPIFromAccount(context.TODO(), kubeClient)
-		g.Expect(err).To(MatchError("multiple Account resources found; exactly one is supported"))
+		_, err := cloudflareAPIForAccountName(context.TODO(), kubeClient, "")
+		g.Expect(err).To(MatchError("multiple Account resources found; specify spec.accountRef.name"))
+	})
+
+	t.Run("uses explicit account reference when provided", func(t *testing.T) {
+		g := NewWithT(t)
+		initTestCloudflareAPI(t)
+
+		secret, account := NewTestAccountObjects()
+		otherSecret := secret.DeepCopy()
+		otherSecret.Name = "other-secret"
+
+		otherAccount := account.DeepCopy()
+		otherAccount.Name = "other-account"
+		otherAccount.Spec.ApiToken.SecretRef.Name = otherSecret.Name
+
+		kubeClient := fake.NewClientBuilder().
+			WithScheme(NewTestScheme()).
+			WithObjects(secret, account, otherSecret, otherAccount).
+			Build()
+
+		api, err := cloudflareAPIForAccountName(context.TODO(), kubeClient, otherAccount.Name)
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(api.APIToken).To(Equal(string(otherSecret.Data["apiToken"])))
 	})
 }

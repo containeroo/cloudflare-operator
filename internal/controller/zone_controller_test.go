@@ -33,6 +33,8 @@ import (
 )
 
 func TestZoneReconciler_reconcileZone(t *testing.T) {
+	initTestCloudflareAPI(t)
+
 	zone := &cloudflareoperatoriov1.Zone{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "zone",

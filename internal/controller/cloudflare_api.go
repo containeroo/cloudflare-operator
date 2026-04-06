@@ -29,7 +29,53 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-func cloudflareAPIFromAccount(ctx context.Context, kubeClient client.Client) (*cloudflare.API, error) {
+func cloudflareAPIFromZone(ctx context.Context, kubeClient client.Client, zone *cloudflareoperatoriov1.Zone) (*cloudflare.API, error) {
+	return cloudflareAPIForAccountName(ctx, kubeClient, zone.Spec.AccountRef.Name)
+}
+
+func cloudflareAPIFromDNSRecord(ctx context.Context, kubeClient client.Client, dnsRecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) (*cloudflare.API, error) {
+	accountName := dnsRecord.Spec.AccountRef.Name
+	if zone != nil && zone.Spec.AccountRef.Name != "" {
+		if accountName != "" && accountName != zone.Spec.AccountRef.Name {
+			return nil, fmt.Errorf("DNSRecord %q references Account %q but Zone %q references Account %q", dnsRecord.Name, accountName, zone.Name, zone.Spec.AccountRef.Name)
+		}
+		accountName = zone.Spec.AccountRef.Name
+	}
+
+	return cloudflareAPIForAccountName(ctx, kubeClient, accountName)
+}
+
+func cloudflareAPIForAccountName(ctx context.Context, kubeClient client.Client, accountName string) (*cloudflare.API, error) {
+	account, err := accountForName(ctx, kubeClient, accountName)
+	if err != nil {
+		return nil, err
+	}
+
+	token, err := cloudflareTokenForAccount(ctx, kubeClient, account)
+	if err != nil {
+		return nil, err
+	}
+
+	cloudflareAPI, err := cloudflare.NewWithAPIToken(token)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Cloudflare API client for account %q: %w", account.Name, err)
+	}
+
+	return cloudflareAPI, nil
+}
+
+func accountForName(ctx context.Context, kubeClient client.Client, accountName string) (*cloudflareoperatoriov1.Account, error) {
+	if accountName != "" {
+		account := &cloudflareoperatoriov1.Account{}
+		if err := kubeClient.Get(ctx, client.ObjectKey{Name: accountName}, account); err != nil {
+			if apierrors.IsNotFound(err) {
+				return nil, fmt.Errorf("Account %q not found", accountName)
+			}
+			return nil, fmt.Errorf("failed to get Account %q: %w", accountName, err)
+		}
+		return account, nil
+	}
+
 	account := &cloudflareoperatoriov1.AccountList{}
 	if err := kubeClient.List(ctx, account); err != nil {
 		return nil, fmt.Errorf("failed to list accounts: %w", err)
@@ -39,21 +85,10 @@ func cloudflareAPIFromAccount(ctx context.Context, kubeClient client.Client) (*c
 	case 0:
 		return nil, errWaitForAccount
 	case 1:
+		return &account.Items[0], nil
 	default:
-		return nil, errors.New("multiple Account resources found; exactly one is supported")
+		return nil, errors.New("multiple Account resources found; specify spec.accountRef.name")
 	}
-
-	token, err := cloudflareTokenForAccount(ctx, kubeClient, &account.Items[0])
-	if err != nil {
-		return nil, err
-	}
-
-	cloudflareAPI, err := cloudflare.NewWithAPIToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Cloudflare API client for account %q: %w", account.Items[0].Name, err)
-	}
-
-	return cloudflareAPI, nil
 }
 
 func cloudflareTokenForAccount(ctx context.Context, kubeClient client.Client, account *cloudflareoperatoriov1.Account) (string, error) {
@@ -74,4 +109,9 @@ func cloudflareTokenForAccount(ctx context.Context, kubeClient client.Client, ac
 	}
 
 	return token, nil
+}
+
+func accountMatchesSecret(account *cloudflareoperatoriov1.Account, secret client.ObjectKey) bool {
+	return account.Spec.ApiToken.SecretRef.Name == secret.Name &&
+		account.Spec.ApiToken.SecretRef.Namespace == secret.Namespace
 }

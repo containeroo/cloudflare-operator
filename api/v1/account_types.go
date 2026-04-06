@@ -21,6 +21,12 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+type AccountRef struct {
+	// Name of the Account object.
+	// +optional
+	Name string `json:"name,omitempty"`
+}
+
 type AccountSpecApiToken struct {
 	// Secret containing the API token (key must be named "apiToken")
 	SecretRef corev1.SecretReference `json:"secretRef"`

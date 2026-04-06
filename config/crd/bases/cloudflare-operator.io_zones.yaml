@@ -49,6 +49,15 @@ spec:
           spec:
             description: ZoneSpec defines the desired state of Zone
             properties:
+              accountRef:
+                description: |-
+                  Reference to the Account used for this zone. When omitted, the operator
+                  falls back to the only Account in the cluster.
+                properties:
+                  name:
+                    description: Name of the Account object.
+                    type: string
+                type: object
               ignoredRecords:
                 additionalProperties:
                   items:

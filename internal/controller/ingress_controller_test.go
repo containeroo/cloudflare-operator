@@ -128,16 +128,18 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 	t.Run("ingress annotation parsing", func(t *testing.T) {
 		g := NewWithT(t)
 		ingress.Annotations = map[string]string{
-			"cloudflare-operator.io/content":  "1.1.1.1",
-			"cloudflare-operator.io/ip-ref":   "ip",
-			"cloudflare-operator.io/proxied":  "true",
-			"cloudflare-operator.io/ttl":      "120", // Expecting to return 1 because proxied is true
-			"cloudflare-operator.io/type":     "A",
-			"cloudflare-operator.io/interval": "10s",
+			"cloudflare-operator.io/account-ref": "account",
+			"cloudflare-operator.io/content":     "1.1.1.1",
+			"cloudflare-operator.io/ip-ref":      "ip",
+			"cloudflare-operator.io/proxied":     "true",
+			"cloudflare-operator.io/ttl":         "120", // Expecting to return 1 because proxied is true
+			"cloudflare-operator.io/type":        "A",
+			"cloudflare-operator.io/interval":    "10s",
 		}
 
 		parsedSpec := parseDNSAnnotations(ingress.Annotations, 30*time.Second)
 
+		g.Expect(parsedSpec.AccountRef).To(HaveField("Name", Equal("account")))
 		g.Expect(parsedSpec).To(HaveField("Content", Equal("1.1.1.1")))
 		g.Expect(parsedSpec.IPRef).To(HaveField("Name", Equal("ip")))
 		g.Expect(parsedSpec).To(HaveField("Proxied", Equal(&[]bool{true}[0])))

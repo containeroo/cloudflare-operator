@@ -61,6 +61,16 @@ spec:
           spec:
             description: DNSRecordSpec defines the desired state of DNSRecord
             properties:
+              accountRef:
+                description: |-
+                  Reference to the Account used for this DNS record. When omitted, the
+                  operator falls back to the owning Zone account, then to the only Account
+                  in the cluster.
+                properties:
+                  name:
+                    description: Name of the Account object.
+                    type: string
+                type: object
               comment:
                 description: Comments or notes about the DNS record. This field has
                   no effect on DNS responses.

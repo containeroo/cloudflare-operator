@@ -29,6 +29,7 @@ func parseDNSAnnotations(annotations map[string]string, defaultReconcileInterval
 	dnsRecordSpec := cloudflareoperatoriov1.DNSRecordSpec{}
 
 	dnsRecordSpec.Content = annotations["cloudflare-operator.io/content"]
+	dnsRecordSpec.AccountRef.Name = annotations["cloudflare-operator.io/account-ref"]
 	dnsRecordSpec.IPRef.Name = annotations["cloudflare-operator.io/ip-ref"]
 
 	proxied, err := strconv.ParseBool(annotations["cloudflare-operator.io/proxied"])

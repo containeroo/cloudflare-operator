@@ -24,6 +24,10 @@ import (
 type ZoneSpec struct {
 	// Name of the zone
 	Name string `json:"name"`
+	// Reference to the Account used for this zone. When omitted, the operator
+	// falls back to the only Account in the cluster.
+	// +optional
+	AccountRef AccountRef `json:"accountRef,omitempty"`
 	// Prune determines whether DNS records in the zone that are not managed by cloudflare-operator should be automatically removed
 	// +kubebuilder:default=false
 	// +optional
@@ -52,7 +56,8 @@ type ZoneStatus struct {
 }
 
 const (
-	ZoneNameIndexKey string = ".spec.name"
+	ZoneNameIndexKey       string = ".spec.name"
+	ZoneAccountRefIndexKey string = ".spec.accountRef.name"
 )
 
 // +kubebuilder:object:root=true

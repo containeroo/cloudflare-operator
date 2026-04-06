@@ -34,6 +34,8 @@ import (
 )
 
 func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
+	initTestCloudflareAPI(t)
+
 	zone := &cloudflareoperatoriov1.Zone{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "zone",
@@ -209,6 +211,25 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		})
 
 		g.Expect(isEqual).To(BeTrue())
+	})
+
+	t.Run("adopt existing dns record by name and type when content is derived from ipref", func(t *testing.T) {
+		g := NewWithT(t)
+
+		record, err := findExistingRecordForAdoption(cloudflareoperatoriov1.DNSRecordSpec{
+			Name:    "derived.containeroo-test.org",
+			Type:    "A",
+			Content: "2.2.2.2",
+		}, []cloudflare.DNSRecord{
+			{
+				ID:      "derived-record",
+				Name:    "derived.containeroo-test.org",
+				Type:    "A",
+				Content: "2.2.2.2",
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(record.ID).To(Equal("derived-record"))
 	})
 
 	t.Run("find longest matching zone", func(t *testing.T) {

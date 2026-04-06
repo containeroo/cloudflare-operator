@@ -24,6 +24,7 @@ import (
 	"github.com/cloudflare/cloudflare-go"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/fluxcd/pkg/runtime/patch"
@@ -55,6 +56,7 @@ var errWaitForAccount = errors.New("must wait for account")
 func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cloudflareoperatoriov1.Account{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.requestsForSecretChange)).
 		Complete(r)
 }
 
@@ -135,4 +137,24 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 func (r *AccountReconciler) reconcileDelete(account *cloudflareoperatoriov1.Account) {
 	metrics.AccountFailureCounter.DeleteLabelValues(account.Name)
 	controllerutil.RemoveFinalizer(account, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
+}
+
+func (r *AccountReconciler) requestsForSecretChange(ctx context.Context, o client.Object) []reconcile.Request {
+	secret := client.ObjectKeyFromObject(o)
+
+	var accounts cloudflareoperatoriov1.AccountList
+	if err := r.List(ctx, &accounts); err != nil {
+		ctrl.LoggerFrom(ctx).Error(err, "failed to list Accounts for secret change")
+		return nil
+	}
+
+	reqs := make([]reconcile.Request, 0, len(accounts.Items))
+	for i := range accounts.Items {
+		if !accountMatchesSecret(&accounts.Items[i], secret) {
+			continue
+		}
+		reqs = append(reqs, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(&accounts.Items[i])})
+	}
+
+	return reqs
 }

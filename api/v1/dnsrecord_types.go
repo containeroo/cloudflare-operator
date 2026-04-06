@@ -32,6 +32,11 @@ type DNSRecordSpec struct {
 	// DNS record name (e.g. example.com)
 	// +kubebuilder:validation:MaxLength=255
 	Name string `json:"name"`
+	// Reference to the Account used for this DNS record. When omitted, the
+	// operator falls back to the owning Zone account, then to the only Account
+	// in the cluster.
+	// +optional
+	AccountRef AccountRef `json:"accountRef,omitempty"`
 	// DNS record content (e.g. 127.0.0.1)
 	// +optional
 	Content string `json:"content,omitempty"`
@@ -81,8 +86,9 @@ type DNSRecordStatus struct {
 }
 
 const (
-	IPRefIndexKey       string = ".spec.ipRef.name"
-	OwnerRefUIDIndexKey string = ".metadata.ownerReferences.uid"
+	IPRefIndexKey               string = ".spec.ipRef.name"
+	OwnerRefUIDIndexKey         string = ".metadata.ownerReferences.uid"
+	DNSRecordAccountRefIndexKey string = ".spec.accountRef.name"
 )
 
 // +kubebuilder:object:root=true
