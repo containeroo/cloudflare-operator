@@ -48,40 +48,45 @@ func NewTestScheme() *runtime.Scheme {
 
 var cloudflareAPI cloudflare.API
 
+func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      "secret",
+			Namespace: "default",
+		},
+		Data: map[string][]byte{
+			"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
+		},
+	}
+
+	account := &cloudflareoperatoriov1.Account{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "account",
+		},
+		Spec: cloudflareoperatoriov1.AccountSpec{
+			ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
+				SecretRef: corev1.SecretReference{
+					Name:      secret.Name,
+					Namespace: secret.Namespace,
+				},
+			},
+		},
+	}
+
+	return secret, account
+}
+
 func TestAccountReconciler_reconcileAccount(t *testing.T) {
 	t.Run("reconcile account", func(t *testing.T) {
 		g := NewWithT(t)
 
-		secret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "default",
-			},
-			Data: map[string][]byte{
-				"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
-			},
-		}
-
-		account := &cloudflareoperatoriov1.Account{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "account",
-			},
-			Spec: cloudflareoperatoriov1.AccountSpec{
-				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
-					SecretRef: corev1.SecretReference{
-						Name:      "secret",
-						Namespace: "default",
-					},
-				},
-			},
-		}
+		secret, account := NewTestAccountObjects()
 
 		r := &AccountReconciler{
 			Client: fake.NewClientBuilder().
 				WithScheme(NewTestScheme()).
 				WithObjects(secret, account).
 				Build(),
-			CloudflareAPI: &cloudflareAPI,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)
@@ -90,8 +95,6 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "Account is ready"),
 		}))
-
-		g.Expect(cloudflareAPI.APIToken).To(Equal(string(secret.Data["apiToken"])))
 	})
 
 	t.Run("econcile account error secret not found", func(t *testing.T) {
@@ -116,7 +119,6 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 				WithScheme(NewTestScheme()).
 				WithObjects(account).
 				Build(),
-			CloudflareAPI: &cloudflareAPI,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)
@@ -159,7 +161,6 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 				WithScheme(NewTestScheme()).
 				WithObjects(secret, account).
 				Build(),
-			CloudflareAPI: &cloudflareAPI,
 		}
 
 		_, err := r.reconcileAccount(context.TODO(), account)
@@ -168,5 +169,27 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 		g.Expect(account.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "secret has no key named \"apiToken\""),
 		}))
+	})
+}
+
+func TestCloudflareAPIFromAccount(t *testing.T) {
+	t.Run("requires a single account resource", func(t *testing.T) {
+		g := NewWithT(t)
+
+		secret, account := NewTestAccountObjects()
+		otherSecret := secret.DeepCopy()
+		otherSecret.Name = "other-secret"
+
+		otherAccount := account.DeepCopy()
+		otherAccount.Name = "other-account"
+		otherAccount.Spec.ApiToken.SecretRef.Name = otherSecret.Name
+
+		kubeClient := fake.NewClientBuilder().
+			WithScheme(NewTestScheme()).
+			WithObjects(secret, account, otherSecret, otherAccount).
+			Build()
+
+		_, err := cloudflareAPIFromAccount(context.TODO(), kubeClient)
+		g.Expect(err).To(MatchError("multiple Account resources found; exactly one is supported"))
 	})
 }

@@ -36,7 +36,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/containeroo/cloudflare-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
@@ -68,7 +67,6 @@ func main() {
 		ipReconcilerHTTPClientTimeout time.Duration
 		defaultReconcileInterval      time.Duration
 		enableGatewayAPI              bool
-		cloudflareAPI                 cloudflare.API
 		ctx                           = ctrl.SetupSignalHandler()
 	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -136,7 +134,6 @@ func main() {
 	if err = (&controller.AccountReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
 		RetryInterval: retryInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Account")
@@ -145,7 +142,6 @@ func main() {
 	if err = (&controller.ZoneReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
 		RetryInterval: retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Zone")
@@ -192,7 +188,6 @@ func main() {
 	if err = (&controller.DNSRecordReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
 		RetryInterval: retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")

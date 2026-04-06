@@ -21,11 +21,11 @@ import (
 	"errors"
 	"time"
 
+	"github.com/cloudflare/cloudflare-go"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
-	"github.com/cloudflare/cloudflare-go"
 	"github.com/fluxcd/pkg/runtime/patch"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -47,8 +47,6 @@ type AccountReconciler struct {
 	Scheme *runtime.Scheme
 
 	RetryInterval time.Duration
-
-	CloudflareAPI *cloudflare.API
 }
 
 var errWaitForAccount = errors.New("must wait for account")
@@ -123,14 +121,9 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
-	if r.CloudflareAPI.APIToken != cloudflareAPIToken {
-		cloudflareAPI, err := cloudflare.NewWithAPIToken(cloudflareAPIToken)
-		if err != nil {
-			intconditions.MarkFalse(account, err)
-			return ctrl.Result{}, err
-		}
-
-		*r.CloudflareAPI = *cloudflareAPI
+	if _, err := cloudflare.NewWithAPIToken(cloudflareAPIToken); err != nil {
+		intconditions.MarkFalse(account, err)
+		return ctrl.Result{}, err
 	}
 
 	intconditions.MarkTrue(account, "Account is ready")

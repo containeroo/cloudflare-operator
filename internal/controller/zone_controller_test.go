@@ -41,13 +41,13 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 			Name: "containeroo-test.org",
 		},
 	}
+	secret, account := NewTestAccountObjects()
 
 	r := &ZoneReconciler{
 		Client: fake.NewClientBuilder().
 			WithScheme(NewTestScheme()).
-			WithObjects(zone).
+			WithObjects(zone, secret, account).
 			Build(),
-		CloudflareAPI: &cloudflareAPI,
 	}
 
 	zoneID := os.Getenv("CF_ZONE_ID")
@@ -146,9 +146,10 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 	t.Run("reconcile zone error account not ready", func(t *testing.T) {
 		g := NewWithT(t)
 
-		cloudflareAPI.APIToken = ""
+		err := r.Delete(context.TODO(), account)
+		g.Expect(err).ToNot(HaveOccurred())
 
-		_, err := r.reconcileZone(context.TODO(), zone)
+		_, err = r.reconcileZone(context.TODO(), zone)
 		g.Expect(err).To(Equal(errWaitForAccount))
 
 		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{

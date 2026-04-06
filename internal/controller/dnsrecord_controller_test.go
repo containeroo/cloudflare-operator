@@ -67,13 +67,13 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 			Address: "2.2.2.2",
 		},
 	}
+	secret, account := NewTestAccountObjects()
 
 	r := &DNSRecordReconciler{
 		Client: fake.NewClientBuilder().
 			WithScheme(NewTestScheme()).
-			WithObjects(dnsRecord, ip).
+			WithObjects(dnsRecord, ip, secret, account).
 			Build(),
-		CloudflareAPI: &cloudflareAPI,
 	}
 
 	t.Run("reconcile dnsrecord", func(t *testing.T) {
