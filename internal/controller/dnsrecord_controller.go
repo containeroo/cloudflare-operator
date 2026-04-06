@@ -192,47 +192,50 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		dnsrecord.Status.RecordID = existingRecord.ID
 	}
 
+	desiredRecord := dnsrecord.Spec
 	if (dnsrecord.Spec.Type == "A" || dnsrecord.Spec.Type == "AAAA") && dnsrecord.Spec.IPRef.Name != "" {
 		ip := &cloudflareoperatoriov1.IP{}
 		if err := r.Get(ctx, client.ObjectKey{Name: dnsrecord.Spec.IPRef.Name}, ip); err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 		}
-		dnsrecord.Spec.Content = ip.Spec.Address
+		desiredRecord.Content = resolvedIPAddress(ip)
 	}
 
-	if *dnsrecord.Spec.Proxied && dnsrecord.Spec.TTL != 1 {
+	if proxiedEnabled(desiredRecord.Proxied) && desiredRecord.TTL != 1 {
 		intconditions.MarkFalse(dnsrecord, errors.New("TTL must be 1 when proxied"))
 		return ctrl.Result{}, nil
 	}
 
 	if existingRecord.ID == "" {
+		proxied := proxiedPtr(proxiedEnabled(desiredRecord.Proxied))
 		newDNSRecord, err := r.CloudflareAPI.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.CreateDNSRecordParams{
-			Name:     dnsrecord.Spec.Name,
-			Type:     dnsrecord.Spec.Type,
-			Content:  dnsrecord.Spec.Content,
-			TTL:      dnsrecord.Spec.TTL,
-			Proxied:  dnsrecord.Spec.Proxied,
-			Priority: dnsrecord.Spec.Priority,
-			Data:     dnsrecord.Spec.Data,
-			Comment:  dnsrecord.Spec.Comment,
+			Name:     desiredRecord.Name,
+			Type:     desiredRecord.Type,
+			Content:  desiredRecord.Content,
+			TTL:      desiredRecord.TTL,
+			Proxied:  proxied,
+			Priority: desiredRecord.Priority,
+			Data:     desiredRecord.Data,
+			Comment:  desiredRecord.Comment,
 		})
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 		}
 		dnsrecord.Status.RecordID = newDNSRecord.ID
-	} else if !r.compareDNSRecord(dnsrecord.Spec, existingRecord) {
+	} else if !r.compareDNSRecord(desiredRecord, existingRecord) {
+		proxied := proxiedPtr(proxiedEnabled(desiredRecord.Proxied))
 		if _, err := r.CloudflareAPI.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.UpdateDNSRecordParams{
 			ID:       dnsrecord.Status.RecordID,
-			Name:     dnsrecord.Spec.Name,
-			Type:     dnsrecord.Spec.Type,
-			Content:  dnsrecord.Spec.Content,
-			TTL:      dnsrecord.Spec.TTL,
-			Proxied:  dnsrecord.Spec.Proxied,
-			Priority: dnsrecord.Spec.Priority,
-			Data:     dnsrecord.Spec.Data,
-			Comment:  cloudflare.StringPtr(dnsrecord.Spec.Comment),
+			Name:     desiredRecord.Name,
+			Type:     desiredRecord.Type,
+			Content:  desiredRecord.Content,
+			TTL:      desiredRecord.TTL,
+			Proxied:  proxied,
+			Priority: desiredRecord.Priority,
+			Data:     desiredRecord.Data,
+			Comment:  cloudflare.StringPtr(desiredRecord.Comment),
 		}); err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
@@ -260,7 +263,7 @@ func (r *DNSRecordReconciler) compareDNSRecord(dnsRecordSpec cloudflareoperatori
 	if dnsRecordSpec.TTL != existingRecord.TTL {
 		return false
 	}
-	if *dnsRecordSpec.Proxied != *existingRecord.Proxied {
+	if proxiedEnabled(dnsRecordSpec.Proxied) != proxiedEnabled(existingRecord.Proxied) {
 		return false
 	}
 	if !comparePriority(dnsRecordSpec.Priority, existingRecord.Priority) {
@@ -302,6 +305,24 @@ func compareData(a any, b *apiextensionsv1.JSON) bool {
 	}
 
 	return reflect.DeepEqual(a, bb)
+}
+
+func proxiedEnabled(proxied *bool) bool {
+	if proxied == nil {
+		return true
+	}
+	return *proxied
+}
+
+func proxiedPtr(proxied bool) *bool {
+	return &proxied
+}
+
+func resolvedIPAddress(ip *cloudflareoperatoriov1.IP) string {
+	if ip.Status.Address != "" {
+		return ip.Status.Address
+	}
+	return ip.Spec.Address
 }
 
 // findZoneForDNSRecord returns the longest matching zone for a DNS record name.

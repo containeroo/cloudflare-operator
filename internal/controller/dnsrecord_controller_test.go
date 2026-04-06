@@ -63,7 +63,7 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "ip",
 		},
-		Spec: cloudflareoperatoriov1.IPSpec{
+		Status: cloudflareoperatoriov1.IPStatus{
 			Address: "2.2.2.2",
 		},
 	}
@@ -125,7 +125,8 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(dnsRecord.Status.RecordID).To(Equal(cloudflareDNSRecord.ID))
-		g.Expect(cloudflareDNSRecord.Content).To(Equal(ip.Spec.Address))
+		g.Expect(cloudflareDNSRecord.Content).To(Equal(ip.Status.Address))
+		g.Expect(dnsRecord.Spec.Content).To(BeEmpty())
 
 		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
 		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
@@ -190,6 +191,23 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		}
 
 		isEqual := r.compareDNSRecord(dnsRecordSpec, cloudflareDNSRecord)
+		g.Expect(isEqual).To(BeTrue())
+	})
+
+	t.Run("compare dns record defaults proxied when unset", func(t *testing.T) {
+		g := NewWithT(t)
+
+		isEqual := r.compareDNSRecord(cloudflareoperatoriov1.DNSRecordSpec{
+			Name:    "dnstest.containeroo-test.org",
+			Type:    "A",
+			Content: "1.1.1.1",
+		}, cloudflare.DNSRecord{
+			Name:    "dnstest.containeroo-test.org",
+			Type:    "A",
+			Content: "1.1.1.1",
+			Proxied: proxiedPtr(true),
+		})
+
 		g.Expect(isEqual).To(BeTrue())
 	})
 
