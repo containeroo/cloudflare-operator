@@ -17,11 +17,13 @@ limitations under the License.
 package utils
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"os/exec"
 	"strings"
 
+	"github.com/cloudflare/cloudflare-go"
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck
 )
 
@@ -143,8 +145,39 @@ func VerifyDNSRecordContent(objName, expectedContent string) error {
 	if err != nil {
 		return err
 	}
-	if string(ip) != expectedContent {
+	if string(ip) == expectedContent {
+		return nil
+	}
+
+	cmd = exec.Command(
+		"kubectl",
+		"get",
+		"dnsrecord",
+		objName,
+		"-n",
+		"cloudflare-operator-system",
+		"-o",
+		"jsonpath={.status.recordID}",
+	)
+	recordID, err := Run(cmd)
+	if err != nil {
+		return err
+	}
+	if string(recordID) == "" {
 		return fmt.Errorf("dnsrecord has unexpected content: %s", ip)
+	}
+
+	api, err := cloudflare.NewWithAPIToken(os.Getenv("CF_API_TOKEN"))
+	if err != nil {
+		return fmt.Errorf("failed to create Cloudflare API client: %w", err)
+	}
+
+	record, err := api.GetDNSRecord(context.Background(), cloudflare.ZoneIdentifier(os.Getenv("CF_ZONE_ID")), string(recordID))
+	if err != nil {
+		return fmt.Errorf("failed to get Cloudflare DNS record %s: %w", string(recordID), err)
+	}
+	if record.Content != expectedContent {
+		return fmt.Errorf("dnsrecord has unexpected content: %s", record.Content)
 	}
 	return nil
 }
