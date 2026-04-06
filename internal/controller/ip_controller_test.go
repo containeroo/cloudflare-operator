@@ -116,6 +116,18 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 		}))
 	})
 
+	t.Run("reconcile dynamic ip error invalid source URL", func(t *testing.T) {
+		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
+			URL: "/plain",
+		}}
+
+		_ = r.reconcileIP(context.TODO(), ip)
+
+		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, `IP source URL "/plain" must be an absolute http or https URL`),
+		}))
+	})
+
 	t.Run("reconcile dynamic ip jq filter", func(t *testing.T) {
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL:              "http://localhost:8080/json",

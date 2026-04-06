@@ -188,8 +188,15 @@ func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperator
 func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperatoriov1.IPSpecIPSources) (string, error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	if _, err := url.Parse(source.URL); err != nil {
+	parsedURL, err := url.Parse(source.URL)
+	if err != nil {
 		return "", fmt.Errorf("failed to parse URL %s: %s", source.URL, err)
+	}
+	if !parsedURL.IsAbs() || parsedURL.Host == "" {
+		return "", fmt.Errorf("IP source URL %q must be an absolute http or https URL", source.URL)
+	}
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return "", fmt.Errorf("IP source URL %q must use http or https", source.URL)
 	}
 
 	tr := http.Transport{
