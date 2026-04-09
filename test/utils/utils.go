@@ -193,7 +193,11 @@ func VerifyDNSRecordContent(objName, expectedContent string) error {
 		return err
 	}
 
-	record, err := api.GetDNSRecord(context.Background(), cloudflare.ZoneIdentifier(zoneID), strings.TrimSpace(string(recordID)))
+	record, err := api.GetDNSRecord(
+		context.Background(),
+		cloudflare.ZoneIdentifier(zoneID),
+		strings.TrimSpace(string(recordID)),
+	)
 	if err != nil {
 		return fmt.Errorf("failed to get Cloudflare DNS record %s: %w", string(recordID), err)
 	}

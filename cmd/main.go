@@ -27,6 +27,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -168,8 +169,8 @@ func main() {
 	}
 	if enableGatewayAPI {
 		_, restMappingErr := mgr.GetRESTMapper().RESTMapping(
-			gatewayv1.SchemeGroupVersion.WithKind("HTTPRoute").GroupKind(),
-			gatewayv1.SchemeGroupVersion.Version,
+			schema.GroupKind{Group: gatewayv1.GroupVersion.Group, Kind: "HTTPRoute"},
+			gatewayv1.GroupVersion.Version,
 		)
 		if restMappingErr != nil {
 			setupLog.Error(restMappingErr, "gateway API CRD not found; install Gateway API or disable --enable-gateway-api")

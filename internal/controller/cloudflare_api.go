@@ -69,7 +69,7 @@ func accountForName(ctx context.Context, kubeClient client.Client, accountName s
 		account := &cloudflareoperatoriov1.Account{}
 		if err := kubeClient.Get(ctx, client.ObjectKey{Name: accountName}, account); err != nil {
 			if apierrors.IsNotFound(err) {
-				return nil, fmt.Errorf("Account %q not found", accountName)
+				return nil, fmt.Errorf("account %q not found", accountName)
 			}
 			return nil, fmt.Errorf("failed to get Account %q: %w", accountName, err)
 		}
