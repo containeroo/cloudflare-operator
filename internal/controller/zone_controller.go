@@ -25,10 +25,12 @@ import (
 	"time"
 
 	"github.com/cloudflare/cloudflare-go"
+	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -49,8 +51,6 @@ type ZoneReconciler struct {
 	Scheme *runtime.Scheme
 
 	RetryInterval time.Duration
-
-	CloudflareAPI *cloudflare.API
 }
 
 var errWaitForZone = errors.New("must wait for zone")
@@ -64,9 +64,21 @@ func (r *ZoneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager)
 		}); err != nil {
 		return err
 	}
+	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.Zone{}, cloudflareoperatoriov1.ZoneAccountRefIndexKey,
+		func(rawObj client.Object) []string {
+			zone := rawObj.(*cloudflareoperatoriov1.Zone)
+			if zone.Spec.AccountRef.Name == "" {
+				return nil
+			}
+			return []string{zone.Spec.AccountRef.Name}
+		}); err != nil {
+		return err
+	}
 
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cloudflareoperatoriov1.Zone{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Watches(&cloudflareoperatoriov1.Account{}, handler.EnqueueRequestsFromMapFunc(r.requestsForAccountChange)).
+		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.requestsForAccountSecretChange)).
 		Complete(r)
 }
 
@@ -121,12 +133,17 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 
 // reconcileZone reconciles the zone
 func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) (ctrl.Result, error) {
-	if r.CloudflareAPI.APIToken == "" {
-		intconditions.MarkUnknown(zone, "Cloudflare account is not ready")
-		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForAccount
+	cloudflareAPI, err := cloudflareAPIFromZone(ctx, r.Client, zone)
+	if err != nil {
+		if errors.Is(err, errWaitForAccount) {
+			intconditions.MarkUnknown(zone, "Cloudflare account is not ready")
+			return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForAccount
+		}
+		intconditions.MarkFalse(zone, err)
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
-	zoneID, err := r.CloudflareAPI.ZoneIDByName(zone.Spec.Name)
+	zoneID, err := cloudflareAPI.ZoneIDByName(zone.Spec.Name)
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForZone
@@ -135,7 +152,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 	zone.Status.ID = zoneID
 
 	if zone.Spec.Prune {
-		if err := r.handlePrune(ctx, zone); err != nil {
+		if err := r.handlePrune(ctx, cloudflareAPI, zone); err != nil {
 			intconditions.MarkFalse(zone, fmt.Errorf("failed to prune DNS records: %v", err))
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 		}
@@ -147,8 +164,14 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 }
 
 // handlePrune deletes DNS records that are not managed by the operator if enabled
-func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperatoriov1.Zone) error {
+func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudflare.API, zone *cloudflareoperatoriov1.Zone) error {
 	log := ctrl.LoggerFrom(ctx)
+
+	zones := &cloudflareoperatoriov1.ZoneList{}
+	if err := r.List(ctx, zones); err != nil {
+		log.Error(err, "Failed to list Zones")
+		return client.IgnoreNotFound(err)
+	}
 
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
 	if err := r.List(ctx, dnsRecords); err != nil {
@@ -156,16 +179,13 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 		return client.IgnoreNotFound(err)
 	}
 
-	cloudflareDNSRecords, _, err := r.CloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
+	cloudflareDNSRecords, _, err := cloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
 		return err
 	}
 
-	dnsRecordMap := make(map[string]struct{})
-	for _, dnsRecord := range dnsRecords.Items {
-		dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
-	}
+	dnsRecordMap, dnsRecordSpecMap := managedDNSRecordKeysForZone(zone, dnsRecords.Items, zones.Items)
 
 	for _, cloudflareDNSRecord := range cloudflareDNSRecords {
 		if patterns, found := zone.Spec.IgnoredRecords[cloudflareDNSRecord.Type]; found &&
@@ -173,14 +193,107 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, zone *cloudflareoperat
 			continue
 		}
 
-		if _, found := dnsRecordMap[cloudflareDNSRecord.ID]; !found {
-			if err := r.CloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflareDNSRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
-				return err
-			}
-			log.Info("Deleted DNS record on Cloudflare", "name", cloudflareDNSRecord.Name)
+		if _, found := dnsRecordMap[cloudflareDNSRecord.ID]; found {
+			continue
 		}
+		if _, found := dnsRecordSpecMap[dnsRecordKey(cloudflareDNSRecord.Type, cloudflareDNSRecord.Name)]; found {
+			continue
+		}
+
+		if err := cloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflareDNSRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
+			return err
+		}
+		log.Info("Deleted DNS record on Cloudflare", "name", cloudflareDNSRecord.Name)
 	}
 	return nil
+}
+
+func managedDNSRecordKeysForZone(zone *cloudflareoperatoriov1.Zone, dnsRecords []cloudflareoperatoriov1.DNSRecord, zones []cloudflareoperatoriov1.Zone) (map[string]struct{}, map[string]struct{}) {
+	dnsRecordMap := make(map[string]struct{})
+	dnsRecordSpecMap := make(map[string]struct{})
+
+	for _, dnsRecord := range dnsRecords {
+		if matchedZone := findZoneForDNSRecord(dnsRecord.Spec.Name, zones); matchedZone == nil || matchedZone.Name != zone.Name {
+			continue
+		}
+
+		if dnsRecord.Status.RecordID != "" {
+			dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
+		}
+		dnsRecordSpecMap[dnsRecordKey(dnsRecord.Spec.Type, dnsRecord.Spec.Name)] = struct{}{}
+	}
+
+	return dnsRecordMap, dnsRecordSpecMap
+}
+
+func dnsRecordKey(recordType, name string) string {
+	return recordType + "/" + name
+}
+
+func (r *ZoneReconciler) requestsForAccountChange(ctx context.Context, o client.Object) []reconcile.Request {
+	account, ok := o.(*cloudflareoperatoriov1.Account)
+	if !ok {
+		err := fmt.Errorf("expected an Account, got %T", o)
+		ctrl.LoggerFrom(ctx).Error(err, "failed to get requests for account change")
+		return nil
+	}
+
+	return r.requestsForAccountNames(ctx, map[string]struct{}{account.Name: {}})
+}
+
+func (r *ZoneReconciler) requestsForAccountSecretChange(ctx context.Context, o client.Object) []reconcile.Request {
+	secret := client.ObjectKeyFromObject(o)
+
+	var accounts cloudflareoperatoriov1.AccountList
+	if err := r.List(ctx, &accounts); err != nil {
+		ctrl.LoggerFrom(ctx).Error(err, "failed to list Accounts for account secret change")
+		return nil
+	}
+
+	accountNames := make(map[string]struct{})
+	for i := range accounts.Items {
+		if accountMatchesSecret(&accounts.Items[i], secret) {
+			accountNames[accounts.Items[i].Name] = struct{}{}
+		}
+	}
+
+	return r.requestsForAccountNames(ctx, accountNames)
+}
+
+func (r *ZoneReconciler) requestsForAccountNames(ctx context.Context, accountNames map[string]struct{}) []reconcile.Request {
+	if len(accountNames) == 0 {
+		return nil
+	}
+
+	var zones cloudflareoperatoriov1.ZoneList
+	if err := r.List(ctx, &zones); err != nil {
+		ctrl.LoggerFrom(ctx).Error(err, "failed to list Zones for account change")
+		return nil
+	}
+
+	var accounts cloudflareoperatoriov1.AccountList
+	if err := r.List(ctx, &accounts); err != nil {
+		ctrl.LoggerFrom(ctx).Error(err, "failed to list Accounts for account change fallback")
+		return nil
+	}
+
+	singleAccountFallback := len(accounts.Items) == 1
+	reqs := make([]reconcile.Request, 0, len(zones.Items))
+	for i := range zones.Items {
+		zone := &zones.Items[i]
+		switch {
+		case zone.Spec.AccountRef.Name != "":
+			if _, found := accountNames[zone.Spec.AccountRef.Name]; found {
+				reqs = append(reqs, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(zone)})
+			}
+		case singleAccountFallback:
+			if _, found := accountNames[accounts.Items[0].Name]; found {
+				reqs = append(reqs, reconcile.Request{NamespacedName: client.ObjectKeyFromObject(zone)})
+			}
+		}
+	}
+
+	return reqs
 }
 
 // reconcileDelete reconciles the deletion of the zone

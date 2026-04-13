@@ -99,7 +99,9 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Spec.Address).To(BeEmpty())
+		g.Expect(ip.Spec.Interval).To(BeNil())
 	})
 
 	t.Run("reconcile dynamic ip plain text error invalid ip", func(t *testing.T) {
@@ -111,6 +113,18 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "ip from source http://localhost:8080/invalid is invalid: invalid"),
+		}))
+	})
+
+	t.Run("reconcile dynamic ip error invalid source URL", func(t *testing.T) {
+		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
+			URL: "/plain",
+		}}
+
+		_ = r.reconcileIP(context.TODO(), ip)
+
+		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
+			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, `IP source URL "/plain" must be an absolute http or https URL`),
 		}))
 	})
 
@@ -126,7 +140,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Spec.Address).To(BeEmpty())
 	})
 
 	t.Run("reconcile dynamic ip regex", func(t *testing.T) {
@@ -141,7 +156,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Spec.Address).To(BeEmpty())
 	})
 
 	t.Run("reconcile dynamic ip with header", func(t *testing.T) {
@@ -158,7 +174,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Spec.Address).To(BeEmpty())
 		g.Expect(requestHeader).To(Equal("test"))
 	})
 
@@ -177,7 +194,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Spec.Address).To(BeEmpty())
 		g.Expect(requestAuthHeader).To(Equal("auth-test"))
 	})
 
@@ -190,6 +208,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionTypeReady, "IP is ready"),
 		}))
+		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
 		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
 	})
 

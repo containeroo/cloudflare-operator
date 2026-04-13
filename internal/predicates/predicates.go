@@ -55,11 +55,11 @@ func (DNSFromIngressPredicate) Update(e event.UpdateEvent) bool {
 	newObj := e.ObjectNew.(*networkingv1.Ingress)
 
 	annotationsChanged := !reflect.DeepEqual(oldAnnotations, newAnnotations)
-	oldHosts := []string{}
+	oldHosts := make([]string, 0, len(oldObj.Spec.Rules))
 	for _, rule := range oldObj.Spec.Rules {
 		oldHosts = append(oldHosts, rule.Host)
 	}
-	newHosts := []string{}
+	newHosts := make([]string, 0, len(newObj.Spec.Rules))
 	for _, rule := range newObj.Spec.Rules {
 		newHosts = append(newHosts, rule.Host)
 	}
@@ -97,11 +97,11 @@ func (DNSFromHTTPRoutePredicate) Update(e event.UpdateEvent) bool {
 	newObj := e.ObjectNew.(*gatewayv1.HTTPRoute)
 
 	annotationsChanged := !reflect.DeepEqual(oldAnnotations, newAnnotations)
-	oldHosts := []string{}
+	oldHosts := make([]string, 0, len(oldObj.Spec.Hostnames))
 	for _, hostname := range oldObj.Spec.Hostnames {
 		oldHosts = append(oldHosts, string(hostname))
 	}
-	newHosts := []string{}
+	newHosts := make([]string, 0, len(newObj.Spec.Hostnames))
 	for _, hostname := range newObj.Spec.Hostnames {
 		newHosts = append(newHosts, string(hostname))
 	}
@@ -127,5 +127,5 @@ func (IPAddressChangedPredicate) Update(e event.UpdateEvent) bool {
 	oldObj := e.ObjectOld.(*cloudflareoperatoriov1.IP)
 	newObj := e.ObjectNew.(*cloudflareoperatoriov1.IP)
 
-	return oldObj.Spec.Address != newObj.Spec.Address
+	return oldObj.Status.Address != newObj.Status.Address
 }

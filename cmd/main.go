@@ -27,6 +27,7 @@ import (
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -36,7 +37,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 
-	"github.com/cloudflare/cloudflare-go"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/containeroo/cloudflare-operator/internal/controller"
 	// +kubebuilder:scaffold:imports
@@ -68,7 +68,6 @@ func main() {
 		ipReconcilerHTTPClientTimeout time.Duration
 		defaultReconcileInterval      time.Duration
 		enableGatewayAPI              bool
-		cloudflareAPI                 cloudflare.API
 		ctx                           = ctrl.SetupSignalHandler()
 	)
 	flag.StringVar(&metricsAddr, "metrics-bind-address", ":8080", "The address the metric endpoint binds to.")
@@ -136,7 +135,6 @@ func main() {
 	if err = (&controller.AccountReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
 		RetryInterval: retryInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Account")
@@ -145,7 +143,6 @@ func main() {
 	if err = (&controller.ZoneReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
 		RetryInterval: retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Zone")
@@ -172,8 +169,8 @@ func main() {
 	}
 	if enableGatewayAPI {
 		_, restMappingErr := mgr.GetRESTMapper().RESTMapping(
-			gatewayv1.SchemeGroupVersion.WithKind("HTTPRoute").GroupKind(),
-			gatewayv1.SchemeGroupVersion.Version,
+			schema.GroupKind{Group: gatewayv1.GroupVersion.Group, Kind: "HTTPRoute"},
+			gatewayv1.GroupVersion.Version,
 		)
 		if restMappingErr != nil {
 			setupLog.Error(restMappingErr, "gateway API CRD not found; install Gateway API or disable --enable-gateway-api")
@@ -192,7 +189,6 @@ func main() {
 	if err = (&controller.DNSRecordReconciler{
 		Client:        mgr.GetClient(),
 		Scheme:        mgr.GetScheme(),
-		CloudflareAPI: &cloudflareAPI,
 		RetryInterval: retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")

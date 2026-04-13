@@ -39,7 +39,6 @@ import (
 	"github.com/itchyny/gojq"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -113,49 +112,59 @@ func (r *IPReconciler) Reconcile(ctx context.Context, req ctrl.Request) (result 
 
 // reconcileIP reconciles the ip
 func (r *IPReconciler) reconcileIP(ctx context.Context, ip *cloudflareoperatoriov1.IP) ctrl.Result {
+	var (
+		resolvedAddress string
+		requeueAfter    time.Duration
+	)
+
 	switch ip.Spec.Type {
 	case "static":
-		if err := r.handleStatic(ip); err != nil {
+		var err error
+		resolvedAddress, err = r.handleStatic(ip)
+		if err != nil {
 			intconditions.MarkFalse(ip, err)
 			return ctrl.Result{}
 		}
 	case "dynamic":
-		if err := r.handleDynamic(ctx, ip); err != nil {
+		var err error
+		resolvedAddress, requeueAfter, err = r.handleDynamic(ctx, ip)
+		if err != nil {
 			intconditions.MarkFalse(ip, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}
 		}
 	}
 
+	ip.Status.Address = resolvedAddress
 	intconditions.MarkTrue(ip, "IP is ready")
 
-	if ip.Spec.Type == "dynamic" {
-		return ctrl.Result{RequeueAfter: ip.Spec.Interval.Duration}
+	if requeueAfter > 0 {
+		return ctrl.Result{RequeueAfter: requeueAfter}
 	}
 
 	return ctrl.Result{}
 }
 
 // handleStatic handles the static ip
-func (r *IPReconciler) handleStatic(ip *cloudflareoperatoriov1.IP) error {
+func (r *IPReconciler) handleStatic(ip *cloudflareoperatoriov1.IP) (string, error) {
 	if ip.Spec.Address == "" {
-		return errors.New("address is required for static IPs")
+		return "", errors.New("address is required for static IPs")
 	}
 	if net.ParseIP(ip.Spec.Address) == nil {
-		return fmt.Errorf("IP address %q is not valid", ip.Spec.Address)
+		return "", fmt.Errorf("IP address %q is not valid", ip.Spec.Address)
 	}
-	return nil
+	return ip.Spec.Address, nil
 }
 
 // handleDynamic handles the dynamic ip
-func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperatoriov1.IP) error {
-	if ip.Spec.Interval == nil {
-		ip.Spec.Interval = &metav1.Duration{Duration: r.DefaultReconcileInterval}
+func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperatoriov1.IP) (string, time.Duration, error) {
+	reconcileInterval := r.DefaultReconcileInterval
+	if ip.Spec.Interval != nil {
+		reconcileInterval = ip.Spec.Interval.Duration
 	}
 	if len(ip.Spec.IPSources) == 0 {
-		return errors.New("IP sources are required for dynamic IPs")
+		return "", 0, errors.New("IP sources are required for dynamic IPs")
 	}
-	// DeepCopy the ip sources to avoid modifying the original slice which would cause the object to be updated on every reconcile
-	// which would lead to an infinite loop
+	// Shuffle a copy of the configured sources so we don't mutate the spec.
 	ipSources := ip.Spec.DeepCopy().IPSources
 	rand.Shuffle(len(ipSources), func(i, j int) {
 		ipSources[i], ipSources[j] = ipSources[j], ipSources[i]
@@ -167,22 +176,27 @@ func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperator
 			ipSourceError = err
 			continue
 		}
-		ip.Spec.Address = response
-		ipSourceError = nil
-		break
+		return response, reconcileInterval, nil
 	}
 	if ipSourceError != nil {
-		return ipSourceError
+		return "", 0, ipSourceError
 	}
-	return nil
+	return "", 0, errors.New("IP sources are required for dynamic IPs")
 }
 
 // getIPSource returns the IP gathered from the IPSource
 func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperatoriov1.IPSpecIPSources) (string, error) {
 	log := ctrl.LoggerFrom(ctx)
 
-	if _, err := url.Parse(source.URL); err != nil {
+	parsedURL, err := url.Parse(source.URL)
+	if err != nil {
 		return "", fmt.Errorf("failed to parse URL %s: %s", source.URL, err)
+	}
+	if !parsedURL.IsAbs() || parsedURL.Host == "" {
+		return "", fmt.Errorf("IP source URL %q must be an absolute http or https URL", source.URL)
+	}
+	if parsedURL.Scheme != "http" && parsedURL.Scheme != "https" {
+		return "", fmt.Errorf("IP source URL %q must use http or https", source.URL)
 	}
 
 	tr := http.Transport{

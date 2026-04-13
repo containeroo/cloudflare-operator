@@ -34,6 +34,8 @@ import (
 )
 
 func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
+	initTestCloudflareAPI(t)
+
 	zone := &cloudflareoperatoriov1.Zone{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "zone",
@@ -63,17 +65,17 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		ObjectMeta: metav1.ObjectMeta{
 			Name: "ip",
 		},
-		Spec: cloudflareoperatoriov1.IPSpec{
+		Status: cloudflareoperatoriov1.IPStatus{
 			Address: "2.2.2.2",
 		},
 	}
+	secret, account := NewTestAccountObjects()
 
 	r := &DNSRecordReconciler{
 		Client: fake.NewClientBuilder().
 			WithScheme(NewTestScheme()).
-			WithObjects(dnsRecord, ip).
+			WithObjects(dnsRecord, ip, secret, account).
 			Build(),
-		CloudflareAPI: &cloudflareAPI,
 	}
 
 	t.Run("reconcile dnsrecord", func(t *testing.T) {
@@ -125,7 +127,8 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 		g.Expect(err).ToNot(HaveOccurred())
 
 		g.Expect(dnsRecord.Status.RecordID).To(Equal(cloudflareDNSRecord.ID))
-		g.Expect(cloudflareDNSRecord.Content).To(Equal(ip.Spec.Address))
+		g.Expect(cloudflareDNSRecord.Content).To(Equal(ip.Status.Address))
+		g.Expect(dnsRecord.Spec.Content).To(BeEmpty())
 
 		_ = r.reconcileDelete(context.TODO(), zone.Status.ID, dnsRecord)
 		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dnsRecord.Status.RecordID)
@@ -191,6 +194,42 @@ func TestDNSRecordReconciler_reconcileDNSRecord(t *testing.T) {
 
 		isEqual := r.compareDNSRecord(dnsRecordSpec, cloudflareDNSRecord)
 		g.Expect(isEqual).To(BeTrue())
+	})
+
+	t.Run("compare dns record defaults proxied when unset", func(t *testing.T) {
+		g := NewWithT(t)
+
+		isEqual := r.compareDNSRecord(cloudflareoperatoriov1.DNSRecordSpec{
+			Name:    "dnstest.containeroo-test.org",
+			Type:    "A",
+			Content: "1.1.1.1",
+		}, cloudflare.DNSRecord{
+			Name:    "dnstest.containeroo-test.org",
+			Type:    "A",
+			Content: "1.1.1.1",
+			Proxied: proxiedPtr(true),
+		})
+
+		g.Expect(isEqual).To(BeTrue())
+	})
+
+	t.Run("adopt existing dns record by name and type when content is derived from ipref", func(t *testing.T) {
+		g := NewWithT(t)
+
+		record, err := findExistingRecordForAdoption(cloudflareoperatoriov1.DNSRecordSpec{
+			Name:    "derived.containeroo-test.org",
+			Type:    "A",
+			Content: "2.2.2.2",
+		}, []cloudflare.DNSRecord{
+			{
+				ID:      "derived-record",
+				Name:    "derived.containeroo-test.org",
+				Type:    "A",
+				Content: "2.2.2.2",
+			},
+		})
+		g.Expect(err).ToNot(HaveOccurred())
+		g.Expect(record.ID).To(Equal("derived-record"))
 	})
 
 	t.Run("find longest matching zone", func(t *testing.T) {
