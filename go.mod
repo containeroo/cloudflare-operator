@@ -7,7 +7,7 @@ require (
 	github.com/fluxcd/pkg/runtime v0.105.0
 	github.com/itchyny/gojq v0.12.19
 	github.com/onsi/ginkgo/v2 v2.28.2
-	github.com/onsi/gomega v1.39.1
+	github.com/onsi/gomega v1.40.0
 	github.com/prometheus/client_golang v1.23.2
 	k8s.io/api v0.35.4
 	k8s.io/apiextensions-apiserver v0.35.4
