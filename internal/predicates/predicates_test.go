@@ -189,6 +189,57 @@ func TestPredicate(t *testing.T) {
 		g.Expect(result).To(BeTrue())
 	})
 
+	t.Run("create tlsroute annotation predicate with annotation", func(t *testing.T) {
+		g := NewWithT(t)
+
+		tlsRoute := &gatewayv1.TLSRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "tlsroute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+		}
+
+		predicate := DNSFromTLSRoutePredicate{}
+		result := predicate.Create(event.CreateEvent{Object: tlsRoute})
+
+		g.Expect(result).To(BeTrue())
+	})
+
+	t.Run("update tlsroute hostname predicate", func(t *testing.T) {
+		g := NewWithT(t)
+
+		oldTLSRoute := &gatewayv1.TLSRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "tlsroute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+			Spec: gatewayv1.TLSRouteSpec{
+				Hostnames: []gatewayv1.Hostname{"test.containeroo-test.org"},
+			},
+		}
+
+		newTLSRoute := &gatewayv1.TLSRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "tlsroute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+			Spec: gatewayv1.TLSRouteSpec{
+				Hostnames: []gatewayv1.Hostname{"test-new.containeroo-test.org"},
+			},
+		}
+
+		predicate := DNSFromTLSRoutePredicate{}
+		result := predicate.Update(event.UpdateEvent{ObjectOld: oldTLSRoute, ObjectNew: newTLSRoute})
+
+		g.Expect(result).To(BeTrue())
+	})
+
 	t.Run("update ip dnsrecord predicate", func(t *testing.T) {
 		g := NewWithT(t)
 

@@ -18,6 +18,7 @@ package main
 
 import (
 	"crypto/tls"
+	"errors"
 	"flag"
 	"os"
 	"time"
@@ -26,6 +27,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -85,7 +87,7 @@ func main() {
 	flag.DurationVar(&defaultReconcileInterval, "default-reconcile-interval", 5*time.Minute,
 		"The default interval at which to reconcile resources")
 	flag.BoolVar(&enableGatewayAPI, "enable-gateway-api", false,
-		"Enable reconciliation for Gateway API HTTPRoute resources")
+		"Enable reconciliation for Gateway API HTTPRoute and TLSRoute resources")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -168,22 +170,47 @@ func main() {
 		os.Exit(1)
 	}
 	if enableGatewayAPI {
-		_, restMappingErr := mgr.GetRESTMapper().RESTMapping(
-			schema.GroupKind{Group: gatewayv1.GroupVersion.Group, Kind: "HTTPRoute"},
-			gatewayv1.GroupVersion.Version,
-		)
-		if restMappingErr != nil {
-			setupLog.Error(restMappingErr, "gateway API CRD not found; install Gateway API or disable --enable-gateway-api")
+		availableGatewayAPIKinds := make(map[string]struct{})
+		for _, kind := range []string{"HTTPRoute", "TLSRoute"} {
+			_, restMappingErr := mgr.GetRESTMapper().RESTMapping(
+				schema.GroupKind{Group: gatewayv1.GroupVersion.Group, Kind: kind},
+				gatewayv1.GroupVersion.Version,
+			)
+			if restMappingErr != nil {
+				if meta.IsNoMatchError(restMappingErr) {
+					setupLog.Info("gateway API CRD not found; skipping controller", "kind", kind)
+					continue
+				}
+				setupLog.Error(restMappingErr, "unable to discover gateway API CRD", "kind", kind)
+				os.Exit(1)
+			}
+			availableGatewayAPIKinds[kind] = struct{}{}
+		}
+		if len(availableGatewayAPIKinds) == 0 {
+			setupLog.Error(errors.New("no Gateway API route CRDs found"), "install Gateway API or disable --enable-gateway-api")
 			os.Exit(1)
 		}
-		if err = (&controller.HTTPRouteReconciler{
-			Client:                   mgr.GetClient(),
-			Scheme:                   mgr.GetScheme(),
-			RetryInterval:            retryInterval,
-			DefaultReconcileInterval: defaultReconcileInterval,
-		}).SetupWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create controller", "controller", "HTTPRoute")
-			os.Exit(1)
+		if _, ok := availableGatewayAPIKinds["HTTPRoute"]; ok {
+			if err = (&controller.HTTPRouteReconciler{
+				Client:                   mgr.GetClient(),
+				Scheme:                   mgr.GetScheme(),
+				RetryInterval:            retryInterval,
+				DefaultReconcileInterval: defaultReconcileInterval,
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "HTTPRoute")
+				os.Exit(1)
+			}
+		}
+		if _, ok := availableGatewayAPIKinds["TLSRoute"]; ok {
+			if err = (&controller.TLSRouteReconciler{
+				Client:                   mgr.GetClient(),
+				Scheme:                   mgr.GetScheme(),
+				RetryInterval:            retryInterval,
+				DefaultReconcileInterval: defaultReconcileInterval,
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "TLSRoute")
+				os.Exit(1)
+			}
 		}
 	}
 	if err = (&controller.DNSRecordReconciler{
