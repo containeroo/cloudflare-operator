@@ -6,4 +6,5 @@ resources:
 - cloudflareoperatorio_v1_zone.yaml
 - networking_v1_ingress.yaml
 - gateway_v1_httproute.yaml
+- gateway_v1_tlsroute.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

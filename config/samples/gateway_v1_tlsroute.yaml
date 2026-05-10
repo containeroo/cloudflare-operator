@@ -1,0 +1,17 @@
+apiVersion: gateway.networking.k8s.io/v1
+kind: TLSRoute
+metadata:
+  name: sample-tlsroute
+  namespace: cloudflare-operator-system
+  annotations:
+    cloudflare-operator.io/content: 1.1.1.1
+    cloudflare-operator.io/proxied: "false"
+spec:
+  hostnames:
+    - tls.containeroo-test.org
+  parentRefs:
+    - name: sample-gateway
+  rules:
+    - backendRefs:
+        - name: sample-service
+          port: 443

@@ -97,25 +97,59 @@ func (DNSFromHTTPRoutePredicate) Update(e event.UpdateEvent) bool {
 	newObj := e.ObjectNew.(*gatewayv1.HTTPRoute)
 
 	annotationsChanged := !reflect.DeepEqual(oldAnnotations, newAnnotations)
-	oldHosts := make([]string, 0, len(oldObj.Spec.Hostnames))
-	for _, hostname := range oldObj.Spec.Hostnames {
-		oldHosts = append(oldHosts, string(hostname))
-	}
-	newHosts := make([]string, 0, len(newObj.Spec.Hostnames))
-	for _, hostname := range newObj.Spec.Hostnames {
-		newHosts = append(newHosts, string(hostname))
-	}
-
-	slices.Sort(oldHosts)
-	slices.Sort(newHosts)
-
-	hostsChanged := !reflect.DeepEqual(oldHosts, newHosts)
+	hostsChanged := gatewayHostnamesChanged(oldObj.Spec.Hostnames, newObj.Spec.Hostnames)
 
 	return (newObjectHasRequiredAnnotations && (annotationsChanged || hostsChanged)) || (oldObjectHadRequiredAnnotations && !newObjectHasRequiredAnnotations)
 }
 
 func (DNSFromHTTPRoutePredicate) Delete(e event.DeleteEvent) bool {
 	return false
+}
+
+// DNSFromTLSRoutePredicate detects if a TLSRoute object has the required annotations,
+// has changed annotations or has changed hostnames.
+type DNSFromTLSRoutePredicate struct {
+	predicate.Funcs
+}
+
+func (DNSFromTLSRoutePredicate) Create(e event.CreateEvent) bool {
+	return hasRequiredDNSAnnotations(e.Object.GetAnnotations())
+}
+
+func (DNSFromTLSRoutePredicate) Update(e event.UpdateEvent) bool {
+	oldAnnotations := e.ObjectOld.GetAnnotations()
+	newAnnotations := e.ObjectNew.GetAnnotations()
+
+	oldObjectHadRequiredAnnotations := hasRequiredDNSAnnotations(oldAnnotations)
+	newObjectHasRequiredAnnotations := hasRequiredDNSAnnotations(newAnnotations)
+
+	oldObj := e.ObjectOld.(*gatewayv1.TLSRoute)
+	newObj := e.ObjectNew.(*gatewayv1.TLSRoute)
+
+	annotationsChanged := !reflect.DeepEqual(oldAnnotations, newAnnotations)
+	hostsChanged := gatewayHostnamesChanged(oldObj.Spec.Hostnames, newObj.Spec.Hostnames)
+
+	return (newObjectHasRequiredAnnotations && (annotationsChanged || hostsChanged)) || (oldObjectHadRequiredAnnotations && !newObjectHasRequiredAnnotations)
+}
+
+func (DNSFromTLSRoutePredicate) Delete(e event.DeleteEvent) bool {
+	return false
+}
+
+func gatewayHostnamesChanged(oldHostnames, newHostnames []gatewayv1.Hostname) bool {
+	oldHosts := make([]string, 0, len(oldHostnames))
+	for _, hostname := range oldHostnames {
+		oldHosts = append(oldHosts, string(hostname))
+	}
+	newHosts := make([]string, 0, len(newHostnames))
+	for _, hostname := range newHostnames {
+		newHosts = append(newHosts, string(hostname))
+	}
+
+	slices.Sort(oldHosts)
+	slices.Sort(newHosts)
+
+	return !reflect.DeepEqual(oldHosts, newHosts)
 }
 
 // IPAddressChangedPredicate detects if an Ingress object has a change in the IP address.
