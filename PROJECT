@@ -37,6 +37,12 @@ resources:
   kind: TLSRoute
   path: sigs.k8s.io/gateway-api/apis/v1
   version: v1
+- controller: true
+  domain: networking.k8s.io
+  group: gateway
+  kind: GRPCRoute
+  path: sigs.k8s.io/gateway-api/apis/v1
+  version: v1
 - api:
     crdVersion: v1
   controller: true

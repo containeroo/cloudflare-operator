@@ -240,6 +240,57 @@ func TestPredicate(t *testing.T) {
 		g.Expect(result).To(BeTrue())
 	})
 
+	t.Run("create grpcroute annotation predicate with annotation", func(t *testing.T) {
+		g := NewWithT(t)
+
+		grpcRoute := &gatewayv1.GRPCRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "grpcroute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+		}
+
+		predicate := DNSFromGRPCRoutePredicate{}
+		result := predicate.Create(event.CreateEvent{Object: grpcRoute})
+
+		g.Expect(result).To(BeTrue())
+	})
+
+	t.Run("update grpcroute hostname predicate", func(t *testing.T) {
+		g := NewWithT(t)
+
+		oldGRPCRoute := &gatewayv1.GRPCRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "grpcroute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+			Spec: gatewayv1.GRPCRouteSpec{
+				Hostnames: []gatewayv1.Hostname{"test.containeroo-test.org"},
+			},
+		}
+
+		newGRPCRoute := &gatewayv1.GRPCRoute{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "grpcroute",
+				Annotations: map[string]string{
+					"cloudflare-operator.io/content": "test",
+				},
+			},
+			Spec: gatewayv1.GRPCRouteSpec{
+				Hostnames: []gatewayv1.Hostname{"test-new.containeroo-test.org"},
+			},
+		}
+
+		predicate := DNSFromGRPCRoutePredicate{}
+		result := predicate.Update(event.UpdateEvent{ObjectOld: oldGRPCRoute, ObjectNew: newGRPCRoute})
+
+		g.Expect(result).To(BeTrue())
+	})
+
 	t.Run("update ip dnsrecord predicate", func(t *testing.T) {
 		g := NewWithT(t)
 

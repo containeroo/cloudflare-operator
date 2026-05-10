@@ -136,6 +136,36 @@ func (DNSFromTLSRoutePredicate) Delete(e event.DeleteEvent) bool {
 	return false
 }
 
+// DNSFromGRPCRoutePredicate detects if a GRPCRoute object has the required annotations,
+// has changed annotations or has changed hostnames.
+type DNSFromGRPCRoutePredicate struct {
+	predicate.Funcs
+}
+
+func (DNSFromGRPCRoutePredicate) Create(e event.CreateEvent) bool {
+	return hasRequiredDNSAnnotations(e.Object.GetAnnotations())
+}
+
+func (DNSFromGRPCRoutePredicate) Update(e event.UpdateEvent) bool {
+	oldAnnotations := e.ObjectOld.GetAnnotations()
+	newAnnotations := e.ObjectNew.GetAnnotations()
+
+	oldObjectHadRequiredAnnotations := hasRequiredDNSAnnotations(oldAnnotations)
+	newObjectHasRequiredAnnotations := hasRequiredDNSAnnotations(newAnnotations)
+
+	oldObj := e.ObjectOld.(*gatewayv1.GRPCRoute)
+	newObj := e.ObjectNew.(*gatewayv1.GRPCRoute)
+
+	annotationsChanged := !reflect.DeepEqual(oldAnnotations, newAnnotations)
+	hostsChanged := gatewayHostnamesChanged(oldObj.Spec.Hostnames, newObj.Spec.Hostnames)
+
+	return (newObjectHasRequiredAnnotations && (annotationsChanged || hostsChanged)) || (oldObjectHadRequiredAnnotations && !newObjectHasRequiredAnnotations)
+}
+
+func (DNSFromGRPCRoutePredicate) Delete(e event.DeleteEvent) bool {
+	return false
+}
+
 func gatewayHostnamesChanged(oldHostnames, newHostnames []gatewayv1.Hostname) bool {
 	oldHosts := make([]string, 0, len(oldHostnames))
 	for _, hostname := range oldHostnames {

@@ -55,6 +55,10 @@ var _ = Describe("controller", Ordered, func() {
 		cmd = exec.Command("kubectl", "delete", "tlsroutes", "--all", "--all-namespaces")
 		_, _ = utils.Run(cmd)
 
+		By("removing all grpcroutes")
+		cmd = exec.Command("kubectl", "delete", "grpcroutes", "--all", "--all-namespaces")
+		_, _ = utils.Run(cmd)
+
 		By("removing all dnsrecords")
 		cmd = exec.Command("kubectl", "delete", "dnsrecords", "--all", "--all-namespaces")
 		_, _ = utils.Run(cmd)
@@ -325,5 +329,36 @@ var _ = Describe("controller", Ordered, func() {
 
 		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
 			WithArguments("tls-containeroo-test-org").Should(Succeed())
+	})
+
+	It("should create dnsrecord from a grpcroute", func() {
+		cmd := exec.Command("kubectl", "apply", "-f", "config/samples/gateway_v1_grpcroute.yaml")
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
+			WithArguments("dnsrecord", "grpc-containeroo-test-org").Should(Succeed())
+	})
+
+	It("should update dnsrecord when grpcroute annotations change", func() {
+		cmd := exec.Command(
+			"kubectl", "-n", namespace, "patch", "grpcroute", "sample-grpcroute",
+			"--type=merge", "-p", `{"metadata":{"annotations":{"cloudflare-operator.io/content":"177.177.177.177"}}}`)
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
+			WithArguments("grpc-containeroo-test-org", "177.177.177.177").Should(Succeed())
+	})
+
+	It("should delete dnsrecord when grpcroute annotations are absent", func() {
+		cmd := exec.Command(
+			"kubectl", "-n", namespace, "patch", "grpcroute", "sample-grpcroute",
+			"--type=json", "-p", `[{"op": "remove", "path": "/metadata/annotations"}]`)
+		_, err := utils.Run(cmd)
+		Expect(err).NotTo(HaveOccurred())
+
+		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
+			WithArguments("grpc-containeroo-test-org").Should(Succeed())
 	})
 })

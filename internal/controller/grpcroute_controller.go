@@ -30,8 +30,8 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
-// TLSRouteReconciler reconciles a Gateway API TLSRoute object
-type TLSRouteReconciler struct {
+// GRPCRouteReconciler reconciles a Gateway API GRPCRoute object
+type GRPCRouteReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 
@@ -40,39 +40,39 @@ type TLSRouteReconciler struct {
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *TLSRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&gatewayv1.TLSRoute{}, builder.WithPredicates(intpredicates.DNSFromTLSRoutePredicate{})).
+		For(&gatewayv1.GRPCRoute{}, builder.WithPredicates(intpredicates.DNSFromGRPCRoutePredicate{})).
 		Owns(&cloudflareoperatoriov1.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Complete(r)
 }
 
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=tlsroutes,verbs=get;list;watch
-// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=tlsroutes/finalizers,verbs=update
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=grpcroutes,verbs=get;list;watch
+// +kubebuilder:rbac:groups=gateway.networking.k8s.io,resources=grpcroutes/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	tlsRoute := &gatewayv1.TLSRoute{}
-	if err := r.Get(ctx, req.NamespacedName, tlsRoute); err != nil {
+func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+	grpcRoute := &gatewayv1.GRPCRoute{}
+	if err := r.Get(ctx, req.NamespacedName, grpcRoute); err != nil {
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	return r.reconcileTLSRoute(ctx, tlsRoute)
+	return r.reconcileGRPCRoute(ctx, grpcRoute)
 }
 
-// reconcileTLSRoute reconciles the TLSRoute
-func (r *TLSRouteReconciler) reconcileTLSRoute(ctx context.Context, tlsRoute *gatewayv1.TLSRoute) (ctrl.Result, error) {
+// reconcileGRPCRoute reconciles the GRPCRoute
+func (r *GRPCRouteReconciler) reconcileGRPCRoute(ctx context.Context, grpcRoute *gatewayv1.GRPCRoute) (ctrl.Result, error) {
 	hostReconciler := DNSHostReconciler{
 		Client:                   r.Client,
 		Scheme:                   r.Scheme,
 		RetryInterval:            r.RetryInterval,
 		DefaultReconcileInterval: r.DefaultReconcileInterval,
 	}
-	return hostReconciler.Reconcile(ctx, tlsRoute, tlsRoute.GetAnnotations(), r.getRouteHosts(tlsRoute))
+	return hostReconciler.Reconcile(ctx, grpcRoute, grpcRoute.GetAnnotations(), r.getRouteHosts(grpcRoute))
 }
 
-// getRouteHosts returns a map of hosts from the TLSRoute hostnames
-func (r *TLSRouteReconciler) getRouteHosts(tlsRoute *gatewayv1.TLSRoute) map[string]struct{} {
-	return gatewayHostnamesToHosts(tlsRoute.Spec.Hostnames)
+// getRouteHosts returns a map of hosts from the GRPCRoute hostnames
+func (r *GRPCRouteReconciler) getRouteHosts(grpcRoute *gatewayv1.GRPCRoute) map[string]struct{} {
+	return gatewayHostnamesToHosts(grpcRoute.Spec.Hostnames)
 }

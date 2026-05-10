@@ -7,4 +7,5 @@ resources:
 - networking_v1_ingress.yaml
 - gateway_v1_httproute.yaml
 - gateway_v1_tlsroute.yaml
+- gateway_v1_grpcroute.yaml
 #+kubebuilder:scaffold:manifestskustomizesamples

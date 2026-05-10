@@ -74,11 +74,5 @@ func (r *HTTPRouteReconciler) reconcileHTTPRoute(ctx context.Context, httpRoute 
 
 // getRouteHosts returns a map of hosts from the HTTPRoute hostnames
 func (r *HTTPRouteReconciler) getRouteHosts(httpRoute *gatewayv1.HTTPRoute) map[string]struct{} {
-	hosts := make(map[string]struct{})
-	for _, hostname := range httpRoute.Spec.Hostnames {
-		if hostname != "" {
-			hosts[string(hostname)] = struct{}{}
-		}
-	}
-	return hosts
+	return gatewayHostnamesToHosts(httpRoute.Spec.Hostnames)
 }

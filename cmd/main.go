@@ -87,7 +87,7 @@ func main() {
 	flag.DurationVar(&defaultReconcileInterval, "default-reconcile-interval", 5*time.Minute,
 		"The default interval at which to reconcile resources")
 	flag.BoolVar(&enableGatewayAPI, "enable-gateway-api", false,
-		"Enable reconciliation for Gateway API HTTPRoute and TLSRoute resources")
+		"Enable reconciliation for Gateway API HTTPRoute, TLSRoute and GRPCRoute resources")
 	opts := zap.Options{
 		Development: true,
 	}
@@ -171,7 +171,7 @@ func main() {
 	}
 	if enableGatewayAPI {
 		availableGatewayAPIKinds := make(map[string]struct{})
-		for _, kind := range []string{"HTTPRoute", "TLSRoute"} {
+		for _, kind := range []string{"HTTPRoute", "TLSRoute", "GRPCRoute"} {
 			_, restMappingErr := mgr.GetRESTMapper().RESTMapping(
 				schema.GroupKind{Group: gatewayv1.GroupVersion.Group, Kind: kind},
 				gatewayv1.GroupVersion.Version,
@@ -209,6 +209,17 @@ func main() {
 				DefaultReconcileInterval: defaultReconcileInterval,
 			}).SetupWithManager(mgr); err != nil {
 				setupLog.Error(err, "unable to create controller", "controller", "TLSRoute")
+				os.Exit(1)
+			}
+		}
+		if _, ok := availableGatewayAPIKinds["GRPCRoute"]; ok {
+			if err = (&controller.GRPCRouteReconciler{
+				Client:                   mgr.GetClient(),
+				Scheme:                   mgr.GetScheme(),
+				RetryInterval:            retryInterval,
+				DefaultReconcileInterval: defaultReconcileInterval,
+			}).SetupWithManager(mgr); err != nil {
+				setupLog.Error(err, "unable to create controller", "controller", "GRPCRoute")
 				os.Exit(1)
 			}
 		}

@@ -31,7 +31,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// DNSHostReconciler reconciles DNSRecords for a host-based resource (Ingress, HTTPRoute, TLSRoute, ...)
+// DNSHostReconciler reconciles DNSRecords for a host-based resource (Ingress, HTTPRoute, TLSRoute, GRPCRoute, ...)
 type DNSHostReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme

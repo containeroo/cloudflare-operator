@@ -81,7 +81,7 @@ func (r *DNSRecordReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 			ownerReferences := obj.GetOwnerReferences()
 			var ownerReferencesUID string
 			for _, ownerReference := range ownerReferences {
-				if ownerReference.Kind != "Ingress" && ownerReference.Kind != "HTTPRoute" && ownerReference.Kind != "TLSRoute" {
+				if ownerReference.Kind != "Ingress" && ownerReference.Kind != "HTTPRoute" && ownerReference.Kind != "TLSRoute" && ownerReference.Kind != "GRPCRoute" {
 					continue
 				}
 				ownerReferencesUID = string(ownerReference.UID)
