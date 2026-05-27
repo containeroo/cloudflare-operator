@@ -1,12 +1,10 @@
 ---
 version: 2
 project_name: cloudflare-operator
-before:
-  hooks:
-    - go mod tidy
-    - go generate ./...
 builds:
-  - main: ./cmd/main.go
+  - id: manager
+    main: ./cmd/main.go
+    binary: manager
     env:
       - CGO_ENABLED=0
     goos:
@@ -22,18 +20,14 @@ dockers:
       - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-amd64
       - containeroo/cloudflare-operator:{{ .Tag }}-amd64
     use: buildx
-    dockerfile: Dockerfile
-    extra_files:
-      - go.mod
-      - go.sum
-      - cmd/main.go
-      - api
-      - internal
+    dockerfile: Dockerfile.goreleaser
+    ids:
+      - manager
     build_flag_templates:
       - --pull
       - --platform=linux/amd64
-      - --build-arg
-      - LDFLAGS=-s -w -X main.Version={{ .Tag }}
+      - --cache-from=type=gha,scope=cloudflare-operator-amd64
+      - --cache-to=type=gha,mode=max,scope=cloudflare-operator-amd64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
       - --label=org.opencontainers.image.url=https://github.com/containeroo/cloudflare-operator
@@ -46,19 +40,15 @@ dockers:
       - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-arm64
       - containeroo/cloudflare-operator:{{ .Tag }}-arm64
     use: buildx
-    dockerfile: Dockerfile
-    extra_files:
-      - go.mod
-      - go.sum
-      - cmd/main.go
-      - api
-      - internal
+    dockerfile: Dockerfile.goreleaser
+    ids:
+      - manager
     goarch: arm64
     build_flag_templates:
       - --pull
       - --platform=linux/arm64
-      - --build-arg
-      - LDFLAGS=-s -w -X main.Version={{ .Tag }}
+      - --cache-from=type=gha,scope=cloudflare-operator-arm64
+      - --cache-to=type=gha,mode=max,scope=cloudflare-operator-arm64
       - --label=org.opencontainers.image.title={{ .ProjectName }}
       - --label=org.opencontainers.image.description={{ .ProjectName }}
       - --label=org.opencontainers.image.url=https://github.com/containeroo/cloudflare-operator
