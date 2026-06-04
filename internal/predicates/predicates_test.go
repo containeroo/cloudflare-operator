@@ -29,6 +29,17 @@ import (
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
+const (
+	testAnnotationValue   = "test"
+	testContentAnnotation = "cloudflare-operator.io/content"
+	testGRPCRouteName     = "grpcroute"
+	testHost              = "test.containeroo-test.org"
+	testHTTPRouteName     = "httproute"
+	testIngressName       = "ingress"
+	testNewHost           = "test-new.containeroo-test.org"
+	testTLSRouteName      = "tlsroute"
+)
+
 func TestPredicate(t *testing.T) {
 	predicate := DNSFromIngressPredicate{}
 
@@ -37,7 +48,7 @@ func TestPredicate(t *testing.T) {
 
 		ingress := &networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "ingress",
+				Name: testIngressName,
 			},
 		}
 
@@ -51,9 +62,9 @@ func TestPredicate(t *testing.T) {
 
 		ingress := &networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "ingress",
+				Name: testIngressName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 		}
@@ -69,28 +80,28 @@ func TestPredicate(t *testing.T) {
 
 		oldIngress := &networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "ingress",
+				Name: testIngressName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: networkingv1.IngressSpec{
 				Rules: []networkingv1.IngressRule{{
-					Host: "test.containeroo-test.org",
+					Host: testHost,
 				}},
 			},
 		}
 
 		newIngress := &networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "ingress",
+				Name: testIngressName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "new-test",
+					testContentAnnotation: "new-test",
 				},
 			},
 			Spec: networkingv1.IngressSpec{
 				Rules: []networkingv1.IngressRule{{
-					Host: "test.containeroo-test.org",
+					Host: testHost,
 				}},
 			},
 		}
@@ -106,28 +117,28 @@ func TestPredicate(t *testing.T) {
 
 		oldIngress := &networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "ingress",
+				Name: testIngressName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: networkingv1.IngressSpec{
 				Rules: []networkingv1.IngressRule{{
-					Host: "test.containeroo-test.org",
+					Host: testHost,
 				}},
 			},
 		}
 
 		newIngress := &networkingv1.Ingress{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "ingress",
+				Name: testIngressName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: networkingv1.IngressSpec{
 				Rules: []networkingv1.IngressRule{{
-					Host: "test-new.containeroo-test.org",
+					Host: testNewHost,
 				}},
 			},
 		}
@@ -143,9 +154,9 @@ func TestPredicate(t *testing.T) {
 
 		httpRoute := &gatewayv1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "httproute",
+				Name: testHTTPRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 		}
@@ -161,25 +172,25 @@ func TestPredicate(t *testing.T) {
 
 		oldHTTPRoute := &gatewayv1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "httproute",
+				Name: testHTTPRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: gatewayv1.HTTPRouteSpec{
-				Hostnames: []gatewayv1.Hostname{"test.containeroo-test.org"},
+				Hostnames: []gatewayv1.Hostname{testHost},
 			},
 		}
 
 		newHTTPRoute := &gatewayv1.HTTPRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "httproute",
+				Name: testHTTPRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: gatewayv1.HTTPRouteSpec{
-				Hostnames: []gatewayv1.Hostname{"test-new.containeroo-test.org"},
+				Hostnames: []gatewayv1.Hostname{testNewHost},
 			},
 		}
 
@@ -194,9 +205,9 @@ func TestPredicate(t *testing.T) {
 
 		tlsRoute := &gatewayv1.TLSRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "tlsroute",
+				Name: testTLSRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 		}
@@ -212,25 +223,25 @@ func TestPredicate(t *testing.T) {
 
 		oldTLSRoute := &gatewayv1.TLSRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "tlsroute",
+				Name: testTLSRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: gatewayv1.TLSRouteSpec{
-				Hostnames: []gatewayv1.Hostname{"test.containeroo-test.org"},
+				Hostnames: []gatewayv1.Hostname{testHost},
 			},
 		}
 
 		newTLSRoute := &gatewayv1.TLSRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "tlsroute",
+				Name: testTLSRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: gatewayv1.TLSRouteSpec{
-				Hostnames: []gatewayv1.Hostname{"test-new.containeroo-test.org"},
+				Hostnames: []gatewayv1.Hostname{testNewHost},
 			},
 		}
 
@@ -245,9 +256,9 @@ func TestPredicate(t *testing.T) {
 
 		grpcRoute := &gatewayv1.GRPCRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "grpcroute",
+				Name: testGRPCRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 		}
@@ -263,25 +274,25 @@ func TestPredicate(t *testing.T) {
 
 		oldGRPCRoute := &gatewayv1.GRPCRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "grpcroute",
+				Name: testGRPCRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: gatewayv1.GRPCRouteSpec{
-				Hostnames: []gatewayv1.Hostname{"test.containeroo-test.org"},
+				Hostnames: []gatewayv1.Hostname{testHost},
 			},
 		}
 
 		newGRPCRoute := &gatewayv1.GRPCRoute{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "grpcroute",
+				Name: testGRPCRouteName,
 				Annotations: map[string]string{
-					"cloudflare-operator.io/content": "test",
+					testContentAnnotation: testAnnotationValue,
 				},
 			},
 			Spec: gatewayv1.GRPCRouteSpec{
-				Hostnames: []gatewayv1.Hostname{"test-new.containeroo-test.org"},
+				Hostnames: []gatewayv1.Hostname{testNewHost},
 			},
 		}
 

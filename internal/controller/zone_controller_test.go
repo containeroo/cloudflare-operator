@@ -61,7 +61,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		var err error
 		testRecord, err = createCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, cloudflareoperatoriov1.DNSRecordSpec{
 			Name:    "test.containeroo-test.org",
-			Content: "1.1.1.1",
+			Content: testIPv4Address,
 			Type:    "A",
 			Proxied: new(bool),
 		})
@@ -90,20 +90,20 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 
 		zone.Spec.Prune = true
 		zone.Spec.IgnoredRecords = map[string][]string{
-			"TXT": {"_acme-challenge", "cf2024-1._domainkey"},
-			"A":   {"^mytest.*$"},
+			testRecordTypeTXT: {"_acme-challenge", "cf2024-1._domainkey"},
+			"A":               {"^mytest.*$"},
 		}
 
 		acmeRecord, err := createCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, cloudflareoperatoriov1.DNSRecordSpec{
 			Name:    "_acme-challenge.abc.containeroo-test.org",
-			Type:    "TXT",
+			Type:    testRecordTypeTXT,
 			Content: "test",
 			Proxied: new(bool),
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 		dkimRecord, err := createCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, cloudflareoperatoriov1.DNSRecordSpec{
 			Name:    "cf2024-1._domainkey.containeroo-test.org",
-			Type:    "TXT",
+			Type:    testRecordTypeTXT,
 			Content: "test",
 			Proxied: new(bool),
 		})
@@ -111,7 +111,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		aRecord, err := createCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, cloudflareoperatoriov1.DNSRecordSpec{
 			Name:    "mytestabc.containeroo-test.org",
 			Type:    "A",
-			Content: "1.1.1.1",
+			Content: testIPv4Address,
 			Proxied: new(bool),
 		})
 		g.Expect(err).ToNot(HaveOccurred())

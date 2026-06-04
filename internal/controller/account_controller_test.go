@@ -51,6 +51,19 @@ var (
 	cloudflareAPIToken string
 )
 
+const (
+	testAccountName           = "account"
+	testContentAnnotation     = "cloudflare-operator.io/content"
+	testDefaultNamespace      = "default"
+	testDNSRecordHost         = "dnstest.containeroo-test.org"
+	testIPv4Address           = "1.1.1.1"
+	testAlternateIPv4Address  = "2.2.2.2"
+	testRecordTypeTXT         = "TXT"
+	testSecretName            = "secret"
+	testWildcardDNSRecordName = "wildcard-containeroo-test-org"
+	testWildcardHost          = "*.containeroo-test.org"
+)
+
 func initTestCloudflareAPI(t *testing.T) {
 	t.Helper()
 
@@ -65,8 +78,8 @@ func initTestCloudflareAPI(t *testing.T) {
 func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "secret",
-			Namespace: "default",
+			Name:      testSecretName,
+			Namespace: testDefaultNamespace,
 		},
 		Data: map[string][]byte{
 			"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
@@ -75,7 +88,7 @@ func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
 
 	account := &cloudflareoperatoriov1.Account{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "account",
+			Name: testAccountName,
 		},
 		Spec: cloudflareoperatoriov1.AccountSpec{
 			ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
@@ -117,13 +130,13 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 
 		account := &cloudflareoperatoriov1.Account{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "account",
+				Name: testAccountName,
 			},
 			Spec: cloudflareoperatoriov1.AccountSpec{
 				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
 					SecretRef: corev1.SecretReference{
-						Name:      "secret",
-						Namespace: "default",
+						Name:      testSecretName,
+						Namespace: testDefaultNamespace,
 					},
 				},
 			},
@@ -149,8 +162,8 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "default",
+				Name:      testSecretName,
+				Namespace: testDefaultNamespace,
 			},
 			Data: map[string][]byte{
 				"invalid": []byte("invalid"),
@@ -159,13 +172,13 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 
 		account := &cloudflareoperatoriov1.Account{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "account",
+				Name: testAccountName,
 			},
 			Spec: cloudflareoperatoriov1.AccountSpec{
 				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
 					SecretRef: corev1.SecretReference{
-						Name:      "secret",
-						Namespace: "default",
+						Name:      testSecretName,
+						Namespace: testDefaultNamespace,
 					},
 				},
 			},

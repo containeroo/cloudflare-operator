@@ -35,9 +35,9 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 	ingress := &networkingv1.Ingress{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "ingress",
-			Namespace: "default",
+			Namespace: testDefaultNamespace,
 			Annotations: map[string]string{
-				"cloudflare-operator.io/content": "1.1.1.1",
+				testContentAnnotation: testIPv4Address,
 			},
 		},
 	}
@@ -71,46 +71,46 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "ingtest-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: "ingtest-containeroo-test-org"}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("ingtest.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("1.1.1.1")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testIPv4Address)))
 	})
 
 	t.Run("change dnsrecord spec when annotations change", func(t *testing.T) {
 		g := NewWithT(t)
 		ingress.Annotations = map[string]string{
-			"cloudflare-operator.io/content": "2.2.2.2",
+			testContentAnnotation: testAlternateIPv4Address,
 		}
 
 		_, err := r.reconcileIngress(context.TODO(), ingress)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "ingtest-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: "ingtest-containeroo-test-org"}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("ingtest.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testAlternateIPv4Address)))
 	})
 
 	t.Run("reconcile ingress wildcard", func(t *testing.T) {
 		g := NewWithT(t)
 		ingress.Spec = networkingv1.IngressSpec{
 			Rules: []networkingv1.IngressRule{{
-				Host: "*.containeroo-test.org",
+				Host: testWildcardHost,
 			}},
 		}
 		_, err := r.reconcileIngress(context.TODO(), ingress)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "wildcard-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: testWildcardDNSRecordName}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("*.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal(testWildcardHost)))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testAlternateIPv4Address)))
 	})
 
 	t.Run("remove dnsrecord when annotations are absent", func(t *testing.T) {
@@ -121,15 +121,15 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "wildcard-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: testWildcardDNSRecordName}, dnsRecord)
 		g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
 	})
 
 	t.Run("ingress annotation parsing", func(t *testing.T) {
 		g := NewWithT(t)
 		ingress.Annotations = map[string]string{
-			"cloudflare-operator.io/account-ref": "account",
-			"cloudflare-operator.io/content":     "1.1.1.1",
+			"cloudflare-operator.io/account-ref": testAccountName,
+			testContentAnnotation:                testIPv4Address,
 			"cloudflare-operator.io/ip-ref":      "ip",
 			"cloudflare-operator.io/proxied":     "true",
 			"cloudflare-operator.io/ttl":         "120", // Expecting to return 1 because proxied is true
@@ -139,8 +139,8 @@ func TestIngressReconciler_reconcileIngress(t *testing.T) {
 
 		parsedSpec := parseDNSAnnotations(ingress.Annotations, 30*time.Second)
 
-		g.Expect(parsedSpec.AccountRef).To(HaveField("Name", Equal("account")))
-		g.Expect(parsedSpec).To(HaveField("Content", Equal("1.1.1.1")))
+		g.Expect(parsedSpec.AccountRef).To(HaveField("Name", Equal(testAccountName)))
+		g.Expect(parsedSpec).To(HaveField("Content", Equal(testIPv4Address)))
 		g.Expect(parsedSpec.IPRef).To(HaveField("Name", Equal("ip")))
 		g.Expect(parsedSpec).To(HaveField("Proxied", Equal(&[]bool{true}[0])))
 		g.Expect(parsedSpec).To(HaveField("TTL", Equal(1)))

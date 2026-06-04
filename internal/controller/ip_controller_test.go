@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"testing"
 
@@ -40,18 +41,18 @@ var (
 
 func StartIPSource() {
 	http.HandleFunc("/plain", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte("1.1.1.1"))
+		_, _ = w.Write([]byte(testIPv4Address))
 	})
 	http.HandleFunc("/invalid", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("invalid"))
 	})
 	http.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
-		_, _ = w.Write([]byte(`{"ip":"1.1.1.1"}`))
+		_, _ = fmt.Fprintf(w, `{"ip":"%s"}`, testIPv4Address)
 	})
 	http.HandleFunc("/header", func(w http.ResponseWriter, r *http.Request) {
 		requestHeader = r.Header.Get("X-Test")
 		requestAuthHeader = r.Header.Get("X-Auth-Test")
-		_, _ = w.Write([]byte("1.1.1.1"))
+		_, _ = w.Write([]byte(testIPv4Address))
 	})
 
 	_ = http.ListenAndServe(":8080", nil)
@@ -62,8 +63,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "secret",
-			Namespace: "default",
+			Name:      testSecretName,
+			Namespace: testDefaultNamespace,
 		},
 		Data: map[string][]byte{
 			"X-Auth-Test": []byte("auth-test"),
@@ -99,7 +100,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal(testIPv4Address))
 		g.Expect(ip.Spec.Address).To(BeEmpty())
 		g.Expect(ip.Spec.Interval).To(BeNil())
 	})
@@ -140,7 +141,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal(testIPv4Address))
 		g.Expect(ip.Spec.Address).To(BeEmpty())
 	})
 
@@ -156,7 +157,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal(testIPv4Address))
 		g.Expect(ip.Spec.Address).To(BeEmpty())
 	})
 
@@ -174,7 +175,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal(testIPv4Address))
 		g.Expect(ip.Spec.Address).To(BeEmpty())
 		g.Expect(requestHeader).To(Equal("test"))
 	})
@@ -183,8 +184,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL: "http://localhost:8080/header",
 			RequestHeadersSecretRef: corev1.SecretReference{
-				Name:      "secret",
-				Namespace: "default",
+				Name:      testSecretName,
+				Namespace: testDefaultNamespace,
 			},
 		}}
 
@@ -194,22 +195,22 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonReady, "IP is ready"),
 		}))
 
-		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal(testIPv4Address))
 		g.Expect(ip.Spec.Address).To(BeEmpty())
 		g.Expect(requestAuthHeader).To(Equal("auth-test"))
 	})
 
 	t.Run("reconcile static ip", func(t *testing.T) {
 		ip.Spec.Type = "static"
-		ip.Spec.Address = "1.1.1.1"
+		ip.Spec.Address = testIPv4Address
 
 		_ = r.reconcileIP(context.TODO(), ip)
 
 		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.TrueCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionTypeReady, "IP is ready"),
 		}))
-		g.Expect(ip.Status.Address).To(Equal("1.1.1.1"))
-		g.Expect(ip.Spec.Address).To(Equal("1.1.1.1"))
+		g.Expect(ip.Status.Address).To(Equal(testIPv4Address))
+		g.Expect(ip.Spec.Address).To(Equal(testIPv4Address))
 	})
 
 	t.Run("reconcile static ip error no address", func(t *testing.T) {
