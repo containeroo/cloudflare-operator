@@ -21,7 +21,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/cloudflare/cloudflare-go"
+	"github.com/cloudflare/cloudflare-go/v7/dns"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
 
@@ -53,16 +53,17 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 	}
 
 	zoneID := os.Getenv("CF_ZONE_ID")
-	var testRecord cloudflare.DNSRecord
+	var testRecord dns.RecordResponse
 
 	t.Run("create dns record for testing", func(t *testing.T) {
 		g := NewWithT(t)
 
 		var err error
-		testRecord, err = cloudflareAPI.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+		testRecord, err = createCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, cloudflareoperatoriov1.DNSRecordSpec{
 			Name:    "test.containeroo-test.org",
-			Content: "1.1.1.1",
+			Content: testIPv4Address,
 			Type:    "A",
+			Proxied: new(bool),
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 	})
@@ -80,7 +81,7 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		}))
 		g.Expect(zone.Status.ID).To(Equal(zoneID))
 
-		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), testRecord.ID)
+		_, err = getCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, testRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
 	})
 
@@ -89,46 +90,49 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 
 		zone.Spec.Prune = true
 		zone.Spec.IgnoredRecords = map[string][]string{
-			"TXT": {"_acme-challenge", "cf2024-1._domainkey"},
-			"A":   {"^mytest.*$"},
+			testRecordTypeTXT: {"_acme-challenge", "cf2024-1._domainkey"},
+			"A":               {"^mytest.*$"},
 		}
 
-		acmeRecord, err := cloudflareAPI.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+		acmeRecord, err := createCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, cloudflareoperatoriov1.DNSRecordSpec{
 			Name:    "_acme-challenge.abc.containeroo-test.org",
-			Type:    "TXT",
+			Type:    testRecordTypeTXT,
 			Content: "test",
+			Proxied: new(bool),
 		})
 		g.Expect(err).ToNot(HaveOccurred())
-		dkimRecord, err := cloudflareAPI.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+		dkimRecord, err := createCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, cloudflareoperatoriov1.DNSRecordSpec{
 			Name:    "cf2024-1._domainkey.containeroo-test.org",
-			Type:    "TXT",
+			Type:    testRecordTypeTXT,
 			Content: "test",
+			Proxied: new(bool),
 		})
 		g.Expect(err).ToNot(HaveOccurred())
-		aRecord, err := cloudflareAPI.CreateDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), cloudflare.CreateDNSRecordParams{
+		aRecord, err := createCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, cloudflareoperatoriov1.DNSRecordSpec{
 			Name:    "mytestabc.containeroo-test.org",
 			Type:    "A",
-			Content: "1.1.1.1",
+			Content: testIPv4Address,
+			Proxied: new(bool),
 		})
 		g.Expect(err).ToNot(HaveOccurred())
 
 		_, _ = r.reconcileZone(context.TODO(), zone)
 
-		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), testRecord.ID)
-		g.Expect(err.Error()).To(ContainSubstring("Record does not exist"))
+		_, err = getCloudflareDNSRecord(context.TODO(), cloudflareAPI, zone.Status.ID, testRecord.ID)
+		g.Expect(err).To(HaveOccurred())
 
-		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), acmeRecord.ID)
+		_, err = getCloudflareDNSRecord(context.TODO(), cloudflareAPI, zone.Status.ID, acmeRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
-		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), dkimRecord.ID)
+		_, err = getCloudflareDNSRecord(context.TODO(), cloudflareAPI, zone.Status.ID, dkimRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
-		_, err = cloudflareAPI.GetDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zone.Status.ID), aRecord.ID)
+		_, err = getCloudflareDNSRecord(context.TODO(), cloudflareAPI, zone.Status.ID, aRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
 
-		err = cloudflareAPI.DeleteDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), acmeRecord.ID)
+		err = deleteCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, acmeRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
-		err = cloudflareAPI.DeleteDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), dkimRecord.ID)
+		err = deleteCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, dkimRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
-		err = cloudflareAPI.DeleteDNSRecord(context.TODO(), cloudflare.ZoneIdentifier(zoneID), aRecord.ID)
+		err = deleteCloudflareDNSRecord(context.TODO(), cloudflareAPI, zoneID, aRecord.ID)
 		g.Expect(err).ToNot(HaveOccurred())
 	})
 

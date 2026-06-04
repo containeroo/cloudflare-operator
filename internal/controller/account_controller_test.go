@@ -32,7 +32,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/cloudflare/cloudflare-go"
+	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -46,28 +46,40 @@ func NewTestScheme() *runtime.Scheme {
 	return s
 }
 
-var cloudflareAPI cloudflare.API
+var (
+	cloudflareAPI      *cloudflare.Client
+	cloudflareAPIToken string
+)
+
+const (
+	testAccountName           = "account"
+	testContentAnnotation     = "cloudflare-operator.io/content"
+	testDefaultNamespace      = "default"
+	testDNSRecordHost         = "dnstest.containeroo-test.org"
+	testIPv4Address           = "1.1.1.1"
+	testAlternateIPv4Address  = "2.2.2.2"
+	testRecordTypeTXT         = "TXT"
+	testSecretName            = "secret"
+	testWildcardDNSRecordName = "wildcard-containeroo-test-org"
+	testWildcardHost          = "*.containeroo-test.org"
+)
 
 func initTestCloudflareAPI(t *testing.T) {
 	t.Helper()
 
-	if cloudflareAPI.APIToken == os.Getenv("CF_API_TOKEN") && cloudflareAPI.APIToken != "" {
+	if cloudflareAPI != nil && cloudflareAPIToken == os.Getenv("CF_API_TOKEN") {
 		return
 	}
 
-	api, err := cloudflare.NewWithAPIToken(os.Getenv("CF_API_TOKEN"))
-	if err != nil {
-		t.Fatalf("failed to initialize test Cloudflare API: %v", err)
-	}
-
-	cloudflareAPI = *api
+	cloudflareAPIToken = os.Getenv("CF_API_TOKEN")
+	cloudflareAPI = newCloudflareClient(cloudflareAPIToken)
 }
 
 func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      "secret",
-			Namespace: "default",
+			Name:      testSecretName,
+			Namespace: testDefaultNamespace,
 		},
 		Data: map[string][]byte{
 			"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
@@ -76,7 +88,7 @@ func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
 
 	account := &cloudflareoperatoriov1.Account{
 		ObjectMeta: metav1.ObjectMeta{
-			Name: "account",
+			Name: testAccountName,
 		},
 		Spec: cloudflareoperatoriov1.AccountSpec{
 			ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
@@ -118,13 +130,13 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 
 		account := &cloudflareoperatoriov1.Account{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "account",
+				Name: testAccountName,
 			},
 			Spec: cloudflareoperatoriov1.AccountSpec{
 				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
 					SecretRef: corev1.SecretReference{
-						Name:      "secret",
-						Namespace: "default",
+						Name:      testSecretName,
+						Namespace: testDefaultNamespace,
 					},
 				},
 			},
@@ -150,8 +162,8 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 
 		secret := &corev1.Secret{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "secret",
-				Namespace: "default",
+				Name:      testSecretName,
+				Namespace: testDefaultNamespace,
 			},
 			Data: map[string][]byte{
 				"invalid": []byte("invalid"),
@@ -160,13 +172,13 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 
 		account := &cloudflareoperatoriov1.Account{
 			ObjectMeta: metav1.ObjectMeta{
-				Name: "account",
+				Name: testAccountName,
 			},
 			Spec: cloudflareoperatoriov1.AccountSpec{
 				ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
 					SecretRef: corev1.SecretReference{
-						Name:      "secret",
-						Namespace: "default",
+						Name:      testSecretName,
+						Namespace: testDefaultNamespace,
 					},
 				},
 			},
@@ -229,6 +241,6 @@ func TestCloudflareAPIForAccountName(t *testing.T) {
 
 		api, err := cloudflareAPIForAccountName(context.TODO(), kubeClient, otherAccount.Name)
 		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(api.APIToken).To(Equal(string(otherSecret.Data["apiToken"])))
+		g.Expect(api).ToNot(BeNil())
 	})
 }

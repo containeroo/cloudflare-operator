@@ -21,7 +21,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/cloudflare/cloudflare-go"
+	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,11 +29,11 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-func cloudflareAPIFromZone(ctx context.Context, kubeClient client.Client, zone *cloudflareoperatoriov1.Zone) (*cloudflare.API, error) {
+func cloudflareAPIFromZone(ctx context.Context, kubeClient client.Client, zone *cloudflareoperatoriov1.Zone) (*cloudflare.Client, error) {
 	return cloudflareAPIForAccountName(ctx, kubeClient, zone.Spec.AccountRef.Name)
 }
 
-func cloudflareAPIFromDNSRecord(ctx context.Context, kubeClient client.Client, dnsRecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) (*cloudflare.API, error) {
+func cloudflareAPIFromDNSRecord(ctx context.Context, kubeClient client.Client, dnsRecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) (*cloudflare.Client, error) {
 	accountName := dnsRecord.Spec.AccountRef.Name
 	if zone != nil && zone.Spec.AccountRef.Name != "" {
 		if accountName != "" && accountName != zone.Spec.AccountRef.Name {
@@ -45,7 +45,7 @@ func cloudflareAPIFromDNSRecord(ctx context.Context, kubeClient client.Client, d
 	return cloudflareAPIForAccountName(ctx, kubeClient, accountName)
 }
 
-func cloudflareAPIForAccountName(ctx context.Context, kubeClient client.Client, accountName string) (*cloudflare.API, error) {
+func cloudflareAPIForAccountName(ctx context.Context, kubeClient client.Client, accountName string) (*cloudflare.Client, error) {
 	account, err := accountForName(ctx, kubeClient, accountName)
 	if err != nil {
 		return nil, err
@@ -56,12 +56,7 @@ func cloudflareAPIForAccountName(ctx context.Context, kubeClient client.Client, 
 		return nil, err
 	}
 
-	cloudflareAPI, err := cloudflare.NewWithAPIToken(token)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Cloudflare API client for account %q: %w", account.Name, err)
-	}
-
-	return cloudflareAPI, nil
+	return newCloudflareClient(token), nil
 }
 
 func accountForName(ctx context.Context, kubeClient client.Client, accountName string) (*cloudflareoperatoriov1.Account, error) {

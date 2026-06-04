@@ -40,7 +40,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"github.com/cloudflare/cloudflare-go"
+	cloudflare "github.com/cloudflare/cloudflare-go/v7"
+	"github.com/cloudflare/cloudflare-go/v7/dns"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	interrors "github.com/containeroo/cloudflare-operator/internal/errors"
@@ -194,17 +195,19 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForZone
 	}
 
-	var existingRecord cloudflare.DNSRecord
+	var existingRecord dns.RecordResponse
 	if dnsrecord.Status.RecordID != "" {
-		existingRecord, err = cloudflareAPI.GetDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), dnsrecord.Status.RecordID)
+		existingRecord, err = getCloudflareDNSRecord(ctx, cloudflareAPI, zone.Status.ID, dnsrecord.Status.RecordID)
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 		}
 	} else {
-		cloudflareExistingRecord, _, err := cloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{
-			Type: dnsrecord.Spec.Type,
-			Name: dnsrecord.Spec.Name,
+		cloudflareExistingRecord, err := listCloudflareDNSRecords(ctx, cloudflareAPI, zone.Status.ID, dns.RecordListParams{
+			Type: cloudflare.F(dns.RecordListParamsType(dnsrecord.Spec.Type)),
+			Name: cloudflare.F(dns.RecordListParamsName{
+				Exact: cloudflare.String(dnsrecord.Spec.Name),
+			}),
 		})
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
@@ -224,35 +227,14 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 	}
 
 	if existingRecord.ID == "" {
-		proxied := proxiedPtr(proxiedEnabled(desiredRecord.Proxied))
-		newDNSRecord, err := cloudflareAPI.CreateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.CreateDNSRecordParams{
-			Name:     desiredRecord.Name,
-			Type:     desiredRecord.Type,
-			Content:  desiredRecord.Content,
-			TTL:      desiredRecord.TTL,
-			Proxied:  proxied,
-			Priority: desiredRecord.Priority,
-			Data:     desiredRecord.Data,
-			Comment:  desiredRecord.Comment,
-		})
+		newDNSRecord, err := createCloudflareDNSRecord(ctx, cloudflareAPI, zone.Status.ID, desiredRecord)
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 		}
 		dnsrecord.Status.RecordID = newDNSRecord.ID
 	} else if !r.compareDNSRecord(desiredRecord, existingRecord) {
-		proxied := proxiedPtr(proxiedEnabled(desiredRecord.Proxied))
-		if _, err := cloudflareAPI.UpdateDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.UpdateDNSRecordParams{
-			ID:       dnsrecord.Status.RecordID,
-			Name:     desiredRecord.Name,
-			Type:     desiredRecord.Type,
-			Content:  desiredRecord.Content,
-			TTL:      desiredRecord.TTL,
-			Proxied:  proxied,
-			Priority: desiredRecord.Priority,
-			Data:     desiredRecord.Data,
-			Comment:  cloudflare.StringPtr(desiredRecord.Comment),
-		}); err != nil {
+		if err := editCloudflareDNSRecord(ctx, cloudflareAPI, zone.Status.ID, dnsrecord.Status.RecordID, desiredRecord); err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 		}
@@ -264,11 +246,11 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 }
 
 // compareDNSRecord compares the DNS record to the DNSRecord object
-func (r *DNSRecordReconciler) compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecord cloudflare.DNSRecord) bool {
+func (r *DNSRecordReconciler) compareDNSRecord(dnsRecordSpec cloudflareoperatoriov1.DNSRecordSpec, existingRecord dns.RecordResponse) bool {
 	if dnsRecordSpec.Name != existingRecord.Name {
 		return false
 	}
-	if dnsRecordSpec.Type != existingRecord.Type {
+	if dnsRecordSpec.Type != string(existingRecord.Type) {
 		return false
 	}
 	if dnsRecordSpec.Type != "SRV" && dnsRecordSpec.Type != "LOC" && dnsRecordSpec.Type != "CAA" {
@@ -276,10 +258,10 @@ func (r *DNSRecordReconciler) compareDNSRecord(dnsRecordSpec cloudflareoperatori
 			return false
 		}
 	}
-	if dnsRecordSpec.TTL != existingRecord.TTL {
+	if normalizedTTL(dnsRecordSpec.TTL) != float64(existingRecord.TTL) {
 		return false
 	}
-	if proxiedEnabled(dnsRecordSpec.Proxied) != proxiedEnabled(existingRecord.Proxied) {
+	if proxiedEnabled(dnsRecordSpec.Proxied) != existingRecord.Proxied {
 		return false
 	}
 	if !comparePriority(dnsRecordSpec.Priority, existingRecord.Priority) {
@@ -296,15 +278,12 @@ func (r *DNSRecordReconciler) compareDNSRecord(dnsRecordSpec cloudflareoperatori
 }
 
 // comparePriority compares the priority nil safe
-func comparePriority(a, b *uint16) bool {
-	if a == nil && b == nil {
-		return true
-	}
-	if a == nil || b == nil {
-		return false
+func comparePriority(a *uint16, b float64) bool {
+	if a == nil {
+		return b == 0
 	}
 
-	return *a == *b
+	return float64(*a) == b
 }
 
 // compareData compares the data nil safe
@@ -320,7 +299,16 @@ func compareData(a any, b *apiextensionsv1.JSON) bool {
 		return false
 	}
 
-	return reflect.DeepEqual(a, bb)
+	var aa any
+	aBytes, err := json.Marshal(a)
+	if err != nil {
+		return false
+	}
+	if err := json.Unmarshal(aBytes, &aa); err != nil {
+		return false
+	}
+
+	return reflect.DeepEqual(aa, bb)
 }
 
 func proxiedEnabled(proxied *bool) bool {
@@ -334,16 +322,16 @@ func proxiedPtr(proxied bool) *bool {
 	return &proxied
 }
 
-func findExistingRecordForAdoption(desiredRecord cloudflareoperatoriov1.DNSRecordSpec, existingRecords []cloudflare.DNSRecord) (cloudflare.DNSRecord, error) {
+func findExistingRecordForAdoption(desiredRecord cloudflareoperatoriov1.DNSRecordSpec, existingRecords []dns.RecordResponse) (dns.RecordResponse, error) {
 	switch len(existingRecords) {
 	case 0:
-		return cloudflare.DNSRecord{}, nil
+		return dns.RecordResponse{}, nil
 	case 1:
 		return existingRecords[0], nil
 	}
 
 	for _, record := range existingRecords {
-		if desiredRecord.Name != record.Name || desiredRecord.Type != record.Type {
+		if desiredRecord.Name != record.Name || desiredRecord.Type != string(record.Type) {
 			continue
 		}
 		if desiredRecord.Type != "SRV" && desiredRecord.Type != "LOC" && desiredRecord.Type != "CAA" && desiredRecord.Content != record.Content {
@@ -352,7 +340,7 @@ func findExistingRecordForAdoption(desiredRecord cloudflareoperatoriov1.DNSRecor
 		return record, nil
 	}
 
-	return cloudflare.DNSRecord{}, fmt.Errorf("multiple Cloudflare records matched %s %s; set status.recordID manually or remove duplicates", desiredRecord.Type, desiredRecord.Name)
+	return dns.RecordResponse{}, fmt.Errorf("multiple Cloudflare records matched %s %s; set status.recordID manually or remove duplicates", desiredRecord.Type, desiredRecord.Name)
 }
 
 func resolvedIPAddress(ip *cloudflareoperatoriov1.IP) string {
@@ -493,7 +481,7 @@ func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zoneID string
 		return err
 	}
 
-	if err := cloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zoneID), dnsrecord.Status.RecordID); err != nil && err.Error() != "Record does not exist. (81044)" && dnsrecord.Status.RecordID != "" {
+	if err := deleteCloudflareDNSRecord(ctx, cloudflareAPI, zoneID, dnsrecord.Status.RecordID); err != nil && !isCloudflareDNSRecordNotFound(err) {
 		return err
 	}
 	metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)

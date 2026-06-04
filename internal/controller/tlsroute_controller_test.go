@@ -34,9 +34,9 @@ func TestTLSRouteReconciler_reconcileTLSRoute(t *testing.T) {
 	tlsRoute := &gatewayv1.TLSRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "tlsroute",
-			Namespace: "default",
+			Namespace: testDefaultNamespace,
 			Annotations: map[string]string{
-				"cloudflare-operator.io/content": "1.1.1.1",
+				testContentAnnotation: testIPv4Address,
 			},
 		},
 		Spec: gatewayv1.TLSRouteSpec{
@@ -73,43 +73,43 @@ func TestTLSRouteReconciler_reconcileTLSRoute(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "tls-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: "tls-containeroo-test-org"}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("tls.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("1.1.1.1")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testIPv4Address)))
 	})
 
 	t.Run("change dnsrecord spec when annotations change", func(t *testing.T) {
 		g := NewWithT(t)
 		tlsRoute.Annotations = map[string]string{
-			"cloudflare-operator.io/content": "2.2.2.2",
+			testContentAnnotation: testAlternateIPv4Address,
 		}
 
 		_, err := r.reconcileTLSRoute(context.TODO(), tlsRoute)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "tls-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: "tls-containeroo-test-org"}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("tls.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testAlternateIPv4Address)))
 	})
 
 	t.Run("reconcile tlsroute wildcard", func(t *testing.T) {
 		g := NewWithT(t)
-		tlsRoute.Spec.Hostnames = []gatewayv1.Hostname{"*.containeroo-test.org"}
+		tlsRoute.Spec.Hostnames = []gatewayv1.Hostname{testWildcardHost}
 
 		_, err := r.reconcileTLSRoute(context.TODO(), tlsRoute)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "wildcard-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: testWildcardDNSRecordName}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("*.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal(testWildcardHost)))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testAlternateIPv4Address)))
 	})
 
 	t.Run("remove dnsrecord when annotations are absent", func(t *testing.T) {
@@ -120,7 +120,7 @@ func TestTLSRouteReconciler_reconcileTLSRoute(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "wildcard-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: testWildcardDNSRecordName}, dnsRecord)
 		g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
 	})
 }

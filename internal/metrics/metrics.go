@@ -21,34 +21,36 @@ import (
 	k8smetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 )
 
+const labelName = "name"
+
 var (
 	AccountFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "cloudflare_operator_account_status",
 			Help: "Cloudflare account status",
 		},
-		[]string{"name"},
+		[]string{labelName},
 	)
 	DnsRecordFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "cloudflare_operator_dns_record_status",
 			Help: "Cloudflare DNS records status",
 		},
-		[]string{"namespace", "name", "record_name"},
+		[]string{"namespace", labelName, "record_name"},
 	)
 	IpFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "cloudflare_operator_ip_status",
 			Help: "IPs status",
 		},
-		[]string{"name", "ip_type"},
+		[]string{labelName, "ip_type"},
 	)
 	ZoneFailureCounter = prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "cloudflare_operator_zone_status",
 			Help: "Cloudflare zones status",
 		},
-		[]string{"name", "zone_name"},
+		[]string{labelName, "zone_name"},
 	)
 )
 

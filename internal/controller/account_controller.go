@@ -21,7 +21,6 @@ import (
 	"errors"
 	"time"
 
-	"github.com/cloudflare/cloudflare-go"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -123,10 +122,7 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
-	if _, err := cloudflare.NewWithAPIToken(cloudflareAPIToken); err != nil {
-		intconditions.MarkFalse(account, err)
-		return ctrl.Result{}, err
-	}
+	_ = newCloudflareClient(cloudflareAPIToken)
 
 	intconditions.MarkTrue(account, "Account is ready")
 

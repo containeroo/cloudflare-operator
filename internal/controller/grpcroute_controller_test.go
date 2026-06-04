@@ -34,9 +34,9 @@ func TestGRPCRouteReconciler_reconcileGRPCRoute(t *testing.T) {
 	grpcRoute := &gatewayv1.GRPCRoute{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "grpcroute",
-			Namespace: "default",
+			Namespace: testDefaultNamespace,
 			Annotations: map[string]string{
-				"cloudflare-operator.io/content": "1.1.1.1",
+				testContentAnnotation: testIPv4Address,
 			},
 		},
 		Spec: gatewayv1.GRPCRouteSpec{
@@ -73,43 +73,43 @@ func TestGRPCRouteReconciler_reconcileGRPCRoute(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "grpc-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: "grpc-containeroo-test-org"}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("grpc.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("1.1.1.1")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testIPv4Address)))
 	})
 
 	t.Run("change dnsrecord spec when annotations change", func(t *testing.T) {
 		g := NewWithT(t)
 		grpcRoute.Annotations = map[string]string{
-			"cloudflare-operator.io/content": "2.2.2.2",
+			testContentAnnotation: testAlternateIPv4Address,
 		}
 
 		_, err := r.reconcileGRPCRoute(context.TODO(), grpcRoute)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "grpc-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: "grpc-containeroo-test-org"}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("grpc.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testAlternateIPv4Address)))
 	})
 
 	t.Run("reconcile grpcroute wildcard", func(t *testing.T) {
 		g := NewWithT(t)
-		grpcRoute.Spec.Hostnames = []gatewayv1.Hostname{"*.containeroo-test.org"}
+		grpcRoute.Spec.Hostnames = []gatewayv1.Hostname{testWildcardHost}
 
 		_, err := r.reconcileGRPCRoute(context.TODO(), grpcRoute)
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "wildcard-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: testWildcardDNSRecordName}, dnsRecord)
 		g.Expect(err).NotTo(HaveOccurred())
 
-		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal("*.containeroo-test.org")))
-		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal("2.2.2.2")))
+		g.Expect(dnsRecord.Spec).To(HaveField("Name", Equal(testWildcardHost)))
+		g.Expect(dnsRecord.Spec).To(HaveField("Content", Equal(testAlternateIPv4Address)))
 	})
 
 	t.Run("remove dnsrecord when annotations are absent", func(t *testing.T) {
@@ -120,7 +120,7 @@ func TestGRPCRouteReconciler_reconcileGRPCRoute(t *testing.T) {
 		g.Expect(err).NotTo(HaveOccurred())
 
 		dnsRecord := &cloudflareoperatoriov1.DNSRecord{}
-		err = r.Get(context.TODO(), client.ObjectKey{Namespace: "default", Name: "wildcard-containeroo-test-org"}, dnsRecord)
+		err = r.Get(context.TODO(), client.ObjectKey{Namespace: testDefaultNamespace, Name: testWildcardDNSRecordName}, dnsRecord)
 		g.Expect(apierrors.IsNotFound(err)).To(BeTrue())
 	})
 }
