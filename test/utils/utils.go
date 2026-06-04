@@ -24,7 +24,9 @@ import (
 	"os/exec"
 	"strings"
 
-	"github.com/cloudflare/cloudflare-go"
+	cloudflare "github.com/cloudflare/cloudflare-go/v7"
+	"github.com/cloudflare/cloudflare-go/v7/dns"
+	"github.com/cloudflare/cloudflare-go/v7/option"
 	. "github.com/onsi/ginkgo/v2" //nolint:revive,staticcheck
 )
 
@@ -183,20 +185,19 @@ func VerifyDNSRecordContent(objName, expectedContent string) error {
 		return fmt.Errorf("dnsrecord has unexpected content: %s", ip)
 	}
 
-	api, err := cloudflare.NewWithAPIToken(os.Getenv("CF_API_TOKEN"))
-	if err != nil {
-		return fmt.Errorf("failed to create Cloudflare API client: %w", err)
-	}
+	api := cloudflare.NewClient(option.WithAPIToken(os.Getenv("CF_API_TOKEN")))
 
 	zoneID, err := zoneIDForDNSRecordName(strings.TrimSpace(string(recordName)))
 	if err != nil {
 		return err
 	}
 
-	record, err := api.GetDNSRecord(
+	record, err := api.DNS.Records.Get(
 		context.Background(),
-		cloudflare.ZoneIdentifier(zoneID),
 		strings.TrimSpace(string(recordID)),
+		dns.RecordGetParams{
+			ZoneID: cloudflare.String(zoneID),
+		},
 	)
 	if err != nil {
 		return fmt.Errorf("failed to get Cloudflare DNS record %s: %w", string(recordID), err)

@@ -24,7 +24,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cloudflare/cloudflare-go"
+	cloudflare "github.com/cloudflare/cloudflare-go/v7"
+	"github.com/cloudflare/cloudflare-go/v7/dns"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
@@ -143,7 +144,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
-	zoneID, err := cloudflareAPI.ZoneIDByName(zone.Spec.Name)
+	zoneID, err := cloudflareZoneIDByName(ctx, cloudflareAPI, zone.Spec.Name)
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForZone
@@ -164,7 +165,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 }
 
 // handlePrune deletes DNS records that are not managed by the operator if enabled
-func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudflare.API, zone *cloudflareoperatoriov1.Zone) error {
+func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudflare.Client, zone *cloudflareoperatoriov1.Zone) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	zones := &cloudflareoperatoriov1.ZoneList{}
@@ -179,7 +180,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudfl
 		return client.IgnoreNotFound(err)
 	}
 
-	cloudflareDNSRecords, _, err := cloudflareAPI.ListDNSRecords(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflare.ListDNSRecordsParams{})
+	cloudflareDNSRecords, err := listCloudflareDNSRecords(ctx, cloudflareAPI, zone.Status.ID, dns.RecordListParams{})
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
 		return err
@@ -188,7 +189,8 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudfl
 	dnsRecordMap, dnsRecordSpecMap := managedDNSRecordKeysForZone(zone, dnsRecords.Items, zones.Items)
 
 	for _, cloudflareDNSRecord := range cloudflareDNSRecords {
-		if patterns, found := zone.Spec.IgnoredRecords[cloudflareDNSRecord.Type]; found &&
+		recordType := string(cloudflareDNSRecord.Type)
+		if patterns, found := zone.Spec.IgnoredRecords[recordType]; found &&
 			matchesIgnored(cloudflareDNSRecord.Name, patterns, ctx) {
 			continue
 		}
@@ -196,11 +198,11 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudfl
 		if _, found := dnsRecordMap[cloudflareDNSRecord.ID]; found {
 			continue
 		}
-		if _, found := dnsRecordSpecMap[dnsRecordKey(cloudflareDNSRecord.Type, cloudflareDNSRecord.Name)]; found {
+		if _, found := dnsRecordSpecMap[dnsRecordKey(recordType, cloudflareDNSRecord.Name)]; found {
 			continue
 		}
 
-		if err := cloudflareAPI.DeleteDNSRecord(ctx, cloudflare.ZoneIdentifier(zone.Status.ID), cloudflareDNSRecord.ID); err != nil && err.Error() != "Record does not exist. (81044)" {
+		if err := deleteCloudflareDNSRecord(ctx, cloudflareAPI, zone.Status.ID, cloudflareDNSRecord.ID); err != nil && !isCloudflareDNSRecordNotFound(err) {
 			return err
 		}
 		log.Info("Deleted DNS record on Cloudflare", "name", cloudflareDNSRecord.Name)

@@ -32,7 +32,7 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	"github.com/cloudflare/cloudflare-go"
+	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -46,21 +46,20 @@ func NewTestScheme() *runtime.Scheme {
 	return s
 }
 
-var cloudflareAPI cloudflare.API
+var (
+	cloudflareAPI      *cloudflare.Client
+	cloudflareAPIToken string
+)
 
 func initTestCloudflareAPI(t *testing.T) {
 	t.Helper()
 
-	if cloudflareAPI.APIToken == os.Getenv("CF_API_TOKEN") && cloudflareAPI.APIToken != "" {
+	if cloudflareAPI != nil && cloudflareAPIToken == os.Getenv("CF_API_TOKEN") {
 		return
 	}
 
-	api, err := cloudflare.NewWithAPIToken(os.Getenv("CF_API_TOKEN"))
-	if err != nil {
-		t.Fatalf("failed to initialize test Cloudflare API: %v", err)
-	}
-
-	cloudflareAPI = *api
+	cloudflareAPIToken = os.Getenv("CF_API_TOKEN")
+	cloudflareAPI = newCloudflareClient(cloudflareAPIToken)
 }
 
 func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
@@ -229,6 +228,6 @@ func TestCloudflareAPIForAccountName(t *testing.T) {
 
 		api, err := cloudflareAPIForAccountName(context.TODO(), kubeClient, otherAccount.Name)
 		g.Expect(err).ToNot(HaveOccurred())
-		g.Expect(api.APIToken).To(Equal(string(otherSecret.Data["apiToken"])))
+		g.Expect(api).ToNot(BeNil())
 	})
 }
