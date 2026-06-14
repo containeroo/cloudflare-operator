@@ -6,7 +6,7 @@ require (
 	github.com/cloudflare/cloudflare-go/v7 v7.5.0
 	github.com/fluxcd/pkg/runtime v0.110.0
 	github.com/itchyny/gojq v0.12.19
-	github.com/onsi/ginkgo/v2 v2.30.0
+	github.com/onsi/ginkgo/v2 v2.31.0
 	github.com/onsi/gomega v1.41.0
 	github.com/prometheus/client_golang v1.23.2
 	k8s.io/api v0.36.2
