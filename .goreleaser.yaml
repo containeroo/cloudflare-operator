@@ -15,65 +15,32 @@ builds:
     ldflags:
       - -s -w
       - -X main.Version={{ .Tag }}
-dockers:
-  - image_templates:
-      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-amd64
-      - containeroo/cloudflare-operator:{{ .Tag }}-amd64
-    use: buildx
+dockers_v2:
+  - images:
+      - ghcr.io/containeroo/cloudflare-operator
+      - containeroo/cloudflare-operator
+    tags:
+      - "{{ .Tag }}"
+      - latest
     dockerfile: Dockerfile.goreleaser
     ids:
       - manager
-    build_flag_templates:
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    flags:
       - --pull
-      - --platform=linux/amd64
-      - --cache-from=type=gha,scope=cloudflare-operator-amd64
-      - --cache-to=type=gha,mode=max,scope=cloudflare-operator-amd64
-      - --label=org.opencontainers.image.title={{ .ProjectName }}
-      - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/containeroo/cloudflare-operator
-      - --label=org.opencontainers.image.source=https://github.com/containeroo/cloudflare-operator
-      - --label=org.opencontainers.image.version={{ .Version }}
-      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
-      - --label=org.opencontainers.image.revision={{ .FullCommit }}
-      - --label=org.opencontainers.image.licenses="GNU General Public License v3.0"
-  - image_templates:
-      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-arm64
-      - containeroo/cloudflare-operator:{{ .Tag }}-arm64
-    use: buildx
-    dockerfile: Dockerfile.goreleaser
-    ids:
-      - manager
-    goarch: arm64
-    build_flag_templates:
-      - --pull
-      - --platform=linux/arm64
-      - --cache-from=type=gha,scope=cloudflare-operator-arm64
-      - --cache-to=type=gha,mode=max,scope=cloudflare-operator-arm64
-      - --label=org.opencontainers.image.title={{ .ProjectName }}
-      - --label=org.opencontainers.image.description={{ .ProjectName }}
-      - --label=org.opencontainers.image.url=https://github.com/containeroo/cloudflare-operator
-      - --label=org.opencontainers.image.source=https://github.com/containeroo/cloudflare-operator
-      - --label=org.opencontainers.image.version={{ .Version }}
-      - --label=org.opencontainers.image.created={{ time "2006-01-02T15:04:05Z07:00" }}
-      - --label=org.opencontainers.image.revision={{ .FullCommit }}
-      - --label=org.opencontainers.image.licenses="GNU General Public License v3.0"
-docker_manifests:
-  - name_template: containeroo/cloudflare-operator:{{ .Tag }}
-    image_templates:
-      - containeroo/cloudflare-operator:{{ .Tag }}-amd64
-      - containeroo/cloudflare-operator:{{ .Tag }}-arm64
-  - name_template: ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}
-    image_templates:
-      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-amd64
-      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-arm64
-  - name_template: containeroo/cloudflare-operator:latest
-    image_templates:
-      - containeroo/cloudflare-operator:{{ .Tag }}-amd64
-      - containeroo/cloudflare-operator:{{ .Tag }}-arm64
-  - name_template: ghcr.io/containeroo/cloudflare-operator:latest
-    image_templates:
-      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-amd64
-      - ghcr.io/containeroo/cloudflare-operator:{{ .Tag }}-arm64
+      - --cache-from=type=gha,scope=cloudflare-operator
+      - --cache-to=type=gha,mode=max,scope=cloudflare-operator
+    labels:
+      org.opencontainers.image.title: "{{ .ProjectName }}"
+      org.opencontainers.image.description: "{{ .ProjectName }}"
+      org.opencontainers.image.url: https://github.com/containeroo/cloudflare-operator
+      org.opencontainers.image.source: https://github.com/containeroo/cloudflare-operator
+      org.opencontainers.image.version: "{{ .Version }}"
+      org.opencontainers.image.created: '{{ time "2006-01-02T15:04:05Z07:00" }}'
+      org.opencontainers.image.revision: "{{ .FullCommit }}"
+      org.opencontainers.image.licenses: GNU General Public License v3.0
 release:
   extra_files:
     - glob: ./crds.yaml
