@@ -68,6 +68,7 @@ const (
 // +kubebuilder:printcolumn:name="Zone Name",type="string",JSONPath=".spec.name"
 // +kubebuilder:printcolumn:name="ID",type="string",JSONPath=".status.id"
 // +kubebuilder:printcolumn:name="Ready",type="string",JSONPath=`.status.conditions[?(@.type == "Ready")].status`
+// +kubebuilder:printcolumn:name="Pruned",type="string",JSONPath=`.status.conditions[?(@.type == "Pruned")].status`
 type Zone struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`

@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"os"
 	"testing"
 
@@ -161,6 +162,51 @@ func TestZoneReconciler_reconcileZone(t *testing.T) {
 		g.Expect(zone.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
 			*conditions.UnknownCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonNotReady, "Cloudflare account is not ready"),
 		}))
+	})
+}
+
+func TestSetZoneReadyConditions(t *testing.T) {
+	t.Run("prune disabled", func(t *testing.T) {
+		g := NewWithT(t)
+		zone := &cloudflareoperatoriov1.Zone{}
+		conditions.Set(zone, conditions.FalseCondition(
+			cloudflareoperatoriov1.ConditionTypePruned,
+			cloudflareoperatoriov1.ConditionReasonPruneFailed,
+			"old prune failure",
+		))
+
+		setZoneReadyConditions(zone, nil)
+
+		g.Expect(conditions.IsTrue(zone, cloudflareoperatoriov1.ConditionTypeReady)).To(BeTrue())
+		g.Expect(conditions.Get(zone, cloudflareoperatoriov1.ConditionTypePruned)).To(BeNil())
+	})
+
+	t.Run("prune succeeded", func(t *testing.T) {
+		g := NewWithT(t)
+		zone := &cloudflareoperatoriov1.Zone{
+			Spec: cloudflareoperatoriov1.ZoneSpec{Prune: true},
+		}
+
+		setZoneReadyConditions(zone, nil)
+
+		g.Expect(conditions.IsTrue(zone, cloudflareoperatoriov1.ConditionTypeReady)).To(BeTrue())
+		g.Expect(conditions.IsTrue(zone, cloudflareoperatoriov1.ConditionTypePruned)).To(BeTrue())
+		g.Expect(conditions.GetReason(zone, cloudflareoperatoriov1.ConditionTypePruned)).To(Equal(cloudflareoperatoriov1.ConditionReasonPruneSucceeded))
+		g.Expect(conditions.GetMessage(zone, cloudflareoperatoriov1.ConditionTypePruned)).To(Equal("DNS record pruning succeeded"))
+	})
+
+	t.Run("prune failed", func(t *testing.T) {
+		g := NewWithT(t)
+		zone := &cloudflareoperatoriov1.Zone{
+			Spec: cloudflareoperatoriov1.ZoneSpec{Prune: true},
+		}
+
+		setZoneReadyConditions(zone, errors.New("Cloudflare API unavailable"))
+
+		g.Expect(conditions.IsTrue(zone, cloudflareoperatoriov1.ConditionTypeReady)).To(BeTrue())
+		g.Expect(conditions.IsFalse(zone, cloudflareoperatoriov1.ConditionTypePruned)).To(BeTrue())
+		g.Expect(conditions.GetReason(zone, cloudflareoperatoriov1.ConditionTypePruned)).To(Equal(cloudflareoperatoriov1.ConditionReasonPruneFailed))
+		g.Expect(conditions.GetMessage(zone, cloudflareoperatoriov1.ConditionTypePruned)).To(Equal("failed to prune DNS records: Cloudflare API unavailable"))
 	})
 }
 

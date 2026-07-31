@@ -20,6 +20,9 @@ const (
 	// ConditionTypeReady represents the fact that the object is ready.
 	ConditionTypeReady string = "Ready"
 
+	// ConditionTypePruned represents the result of the latest DNS record pruning attempt.
+	ConditionTypePruned string = "Pruned"
+
 	// ConditionReasonReady represents the fact that the object is ready.
 	ConditionReasonReady string = "Ready"
 
@@ -28,4 +31,10 @@ const (
 
 	// ConditionReasonFailed represents the fact that the object has failed.
 	ConditionReasonFailed string = "Failed"
+
+	// ConditionReasonPruneSucceeded represents the fact that DNS record pruning succeeded.
+	ConditionReasonPruneSucceeded string = "PruneSucceeded"
+
+	// ConditionReasonPruneFailed represents the fact that DNS record pruning failed.
+	ConditionReasonPruneFailed string = "PruneFailed"
 )

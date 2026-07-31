@@ -26,8 +26,10 @@ import (
 
 	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/dns"
+	"github.com/fluxcd/pkg/runtime/conditions"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -152,16 +154,43 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 
 	zone.Status.ID = zoneID
 
+	var pruneErr error
 	if zone.Spec.Prune {
-		if err := r.handlePrune(ctx, cloudflareAPI, zone); err != nil {
-			intconditions.MarkFalse(zone, fmt.Errorf("failed to prune DNS records: %v", err))
-			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
-		}
+		pruneErr = r.handlePrune(ctx, cloudflareAPI, zone)
+	}
+	setZoneReadyConditions(zone, pruneErr)
+
+	if pruneErr != nil {
+		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
+	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}, nil
+}
+
+func setZoneReadyConditions(zone *cloudflareoperatoriov1.Zone, pruneErr error) {
 	intconditions.MarkTrue(zone, "Zone is ready")
 
-	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}, nil
+	if !zone.Spec.Prune {
+		conditions.Delete(zone, cloudflareoperatoriov1.ConditionTypePruned)
+		return
+	}
+
+	if pruneErr != nil {
+		conditions.Set(zone, &metav1.Condition{
+			Type:    cloudflareoperatoriov1.ConditionTypePruned,
+			Status:  metav1.ConditionFalse,
+			Reason:  cloudflareoperatoriov1.ConditionReasonPruneFailed,
+			Message: fmt.Sprintf("failed to prune DNS records: %v", pruneErr),
+		})
+		return
+	}
+
+	conditions.Set(zone, &metav1.Condition{
+		Type:    cloudflareoperatoriov1.ConditionTypePruned,
+		Status:  metav1.ConditionTrue,
+		Reason:  cloudflareoperatoriov1.ConditionReasonPruneSucceeded,
+		Message: "DNS record pruning succeeded",
+	})
 }
 
 // handlePrune deletes DNS records that are not managed by the operator if enabled
@@ -182,7 +211,6 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudfl
 
 	cloudflareDNSRecords, err := listCloudflareDNSRecords(ctx, cloudflareAPI, zone.Status.ID, dns.RecordListParams{})
 	if err != nil {
-		intconditions.MarkFalse(zone, err)
 		return err
 	}
 
