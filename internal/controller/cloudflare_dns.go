@@ -35,8 +35,11 @@ type cloudflareClient struct {
 	Zones *zones.ZoneService
 }
 
-func newCloudflareClient(token string) *cloudflareClient {
-	opts := []option.RequestOption{option.WithAPIToken(token)}
+func newCloudflareClient(token string, opts ...option.RequestOption) *cloudflareClient {
+	opts = append([]option.RequestOption{
+		option.WithEnvironmentProduction(),
+		option.WithAPIToken(token),
+	}, opts...)
 	return &cloudflareClient{
 		DNS:   dns.NewDNSService(opts...),
 		Zones: zones.NewZoneService(opts...),
