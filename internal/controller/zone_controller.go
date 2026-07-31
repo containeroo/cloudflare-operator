@@ -24,7 +24,6 @@ import (
 	"strings"
 	"time"
 
-	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/dns"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -165,7 +164,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 }
 
 // handlePrune deletes DNS records that are not managed by the operator if enabled
-func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudflare.Client, zone *cloudflareoperatoriov1.Zone) error {
+func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudflareClient, zone *cloudflareoperatoriov1.Zone) error {
 	log := ctrl.LoggerFrom(ctx)
 
 	zones := &cloudflareoperatoriov1.ZoneList{}

@@ -21,7 +21,6 @@ import (
 	"errors"
 	"fmt"
 
-	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -29,11 +28,11 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-func cloudflareAPIFromZone(ctx context.Context, kubeClient client.Client, zone *cloudflareoperatoriov1.Zone) (*cloudflare.Client, error) {
+func cloudflareAPIFromZone(ctx context.Context, kubeClient client.Client, zone *cloudflareoperatoriov1.Zone) (*cloudflareClient, error) {
 	return cloudflareAPIForAccountName(ctx, kubeClient, zone.Spec.AccountRef.Name)
 }
 
-func cloudflareAPIFromDNSRecord(ctx context.Context, kubeClient client.Client, dnsRecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) (*cloudflare.Client, error) {
+func cloudflareAPIFromDNSRecord(ctx context.Context, kubeClient client.Client, dnsRecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) (*cloudflareClient, error) {
 	accountName := dnsRecord.Spec.AccountRef.Name
 	if zone != nil && zone.Spec.AccountRef.Name != "" {
 		if accountName != "" && accountName != zone.Spec.AccountRef.Name {
@@ -45,7 +44,7 @@ func cloudflareAPIFromDNSRecord(ctx context.Context, kubeClient client.Client, d
 	return cloudflareAPIForAccountName(ctx, kubeClient, accountName)
 }
 
-func cloudflareAPIForAccountName(ctx context.Context, kubeClient client.Client, accountName string) (*cloudflare.Client, error) {
+func cloudflareAPIForAccountName(ctx context.Context, kubeClient client.Client, accountName string) (*cloudflareClient, error) {
 	account, err := accountForName(ctx, kubeClient, accountName)
 	if err != nil {
 		return nil, err

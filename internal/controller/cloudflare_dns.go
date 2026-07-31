@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"net/http"
 
-	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/dns"
 	"github.com/cloudflare/cloudflare-go/v7/option"
 	"github.com/cloudflare/cloudflare-go/v7/zones"
@@ -31,15 +30,26 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-func newCloudflareClient(token string) *cloudflare.Client {
-	return cloudflare.NewClient(option.WithAPIToken(token))
+type cloudflareClient struct {
+	DNS   *dns.DNSService
+	Zones *zones.ZoneService
 }
 
-func cloudflareZoneIDByName(ctx context.Context, cloudflareAPI *cloudflare.Client, zoneName string) (string, error) {
-	pager := cloudflareAPI.Zones.ListAutoPaging(ctx, zones.ZoneListParams{
-		Name:    cloudflare.String(zoneName),
-		PerPage: cloudflare.Float(50),
-	})
+func newCloudflareClient(token string) *cloudflareClient {
+	opts := []option.RequestOption{option.WithAPIToken(token)}
+	return &cloudflareClient{
+		DNS:   dns.NewDNSService(opts...),
+		Zones: zones.NewZoneService(opts...),
+	}
+}
+
+func cloudflareZoneIDByName(ctx context.Context, cloudflareAPI *cloudflareClient, zoneName string) (string, error) {
+	params := zones.ZoneListParams{}
+	params.Name.Value = zoneName
+	params.Name.Present = true
+	params.PerPage.Value = 50
+	params.PerPage.Present = true
+	pager := cloudflareAPI.Zones.ListAutoPaging(ctx, params)
 	for pager.Next() {
 		zone := pager.Current()
 		if zone.Name == zoneName {
@@ -53,20 +63,23 @@ func cloudflareZoneIDByName(ctx context.Context, cloudflareAPI *cloudflare.Clien
 	return "", errors.New("zone could not be found")
 }
 
-func getCloudflareDNSRecord(ctx context.Context, cloudflareAPI *cloudflare.Client, zoneID, recordID string) (dns.RecordResponse, error) {
-	record, err := cloudflareAPI.DNS.Records.Get(ctx, recordID, dns.RecordGetParams{
-		ZoneID: cloudflare.String(zoneID),
-	})
+func getCloudflareDNSRecord(ctx context.Context, cloudflareAPI *cloudflareClient, zoneID, recordID string) (dns.RecordResponse, error) {
+	params := dns.RecordGetParams{}
+	params.ZoneID.Value = zoneID
+	params.ZoneID.Present = true
+	record, err := cloudflareAPI.DNS.Records.Get(ctx, recordID, params)
 	if err != nil {
 		return dns.RecordResponse{}, err
 	}
 	return *record, nil
 }
 
-func listCloudflareDNSRecords(ctx context.Context, cloudflareAPI *cloudflare.Client, zoneID string, params dns.RecordListParams) ([]dns.RecordResponse, error) {
-	params.ZoneID = cloudflare.String(zoneID)
+func listCloudflareDNSRecords(ctx context.Context, cloudflareAPI *cloudflareClient, zoneID string, params dns.RecordListParams) ([]dns.RecordResponse, error) {
+	params.ZoneID.Value = zoneID
+	params.ZoneID.Present = true
 	if !params.PerPage.Present {
-		params.PerPage = cloudflare.Float(1000)
+		params.PerPage.Value = 1000
+		params.PerPage.Present = true
 	}
 
 	var records []dns.RecordResponse
@@ -80,42 +93,43 @@ func listCloudflareDNSRecords(ctx context.Context, cloudflareAPI *cloudflare.Cli
 	return records, nil
 }
 
-func createCloudflareDNSRecord(ctx context.Context, cloudflareAPI *cloudflare.Client, zoneID string, desiredRecord cloudflareoperatoriov1.DNSRecordSpec) (dns.RecordResponse, error) {
+func createCloudflareDNSRecord(ctx context.Context, cloudflareAPI *cloudflareClient, zoneID string, desiredRecord cloudflareoperatoriov1.DNSRecordSpec) (dns.RecordResponse, error) {
 	body, err := newCloudflareDNSRecordBody(desiredRecord)
 	if err != nil {
 		return dns.RecordResponse{}, err
 	}
 
-	record, err := cloudflareAPI.DNS.Records.New(ctx, dns.RecordNewParams{
-		ZoneID: cloudflare.String(zoneID),
-		Body:   body,
-	})
+	params := dns.RecordNewParams{Body: body}
+	params.ZoneID.Value = zoneID
+	params.ZoneID.Present = true
+	record, err := cloudflareAPI.DNS.Records.New(ctx, params)
 	if err != nil {
 		return dns.RecordResponse{}, err
 	}
 	return *record, nil
 }
 
-func editCloudflareDNSRecord(ctx context.Context, cloudflareAPI *cloudflare.Client, zoneID, recordID string, desiredRecord cloudflareoperatoriov1.DNSRecordSpec) error {
+func editCloudflareDNSRecord(ctx context.Context, cloudflareAPI *cloudflareClient, zoneID, recordID string, desiredRecord cloudflareoperatoriov1.DNSRecordSpec) error {
 	body, err := editCloudflareDNSRecordBody(desiredRecord)
 	if err != nil {
 		return err
 	}
 
-	_, err = cloudflareAPI.DNS.Records.Edit(ctx, recordID, dns.RecordEditParams{
-		ZoneID: cloudflare.String(zoneID),
-		Body:   body,
-	})
+	params := dns.RecordEditParams{Body: body}
+	params.ZoneID.Value = zoneID
+	params.ZoneID.Present = true
+	_, err = cloudflareAPI.DNS.Records.Edit(ctx, recordID, params)
 	return err
 }
 
-func deleteCloudflareDNSRecord(ctx context.Context, cloudflareAPI *cloudflare.Client, zoneID, recordID string) error {
+func deleteCloudflareDNSRecord(ctx context.Context, cloudflareAPI *cloudflareClient, zoneID, recordID string) error {
 	if recordID == "" {
 		return nil
 	}
-	_, err := cloudflareAPI.DNS.Records.Delete(ctx, recordID, dns.RecordDeleteParams{
-		ZoneID: cloudflare.String(zoneID),
-	})
+	params := dns.RecordDeleteParams{}
+	params.ZoneID.Value = zoneID
+	params.ZoneID.Present = true
+	_, err := cloudflareAPI.DNS.Records.Delete(ctx, recordID, params)
 	return err
 }
 
@@ -125,21 +139,20 @@ func newCloudflareDNSRecordBody(desiredRecord cloudflareoperatoriov1.DNSRecordSp
 		return dns.RecordNewParamsBody{}, err
 	}
 
-	body := dns.RecordNewParamsBody{
-		Name:    cloudflare.String(desiredRecord.Name),
-		TTL:     cloudflare.F(dns.TTL(normalizedTTL(desiredRecord.TTL))),
-		Type:    cloudflare.F(dns.RecordNewParamsBodyType(desiredRecord.Type)),
-		Proxied: cloudflare.Bool(proxiedEnabled(desiredRecord.Proxied)),
-		Comment: cloudflare.String(desiredRecord.Comment),
-	}
+	body := dns.RecordNewParamsBody{}
+	body.Name.Value, body.Name.Present = desiredRecord.Name, true
+	body.TTL.Value, body.TTL.Present = dns.TTL(normalizedTTL(desiredRecord.TTL)), true
+	body.Type.Value, body.Type.Present = dns.RecordNewParamsBodyType(desiredRecord.Type), true
+	body.Proxied.Value, body.Proxied.Present = proxiedEnabled(desiredRecord.Proxied), true
+	body.Comment.Value, body.Comment.Present = desiredRecord.Comment, true
 	if desiredRecord.Content != "" || data == nil {
-		body.Content = cloudflare.String(desiredRecord.Content)
+		body.Content.Value, body.Content.Present = desiredRecord.Content, true
 	}
 	if desiredRecord.Priority != nil {
-		body.Priority = cloudflare.Float(float64(*desiredRecord.Priority))
+		body.Priority.Value, body.Priority.Present = float64(*desiredRecord.Priority), true
 	}
 	if data != nil {
-		body.Data = cloudflare.F[interface{}](data)
+		body.Data.Value, body.Data.Present = data, true
 	}
 	return body, nil
 }
@@ -150,21 +163,20 @@ func editCloudflareDNSRecordBody(desiredRecord cloudflareoperatoriov1.DNSRecordS
 		return dns.RecordEditParamsBody{}, err
 	}
 
-	body := dns.RecordEditParamsBody{
-		Name:    cloudflare.String(desiredRecord.Name),
-		TTL:     cloudflare.F(dns.TTL(normalizedTTL(desiredRecord.TTL))),
-		Type:    cloudflare.F(dns.RecordEditParamsBodyType(desiredRecord.Type)),
-		Proxied: cloudflare.Bool(proxiedEnabled(desiredRecord.Proxied)),
-		Comment: cloudflare.String(desiredRecord.Comment),
-	}
+	body := dns.RecordEditParamsBody{}
+	body.Name.Value, body.Name.Present = desiredRecord.Name, true
+	body.TTL.Value, body.TTL.Present = dns.TTL(normalizedTTL(desiredRecord.TTL)), true
+	body.Type.Value, body.Type.Present = dns.RecordEditParamsBodyType(desiredRecord.Type), true
+	body.Proxied.Value, body.Proxied.Present = proxiedEnabled(desiredRecord.Proxied), true
+	body.Comment.Value, body.Comment.Present = desiredRecord.Comment, true
 	if desiredRecord.Content != "" || data == nil {
-		body.Content = cloudflare.String(desiredRecord.Content)
+		body.Content.Value, body.Content.Present = desiredRecord.Content, true
 	}
 	if desiredRecord.Priority != nil {
-		body.Priority = cloudflare.Float(float64(*desiredRecord.Priority))
+		body.Priority.Value, body.Priority.Present = float64(*desiredRecord.Priority), true
 	}
 	if data != nil {
-		body.Data = cloudflare.F[interface{}](data)
+		body.Data.Value, body.Data.Present = data, true
 	}
 	return body, nil
 }
