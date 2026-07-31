@@ -42,6 +42,10 @@ type DNSHostReconciler struct {
 
 // Reconcile drives DNSRecord reconciliation for the provided owner and host list.
 func (r *DNSHostReconciler) Reconcile(ctx context.Context, owner client.Object, annotations map[string]string, hosts map[string]struct{}) (ctrl.Result, error) {
+	if deletionTimestamp := owner.GetDeletionTimestamp(); deletionTimestamp != nil && !deletionTimestamp.IsZero() {
+		return ctrl.Result{}, nil
+	}
+
 	log := ctrl.LoggerFrom(ctx)
 
 	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
