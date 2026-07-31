@@ -57,9 +57,9 @@
       "customType": "regex",
       "managerFilePatterns": ["/^Makefile$/"],
       "matchStrings": [
-        "GEN_API_REF_DOCS_VERSION \\?= (?<currentValue>v[^\\s]+)"
+        "CRD_REF_DOCS_VERSION \\?= (?<currentValue>v[^\\s]+)"
       ],
-      "depNameTemplate": "ahmetb/gen-crd-api-reference-docs",
+      "depNameTemplate": "elastic/crd-ref-docs",
       "datasourceTemplate": "github-releases",
       "versioningTemplate": "semver"
     },

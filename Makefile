@@ -63,8 +63,8 @@ KUBECTL ?= kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
-GEN_CRD_API_REFERENCE_DOCS ?= $(LOCALBIN)/gen-crd-api-reference-docs
-GEN_API_REF_DOCS_VERSION ?= v0.3.0
+CRD_REF_DOCS ?= $(LOCALBIN)/crd-ref-docs
+CRD_REF_DOCS_VERSION ?= v0.3.0
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.7.1
@@ -255,9 +255,10 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 	test -s $(LOCALBIN)/controller-gen && $(LOCALBIN)/controller-gen --version | grep -q $(CONTROLLER_TOOLS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-tools/cmd/controller-gen@$(CONTROLLER_TOOLS_VERSION)
 
-.PHONY: gen-crd-api-reference-docs
-gen-crd-api-reference-docs: ## Download gen-crd-api-reference-docs locally if necessary
-	test -s $(GEN_CRD_API_REFERENCE_DOCS) || GOBIN=$(LOCALBIN) go install github.com/ahmetb/gen-crd-api-reference-docs@$(GEN_API_REF_DOCS_VERSION)
+.PHONY: crd-ref-docs
+crd-ref-docs: ## Download crd-ref-docs locally if necessary
+	test -s $(CRD_REF_DOCS) && $(CRD_REF_DOCS) --version | grep -q $(CRD_REF_DOCS_VERSION) || \
+	GOBIN=$(LOCALBIN) go install github.com/elastic/crd-ref-docs@$(CRD_REF_DOCS_VERSION)
 
 .PHONY: envtest
 envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
@@ -342,8 +343,9 @@ crd: generate ## Generate CRD to file
 	$(KUSTOMIZE) build config/crd > ./crds.yaml
 
 # Generate API reference documentation
-api-docs: gen-crd-api-reference-docs
-	$(GEN_CRD_API_REFERENCE_DOCS) -api-dir=./api/v1 -config=./hack/api-docs/config.json -template-dir=./hack/api-docs/template -out-file=./api-ref.html
+.PHONY: api-docs
+api-docs: crd-ref-docs
+	$(CRD_REF_DOCS) --source-path=./api/v1 --config=./hack/api-docs/config.yaml --renderer=markdown --templates-dir=./hack/api-docs/template/markdown --output-path=./api-ref.md
 
 .PHONY: clean-test-dns-records
 clean-test-dns-records: ## Clean up any DNS records created during e2e tests
