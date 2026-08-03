@@ -22,6 +22,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"os"
+	"time"
 
 	"github.com/cloudflare/cloudflare-go/v7/dns"
 	"github.com/cloudflare/cloudflare-go/v7/option"
@@ -35,14 +37,22 @@ type cloudflareClient struct {
 	Zones *zones.ZoneService
 }
 
+const cloudflareRequestTimeout = 10 * time.Minute
+
 func newCloudflareClient(token string, opts ...option.RequestOption) *cloudflareClient {
-	opts = append([]option.RequestOption{
+	clientOpts := []option.RequestOption{
 		option.WithEnvironmentProduction(),
-		option.WithAPIToken(token),
-	}, opts...)
+		option.WithRequestTimeout(cloudflareRequestTimeout),
+	}
+	if baseURL, ok := os.LookupEnv("CLOUDFLARE_BASE_URL"); ok {
+		clientOpts = append(clientOpts, option.WithBaseURL(baseURL))
+	}
+	clientOpts = append(clientOpts, option.WithAPIToken(token))
+	clientOpts = append(clientOpts, opts...)
+
 	return &cloudflareClient{
-		DNS:   dns.NewDNSService(opts...),
-		Zones: zones.NewZoneService(opts...),
+		DNS:   dns.NewDNSService(clientOpts...),
+		Zones: zones.NewZoneService(clientOpts...),
 	}
 }
 
