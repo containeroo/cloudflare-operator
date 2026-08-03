@@ -40,7 +40,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	"github.com/cloudflare/cloudflare-go/v7/dns"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
@@ -203,12 +202,13 @@ func (r *DNSRecordReconciler) reconcileDNSRecord(ctx context.Context, dnsrecord 
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 		}
 	} else {
-		cloudflareExistingRecord, err := listCloudflareDNSRecords(ctx, cloudflareAPI, zone.Status.ID, dns.RecordListParams{
-			Type: cloudflare.F(dns.RecordListParamsType(dnsrecord.Spec.Type)),
-			Name: cloudflare.F(dns.RecordListParamsName{
-				Exact: cloudflare.String(dnsrecord.Spec.Name),
-			}),
-		})
+		params := dns.RecordListParams{}
+		params.Type.Value = dns.RecordListParamsType(dnsrecord.Spec.Type)
+		params.Type.Present = true
+		params.Name.Value.Exact.Value = dnsrecord.Spec.Name
+		params.Name.Value.Exact.Present = true
+		params.Name.Present = true
+		cloudflareExistingRecord, err := listCloudflareDNSRecords(ctx, cloudflareAPI, zone.Status.ID, params)
 		if err != nil {
 			intconditions.MarkFalse(dnsrecord, err)
 			return ctrl.Result{RequeueAfter: r.RetryInterval}, nil

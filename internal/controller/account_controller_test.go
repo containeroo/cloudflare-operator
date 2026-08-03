@@ -32,7 +32,6 @@ import (
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
-	cloudflare "github.com/cloudflare/cloudflare-go/v7"
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	networkingv1 "k8s.io/api/networking/v1"
 )
@@ -47,7 +46,7 @@ func NewTestScheme() *runtime.Scheme {
 }
 
 var (
-	cloudflareAPI      *cloudflare.Client
+	cloudflareAPI      *cloudflareClient
 	cloudflareAPIToken string
 )
 
