@@ -20,6 +20,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/fluxcd/pkg/runtime/conditions"
@@ -34,32 +35,27 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var (
-	requestHeader     string
-	requestAuthHeader string
-)
+func TestIPReconciler_reconcileIP(t *testing.T) {
+	var requestHeader, requestAuthHeader string
 
-func StartIPSource() {
-	http.HandleFunc("/plain", func(w http.ResponseWriter, r *http.Request) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("/plain", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte(testIPv4Address))
 	})
-	http.HandleFunc("/invalid", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/invalid", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = w.Write([]byte("invalid"))
 	})
-	http.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/json", func(w http.ResponseWriter, r *http.Request) {
 		_, _ = fmt.Fprintf(w, `{"ip":"%s"}`, testIPv4Address)
 	})
-	http.HandleFunc("/header", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/header", func(w http.ResponseWriter, r *http.Request) {
 		requestHeader = r.Header.Get("X-Test")
 		requestAuthHeader = r.Header.Get("X-Auth-Test")
 		_, _ = w.Write([]byte(testIPv4Address))
 	})
 
-	_ = http.ListenAndServe(":8080", nil)
-}
-
-func TestIPReconciler_reconcileIP(t *testing.T) {
-	g := NewWithT(t)
+	server := httptest.NewServer(mux)
+	t.Cleanup(server.Close)
 
 	secret := &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
@@ -87,11 +83,10 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 			Build(),
 	}
 
-	go StartIPSource()
-
 	t.Run("reconcile dynamic ip plain text", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
-			URL: "http://localhost:8080/plain",
+			URL: server.URL + "/plain",
 		}}
 
 		_ = r.reconcileIP(context.TODO(), ip)
@@ -106,18 +101,20 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 	})
 
 	t.Run("reconcile dynamic ip plain text error invalid ip", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
-			URL: "http://localhost:8080/invalid",
+			URL: server.URL + "/invalid",
 		}}
 
 		_ = r.reconcileIP(context.TODO(), ip)
 
 		g.Expect(ip.Status.Conditions).To(conditions.MatchConditions([]metav1.Condition{
-			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "ip from source http://localhost:8080/invalid is invalid: invalid"),
+			*conditions.FalseCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonFailed, "ip from source %s/invalid is invalid: invalid", server.URL),
 		}))
 	})
 
 	t.Run("reconcile dynamic ip error invalid source URL", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL: "/plain",
 		}}
@@ -130,8 +127,9 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 	})
 
 	t.Run("reconcile dynamic ip jq filter", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
-			URL:              "http://localhost:8080/json",
+			URL:              server.URL + "/json",
 			ResponseJQFilter: ".ip",
 		}}
 
@@ -146,8 +144,9 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 	})
 
 	t.Run("reconcile dynamic ip regex", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
-			URL:                 "http://localhost:8080/json",
+			URL:                 server.URL + "/json",
 			PostProcessingRegex: "([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)",
 		}}
 
@@ -162,8 +161,9 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 	})
 
 	t.Run("reconcile dynamic ip with header", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
-			URL: "http://localhost:8080/header",
+			URL: server.URL + "/header",
 			RequestHeaders: &apiextensionsv1.JSON{
 				Raw: []byte(`{"X-Test":"test"}`),
 			},
@@ -181,8 +181,9 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 	})
 
 	t.Run("reconcile dynamic ip with header from secret", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
-			URL: "http://localhost:8080/header",
+			URL: server.URL + "/header",
 			RequestHeadersSecretRef: corev1.SecretReference{
 				Name:      testSecretName,
 				Namespace: testDefaultNamespace,
@@ -201,6 +202,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 	})
 
 	t.Run("reconcile static ip", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.Type = "static"
 		ip.Spec.Address = testIPv4Address
 
@@ -214,6 +216,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 	})
 
 	t.Run("reconcile static ip error no address", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.Address = ""
 
 		_ = r.reconcileIP(context.TODO(), ip)
@@ -224,6 +227,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 	})
 
 	t.Run("reconcile static ip error invalid address", func(t *testing.T) {
+		g := NewWithT(t)
 		ip.Spec.Address = "invalid"
 
 		_ = r.reconcileIP(context.TODO(), ip)
