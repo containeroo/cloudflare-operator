@@ -207,7 +207,7 @@
             "uid": "${DS_PROMETHEUS}"
           },
           "exemplar": true,
-          "expr": "cloudflare_operator_account_status + cloudflare_operator_dns_record_status + cloudflare_operator_ip_status + cloudflare_operator_zone_status",
+          "expr": "sum({__name__=~\"cloudflare_operator_(account|dns_record|ip|zone)_status\"} == bool 1) or vector(0)",
           "interval": "",
           "legendFormat": "",
           "refId": "A"
@@ -373,6 +373,11 @@
                   "color": "red",
                   "index": 1,
                   "text": "Failed"
+                },
+                "2": {
+                  "color": "orange",
+                  "index": 2,
+                  "text": "Unknown"
                 }
               },
               "type": "value"
@@ -509,6 +514,11 @@
                   "color": "red",
                   "index": 1,
                   "text": "Failed"
+                },
+                "2": {
+                  "color": "orange",
+                  "index": 2,
+                  "text": "Unknown"
                 }
               },
               "type": "value"
@@ -648,6 +658,11 @@
                   "color": "red",
                   "index": 1,
                   "text": "Failed"
+                },
+                "2": {
+                  "color": "orange",
+                  "index": 2,
+                  "text": "Unknown"
                 }
               },
               "type": "value"
@@ -787,7 +802,9 @@
   "refresh": "",
   "schemaVersion": 34,
   "style": "dark",
-  "tags": ["cloudflare-operator"],
+  "tags": [
+    "cloudflare-operator"
+  ],
   "templating": {
     "list": [
       {

@@ -20,6 +20,9 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/containeroo/cloudflare-operator/internal/metrics"
+	"github.com/prometheus/client_golang/prometheus/testutil"
+
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
@@ -62,4 +65,20 @@ func TestPredicate(t *testing.T) {
 			*conditions.UnknownCondition(cloudflareoperatoriov1.ConditionTypeReady, cloudflareoperatoriov1.ConditionReasonNotReady, "test"),
 		}))
 	})
+}
+
+func TestReadinessMetricsDistinguishUnknown(t *testing.T) {
+	account := &cloudflareoperatoriov1.Account{ObjectMeta: metav1.ObjectMeta{Name: "readiness-metric"}}
+	t.Cleanup(func() { metrics.AccountFailureCounter.DeleteLabelValues(account.Name) })
+	for _, tc := range []struct {
+		status metav1.ConditionStatus
+		want   float64
+	}{
+		{metav1.ConditionUnknown, 2}, {metav1.ConditionFalse, 1}, {metav1.ConditionTrue, 0},
+	} {
+		SetCondition(account, tc.status, "Test", "test")
+		if got := testutil.ToFloat64(metrics.AccountFailureCounter.WithLabelValues(account.Name)); got != tc.want {
+			t.Errorf("status %s: metric %v, want %v", tc.status, got, tc.want)
+		}
+	}
 }

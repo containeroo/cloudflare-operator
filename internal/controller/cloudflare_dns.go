@@ -37,6 +37,8 @@ type cloudflareClient struct {
 	Zones *zones.ZoneService
 }
 
+const dnsRecordTypeURI = "URI"
+
 const cloudflareRequestTimeout = 10 * time.Minute
 
 func newCloudflareClient(token string, opts ...option.RequestOption) *cloudflareClient {
@@ -161,8 +163,11 @@ func newCloudflareDNSRecordBody(desiredRecord cloudflareoperatoriov1.DNSRecordSp
 	if desiredRecord.Content != "" || data == nil {
 		body.Content.Value, body.Content.Present = desiredRecord.Content, true
 	}
-	if desiredRecord.Priority != nil {
-		body.Priority.Value, body.Priority.Present = float64(*desiredRecord.Priority), true
+	if desiredRecord.Type == "MX" || desiredRecord.Type == dnsRecordTypeURI {
+		body.Priority.Present = true
+		if desiredRecord.Priority != nil {
+			body.Priority.Value = float64(*desiredRecord.Priority)
+		}
 	}
 	if data != nil {
 		body.Data.Value, body.Data.Present = data, true
@@ -185,8 +190,11 @@ func editCloudflareDNSRecordBody(desiredRecord cloudflareoperatoriov1.DNSRecordS
 	if desiredRecord.Content != "" || data == nil {
 		body.Content.Value, body.Content.Present = desiredRecord.Content, true
 	}
-	if desiredRecord.Priority != nil {
-		body.Priority.Value, body.Priority.Present = float64(*desiredRecord.Priority), true
+	if desiredRecord.Type == "MX" || desiredRecord.Type == dnsRecordTypeURI {
+		body.Priority.Present = true
+		if desiredRecord.Priority != nil {
+			body.Priority.Value = float64(*desiredRecord.Priority)
+		}
 	}
 	if data != nil {
 		body.Data.Value, body.Data.Present = data, true

@@ -34,6 +34,9 @@ type ZoneSpec struct {
 	Prune bool `json:"prune"`
 	// Interval to check zone status
 	// +kubebuilder:default="5m"
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*$`
+	// +kubebuilder:validation:XValidation:rule="duration(self) > duration('0s')",message="interval must be a valid positive Go duration"
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
 	// IgnoredRecords are DNS records that should be ignored by the operator when prune is enabled

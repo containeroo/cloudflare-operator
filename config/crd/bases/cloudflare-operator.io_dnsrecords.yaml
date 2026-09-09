@@ -86,7 +86,11 @@ spec:
               interval:
                 default: 5m
                 description: Interval to check DNSRecord
+                pattern: ^([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*$
                 type: string
+                x-kubernetes-validations:
+                - message: interval must be a valid positive Go duration
+                  rule: duration(self) > duration('0s')
               ipRef:
                 description: Reference to an IP object
                 properties:
@@ -99,8 +103,9 @@ spec:
                 maxLength: 255
                 type: string
               priority:
-                description: Required for MX, SRV and URI records; unused by other
-                  record types. Records with lower priorities are preferred.
+                description: Priority for MX and URI records, defaulting to zero when
+                  omitted. Other record types ignore this field; use data.priority
+                  for SRV.
                 maximum: 65535
                 minimum: 0
                 type: integer
@@ -126,6 +131,9 @@ spec:
           status:
             description: DNSRecordStatus defines the observed state of DNSRecord
             properties:
+              accountName:
+                description: AccountName is the Account used to manage RecordID.
+                type: string
               conditions:
                 description: Conditions contains the different condition statuses
                   for the DNSRecord object.
@@ -186,6 +194,10 @@ spec:
                 type: array
               recordID:
                 description: Cloudflare DNS record ID
+                type: string
+              zoneID:
+                description: ZoneID is the remote zone containing RecordID, retained
+                  for cleanup after spec changes.
                 type: string
             type: object
         type: object

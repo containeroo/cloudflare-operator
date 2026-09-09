@@ -135,6 +135,18 @@ test: manifests generate fmt vet ## Run tests.
 	go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
+# Admission and informer tests use a local API server, without Cloudflare credentials.
+ENVTEST ?= $(LOCALBIN)/setup-envtest
+ENVTEST_K8S_VERSION ?= 1.35.0
+ENVTEST_VERSION ?= v0.0.0-20250911134410-157e6d282d89
+
+$(ENVTEST): | $(LOCALBIN)
+	GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@$(ENVTEST_VERSION)
+
+.PHONY: test-integration
+test-integration: manifests generate $(ENVTEST) ## Test CRD admission and controller events against a local API server.
+	CF_API_TOKEN= CF_ZONE_ID= KUBEBUILDER_ASSETS="$$($(ENVTEST) use $(ENVTEST_K8S_VERSION) -p path)" go test ./internal/controller -run '^TestAdmissionAndFinalization$$' -count=1 -timeout=90s
+
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
 test-e2e: $(KIND)
 	PATH="$(LOCALBIN):$$PATH" USE_EXISTING_CLUSTER=true go test ./test/e2e/ -v -ginkgo.v

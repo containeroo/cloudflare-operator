@@ -175,7 +175,7 @@ func TestManagedDNSRecordKeysForZone(t *testing.T) {
 
 	rootZone := cloudflareoperatoriov1.Zone{
 		ObjectMeta: metav1.ObjectMeta{Name: "root"},
-		Spec:       cloudflareoperatoriov1.ZoneSpec{Name: "example.com"},
+		Spec:       cloudflareoperatoriov1.ZoneSpec{Name: regressionZoneName},
 	}
 	subZone := cloudflareoperatoriov1.Zone{
 		ObjectMeta: metav1.ObjectMeta{Name: "sub"},
@@ -184,7 +184,7 @@ func TestManagedDNSRecordKeysForZone(t *testing.T) {
 
 	managedByRecordID := cloudflareoperatoriov1.DNSRecord{
 		Spec: cloudflareoperatoriov1.DNSRecordSpec{
-			Name: "www.example.com",
+			Name: regressionDNSName,
 			Type: "A",
 		},
 		Status: cloudflareoperatoriov1.DNSRecordStatus{
@@ -206,8 +206,8 @@ func TestManagedDNSRecordKeysForZone(t *testing.T) {
 	_, hasRecordID := recordIDs["record-id"]
 	g.Expect(hasRecordID).To(BeTrue())
 
-	_, protectsRootZoneRecord := specKeys[dnsRecordKey("A", "www.example.com")]
-	g.Expect(protectsRootZoneRecord).To(BeTrue())
+	_, protectsRootZoneRecord := specKeys[dnsRecordKey("A", regressionDNSName)]
+	g.Expect(protectsRootZoneRecord).To(BeFalse())
 
 	_, protectsSubZoneRecord := specKeys[dnsRecordKey("A", "api.apps.example.com")]
 	g.Expect(protectsSubZoneRecord).To(BeFalse())

@@ -31,7 +31,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -41,12 +40,14 @@ import (
 	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	interrors "github.com/containeroo/cloudflare-operator/internal/errors"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
+	intpredicates "github.com/containeroo/cloudflare-operator/internal/predicates"
 	"github.com/fluxcd/pkg/runtime/patch"
 )
 
 // ZoneReconciler reconciles a Zone object
 type ZoneReconciler struct {
 	client.Client
+	APIReader client.Reader
 
 	RetryInterval time.Duration
 }
@@ -55,8 +56,9 @@ var errWaitForZone = errors.New("must wait for zone")
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.APIReader = mgr.GetAPIReader()
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.Zone{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&cloudflareoperatoriov1.Zone{}, builder.WithPredicates(intpredicates.ResourceChanged{})).
 		Watches(&cloudflareoperatoriov1.Account{}, handler.EnqueueRequestsFromMapFunc(r.requestsForAccountChange)).
 		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.requestsForAccountSecretChange)).
 		Complete(r)
@@ -123,7 +125,7 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
 
-	zoneID, err := cloudflareZoneIDByName(ctx, cloudflareAPI, zone.Spec.Name)
+	zoneID, err := cloudflareZoneIDByName(ctx, cloudflareAPI, canonicalDNSName(zone.Spec.Name))
 	if err != nil {
 		intconditions.MarkFalse(zone, err)
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, errWaitForZone
@@ -140,28 +142,42 @@ func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoper
 
 	intconditions.MarkTrue(zone, "Zone is ready")
 
-	return ctrl.Result{RequeueAfter: zone.Spec.Interval.Duration}, nil
+	return ctrl.Result{RequeueAfter: positiveInterval(zone.Spec.Interval.Duration)}, nil
 }
 
 // handlePrune deletes DNS records that are not managed by the operator if enabled
 func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudflareClient, zone *cloudflareoperatoriov1.Zone) error {
 	log := ctrl.LoggerFrom(ctx)
-
-	zones := &cloudflareoperatoriov1.ZoneList{}
-	if err := r.List(ctx, zones); err != nil {
-		log.Error(err, "Failed to list Zones")
-		return client.IgnoreNotFound(err)
-	}
-
-	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
-	if err := r.List(ctx, dnsRecords); err != nil {
-		log.Error(err, "Failed to list DNSRecords")
-		return client.IgnoreNotFound(err)
+	ignored := make(map[string][]*regexp.Regexp)
+	for recordType, patterns := range zone.Spec.IgnoredRecords {
+		for _, pattern := range patterns {
+			if !strings.HasPrefix(pattern, "^") {
+				pattern = "^" + regexp.QuoteMeta(pattern)
+			}
+			re, err := regexp.Compile(pattern)
+			if err != nil {
+				return fmt.Errorf("invalid %s pruning exclusion: %w", recordType, err)
+			}
+			ignored[recordType] = append(ignored[recordType], re)
+		}
 	}
 
 	cloudflareDNSRecords, err := listCloudflareDNSRecords(ctx, cloudflareAPI, zone.Status.ID, dns.RecordListParams{})
 	if err != nil {
-		intconditions.MarkFalse(zone, err)
+		return err
+	}
+	// Read ownership after the remote snapshot, bypassing informer lag. A record
+	// created during recovery is either still pending or already bound to its new ID.
+	reader := r.APIReader
+	if reader == nil {
+		reader = r.Client
+	}
+	zones := &cloudflareoperatoriov1.ZoneList{}
+	if err := reader.List(ctx, zones); err != nil {
+		return err
+	}
+	dnsRecords := &cloudflareoperatoriov1.DNSRecordList{}
+	if err := reader.List(ctx, dnsRecords); err != nil {
 		return err
 	}
 
@@ -169,8 +185,7 @@ func (r *ZoneReconciler) handlePrune(ctx context.Context, cloudflareAPI *cloudfl
 
 	for _, cloudflareDNSRecord := range cloudflareDNSRecords {
 		recordType := string(cloudflareDNSRecord.Type)
-		if patterns, found := zone.Spec.IgnoredRecords[recordType]; found &&
-			matchesIgnored(cloudflareDNSRecord.Name, patterns, ctx) {
+		if matchesIgnored(canonicalDNSName(cloudflareDNSRecord.Name), ignored[recordType]) {
 			continue
 		}
 
@@ -194,13 +209,21 @@ func managedDNSRecordKeysForZone(zone *cloudflareoperatoriov1.Zone, dnsRecords [
 	dnsRecordSpecMap := make(map[string]struct{})
 
 	for _, dnsRecord := range dnsRecords {
+		if dnsRecord.Status.RecordID != "" && dnsRecord.Status.ZoneID != "" {
+			if dnsRecord.Status.ZoneID == zone.Status.ID {
+				dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
+			}
+			continue
+		}
 		if matchedZone := findZoneForDNSRecord(dnsRecord.Spec.Name, zones); matchedZone == nil || matchedZone.Name != zone.Name {
 			continue
 		}
 
 		if dnsRecord.Status.RecordID != "" {
 			dnsRecordMap[dnsRecord.Status.RecordID] = struct{}{}
+			continue
 		}
+		// Pending records reserve their name/type until their remote ID has been persisted.
 		dnsRecordSpecMap[dnsRecordKey(dnsRecord.Spec.Type, dnsRecord.Spec.Name)] = struct{}{}
 	}
 
@@ -208,7 +231,7 @@ func managedDNSRecordKeysForZone(zone *cloudflareoperatoriov1.Zone, dnsRecords [
 }
 
 func dnsRecordKey(recordType, name string) string {
-	return recordType + "/" + name
+	return recordType + "/" + canonicalDNSName(name)
 }
 
 func (r *ZoneReconciler) requestsForAccountChange(ctx context.Context, o client.Object) []reconcile.Request {
@@ -283,25 +306,10 @@ func (r *ZoneReconciler) reconcileDelete(zone *cloudflareoperatoriov1.Zone) {
 	controllerutil.RemoveFinalizer(zone, cloudflareoperatoriov1.CloudflareOperatorFinalizer)
 }
 
-// matchesIgnored checks if the name matches any of the ignored patterns
-func matchesIgnored(name string, patterns []string, ctx context.Context) bool {
-	log := ctrl.LoggerFrom(ctx)
-
-	for _, p := range patterns {
-		if strings.HasPrefix(p, "^") {
-			// regex
-			re, err := regexp.Compile(p)
-			if err != nil {
-				log.Error(err, "Failed to compile regex", "pattern", p)
-				continue
-			}
-			if re.MatchString(name) {
-				return true
-			}
-		} else {
-			if strings.HasPrefix(name, p) {
-				return true
-			}
+func matchesIgnored(name string, patterns []*regexp.Regexp) bool {
+	for _, pattern := range patterns {
+		if pattern.MatchString(name) {
+			return true
 		}
 	}
 	return false

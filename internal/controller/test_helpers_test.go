@@ -36,6 +36,9 @@ func newTestScheme() *runtime.Scheme {
 }
 
 const (
+	testRemoteZoneID           = "zone-id"
+	testBoundRecordID          = "bound-id"
+	testJSONNameField          = "name"
 	testAlternateDNSRecordHost = "other.example.com"
 	testIPTypeDynamic          = "dynamic"
 	testIPTypeStatic           = "static"
@@ -47,7 +50,6 @@ const (
 	testAlternateIPv4Address   = "2.2.2.2"
 	testRecordTypeTXT          = "TXT"
 	testSecretName             = "secret"
-	testWildcardDNSRecordName  = "wildcard-containeroo-test-org"
 	testWildcardHost           = "*.containeroo-test.org"
 )
 

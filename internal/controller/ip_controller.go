@@ -35,6 +35,7 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
+	intpredicates "github.com/containeroo/cloudflare-operator/internal/predicates"
 	"github.com/fluxcd/pkg/runtime/patch"
 	"github.com/itchyny/gojq"
 	corev1 "k8s.io/api/core/v1"
@@ -44,7 +45,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -61,7 +61,7 @@ type IPReconciler struct {
 // SetupWithManager sets up the controller with the Manager.
 func (r *IPReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.IP{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&cloudflareoperatoriov1.IP{}, builder.WithPredicates(intpredicates.ResourceChanged{})).
 		Complete(r)
 }
 
@@ -155,9 +155,12 @@ func (r *IPReconciler) handleStatic(ip *cloudflareoperatoriov1.IP) (string, erro
 
 // handleDynamic handles the dynamic ip
 func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperatoriov1.IP) (string, time.Duration, error) {
-	reconcileInterval := r.DefaultReconcileInterval
+	reconcileInterval := positiveInterval(r.DefaultReconcileInterval)
 	if ip.Spec.Interval != nil {
 		reconcileInterval = ip.Spec.Interval.Duration
+	}
+	if reconcileInterval <= 0 {
+		return "", 0, errors.New("interval must be positive")
 	}
 	if len(ip.Spec.IPSources) == 0 {
 		return "", 0, errors.New("IP sources are required for dynamic IPs")
@@ -169,6 +172,9 @@ func (r *IPReconciler) handleDynamic(ctx context.Context, ip *cloudflareoperator
 	})
 	var ipSourceError error
 	for _, source := range ipSources {
+		if err := ctx.Err(); err != nil {
+			return "", 0, err
+		}
 		response, err := r.getIPSource(ctx, source)
 		if err != nil {
 			ipSourceError = err
@@ -202,7 +208,7 @@ func (r *IPReconciler) getIPSource(ctx context.Context, source cloudflareoperato
 		Proxy:           http.ProxyFromEnvironment,
 	}
 	httpClient := &http.Client{Transport: &tr}
-	req, err := http.NewRequest(source.RequestMethod, source.URL, io.Reader(bytes.NewBuffer([]byte(source.RequestBody))))
+	req, err := http.NewRequestWithContext(ctx, source.RequestMethod, source.URL, bytes.NewBufferString(source.RequestBody))
 	if err != nil {
 		return "", fmt.Errorf("failed to create request: %s", err)
 	}

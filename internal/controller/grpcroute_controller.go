@@ -26,7 +26,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
 )
 
@@ -43,7 +42,7 @@ type GRPCRouteReconciler struct {
 func (r *GRPCRouteReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&gatewayv1.GRPCRoute{}, builder.WithPredicates(intpredicates.DNSFromGRPCRoutePredicate{})).
-		Owns(&cloudflareoperatoriov1.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&cloudflareoperatoriov1.DNSRecord{}, builder.MatchEveryOwner).
 		Complete(r)
 }
 

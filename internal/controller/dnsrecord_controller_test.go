@@ -118,12 +118,12 @@ func TestCompareDNSRecord(t *testing.T) {
 		want   bool
 	}{
 		{name: "equal with default proxied", want: true},
-		{name: "name", change: func(r *dns.RecordResponse) { r.Name = testAlternateDNSRecordHost }},
+		{name: "changed record name", change: func(r *dns.RecordResponse) { r.Name = testAlternateDNSRecordHost }},
 		{name: "type", change: func(r *dns.RecordResponse) { r.Type = "AAAA" }},
 		{name: "content", change: func(r *dns.RecordResponse) { r.Content = testAlternateIPv4Address }},
 		{name: "ttl", change: func(r *dns.RecordResponse) { r.TTL = 120 }},
 		{name: "proxied", change: func(r *dns.RecordResponse) { r.Proxied = false }},
-		{name: "priority", change: func(r *dns.RecordResponse) { r.Priority = 20 }},
+		{name: "irrelevant priority is ignored", change: func(r *dns.RecordResponse) { r.Priority = 20 }, want: true},
 		{name: "data", change: func(r *dns.RecordResponse) { r.Data = map[string]any{"key": "other"} }},
 		{name: "missing data", change: func(r *dns.RecordResponse) { r.Data = nil }},
 		{name: "changed comment", change: func(r *dns.RecordResponse) { r.Comment = "other" }},
@@ -157,14 +157,14 @@ func TestFindExistingRecordForAdoption(t *testing.T) {
 		wantError bool
 	}{
 		{name: "no candidates"},
-		{name: "single candidate can be updated", records: []dns.RecordResponse{wrongContent}, want: "wrong-content"},
+		{name: "different content creates a separate record", records: []dns.RecordResponse{wrongContent}},
 		{name: "match name type and resolved content", records: []dns.RecordResponse{wrongName, wrongType, wrongContent, match}, want: "matching-record"},
-		{name: "ambiguous candidates", records: []dns.RecordResponse{wrongName, wrongType, wrongContent}, wantError: true},
+		{name: "ambiguous candidates", records: []dns.RecordResponse{match, match}, wantError: true},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			g := NewWithT(t)
-			record, err := findExistingRecordForAdoption(desired, tt.records)
+			record, err := findExistingRecordForAdoption(desired, tt.records, nil)
 			if tt.wantError {
 				g.Expect(err).To(MatchError(ContainSubstring("multiple Cloudflare records matched")))
 			} else {
@@ -181,7 +181,7 @@ func TestFindZoneForDNSRecord(t *testing.T) {
 	zones := []cloudflareoperatoriov1.Zone{
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "root"},
-			Spec:       cloudflareoperatoriov1.ZoneSpec{Name: "example.com"},
+			Spec:       cloudflareoperatoriov1.ZoneSpec{Name: regressionZoneName},
 		},
 		{
 			ObjectMeta: metav1.ObjectMeta{Name: "sub"},
@@ -195,7 +195,7 @@ func TestFindZoneForDNSRecord(t *testing.T) {
 
 	zone = findZoneForDNSRecord("foo.example.com", zones)
 	g.Expect(zone).ToNot(BeNil())
-	g.Expect(zone.Spec.Name).To(Equal("example.com"))
+	g.Expect(zone.Spec.Name).To(Equal(regressionZoneName))
 
 	zone = findZoneForDNSRecord("no.match.test", zones)
 	g.Expect(zone).To(BeNil())
@@ -204,7 +204,7 @@ func TestFindZoneForDNSRecord(t *testing.T) {
 func TestDNSRecordReconciler_reconcileDelete(t *testing.T) {
 	g := NewWithT(t)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
-		if req.Method != http.MethodDelete || req.URL.Path != "/zones/zone-id/dns_records/record-id" {
+		if (req.Method != http.MethodDelete && req.Method != http.MethodGet) || req.URL.Path != "/zones/zone-id/dns_records/record-id" {
 			t.Errorf("unexpected request: %s %s", req.Method, req.URL.Path)
 		}
 		if req.Header.Get("Authorization") != "Bearer zone-token" {
@@ -219,7 +219,7 @@ func TestDNSRecordReconciler_reconcileDelete(t *testing.T) {
 	otherAccount := &cloudflareoperatoriov1.Account{ObjectMeta: metav1.ObjectMeta{Name: "unrelated-account"}}
 	zone := &cloudflareoperatoriov1.Zone{
 		Spec:   cloudflareoperatoriov1.ZoneSpec{AccountRef: cloudflareoperatoriov1.AccountRef{Name: account.Name}},
-		Status: cloudflareoperatoriov1.ZoneStatus{ID: "zone-id"},
+		Status: cloudflareoperatoriov1.ZoneStatus{ID: testRemoteZoneID},
 	}
 	record := &cloudflareoperatoriov1.DNSRecord{
 		ObjectMeta: metav1.ObjectMeta{Finalizers: []string{cloudflareoperatoriov1.CloudflareOperatorFinalizer}},

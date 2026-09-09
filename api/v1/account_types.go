@@ -38,6 +38,9 @@ type AccountSpec struct {
 	ApiToken AccountSpecApiToken `json:"apiToken"`
 	// Interval to check account status
 	// +kubebuilder:default="5m"
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*$`
+	// +kubebuilder:validation:XValidation:rule="duration(self) > duration('0s')",message="interval must be a valid positive Go duration"
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
 	// List of zone names that should be managed by cloudflare-operator

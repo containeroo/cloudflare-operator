@@ -22,7 +22,6 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	. "github.com/onsi/gomega"
 	networkingv1 "k8s.io/api/networking/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
@@ -74,7 +73,7 @@ func TestHostControllers(t *testing.T) {
 			g.Expect(record.Spec.Name).To(Equal(testDNSRecordHost))
 			g.Expect(record.Spec.Content).To(Equal(testIPv4Address))
 			g.Expect(record.Spec.Interval.Duration).To(Equal(r.DefaultReconcileInterval))
-			ownerRef := metav1.GetControllerOf(&record)
+			ownerRef := &record.OwnerReferences[0]
 			g.Expect(ownerRef).NotTo(BeNil())
 			g.Expect(ownerRef.Kind).To(Equal(tt.name))
 			g.Expect(ownerRef.UID).To(Equal(tt.owner.GetUID()))

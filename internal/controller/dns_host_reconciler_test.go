@@ -32,12 +32,7 @@ func newDNSHostTestReconciler(objects ...client.Object) *DNSHostReconciler {
 	scheme := newTestScheme()
 	return &DNSHostReconciler{
 		Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(objects...).
-			WithIndex(&cloudflareoperatoriov1.DNSRecord{}, cloudflareoperatoriov1.OwnerRefUIDIndexKey, func(obj client.Object) []string {
-				if owner := metav1.GetControllerOf(obj); owner != nil {
-					return []string{string(owner.UID)}
-				}
-				return nil
-			}).Build(),
+			WithIndex(&cloudflareoperatoriov1.DNSRecord{}, cloudflareoperatoriov1.OwnerRefUIDIndexKey, ownerUIDs).Build(),
 		Scheme:                   scheme,
 		RetryInterval:            time.Second,
 		DefaultReconcileInterval: time.Minute,
@@ -83,7 +78,7 @@ func TestDNSHostReconciler(t *testing.T) {
 				_, err = r.Reconcile(ctx, owner, map[string]string{testContentAnnotation: testIPv4Address}, map[string]struct{}{testDNSRecordHost: {}})
 				g.Expect(err).NotTo(HaveOccurred())
 				before := &cloudflareoperatoriov1.DNSRecord{}
-				g.Expect(r.Get(ctx, client.ObjectKey{Namespace: testDefaultNamespace, Name: "dnstest-containeroo-test-org"}, before)).To(Succeed())
+				g.Expect(r.Get(ctx, client.ObjectKey{Namespace: testDefaultNamespace, Name: dnsRecordResourceName(testDNSRecordHost)}, before)).To(Succeed())
 			}
 			if tt.deleting {
 				now := metav1.Now()
@@ -97,16 +92,16 @@ func TestDNSHostReconciler(t *testing.T) {
 			actual := make(map[string]string)
 			for _, record := range records.Items {
 				actual[record.Spec.Name] = record.Spec.Content
-				g.Expect(metav1.GetControllerOf(&record).UID).To(Equal(owner.UID))
+				g.Expect(record.OwnerReferences[0].UID).To(Equal(owner.UID))
 				g.Expect(record.Labels).To(HaveKeyWithValue("app.kubernetes.io/managed-by", "cloudflare-operator"))
 				g.Expect(record.Spec.Interval.Duration).To(Equal(time.Minute))
 				if record.Spec.Name == testWildcardHost {
-					g.Expect(record.Name).To(Equal(testWildcardDNSRecordName))
+					g.Expect(record.Name).To(Equal(dnsRecordResourceName(testWildcardHost)))
 				}
 			}
 			g.Expect(actual).To(Equal(tt.want))
 			other := &cloudflareoperatoriov1.DNSRecord{}
-			g.Expect(r.Get(ctx, client.ObjectKey{Namespace: testDefaultNamespace, Name: "other-example-com"}, other)).To(Succeed())
+			g.Expect(r.Get(ctx, client.ObjectKey{Namespace: testDefaultNamespace, Name: dnsRecordResourceName(testAlternateDNSRecordHost)}, other)).To(Succeed())
 		})
 	}
 }

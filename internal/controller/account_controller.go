@@ -24,7 +24,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	"github.com/fluxcd/pkg/runtime/patch"
 	corev1 "k8s.io/api/core/v1"
@@ -36,6 +35,7 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	intconditions "github.com/containeroo/cloudflare-operator/internal/conditions"
 	"github.com/containeroo/cloudflare-operator/internal/metrics"
+	intpredicates "github.com/containeroo/cloudflare-operator/internal/predicates"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 )
@@ -52,7 +52,7 @@ var errWaitForAccount = errors.New("must wait for account")
 // SetupWithManager sets up the controller with the Manager.
 func (r *AccountReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&cloudflareoperatoriov1.Account{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		For(&cloudflareoperatoriov1.Account{}, builder.WithPredicates(intpredicates.ResourceChanged{})).
 		Watches(&corev1.Secret{}, handler.EnqueueRequestsFromMapFunc(r.requestsForSecretChange)).
 		Complete(r)
 }
@@ -122,7 +122,7 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 
 	intconditions.MarkTrue(account, "Account is ready")
 
-	return ctrl.Result{RequeueAfter: account.Spec.Interval.Duration}, nil
+	return ctrl.Result{RequeueAfter: positiveInterval(account.Spec.Interval.Duration)}, nil
 }
 
 // reconcileDelete reconciles the deletion of the account

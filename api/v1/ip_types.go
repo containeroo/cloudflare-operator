@@ -61,6 +61,9 @@ type IPSpec struct {
 	// +optional
 	Type string `json:"type,omitempty"`
 	// Interval at which a dynamic IP should be checked
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*$`
+	// +kubebuilder:validation:XValidation:rule="duration(self) > duration('0s')",message="interval must be a valid positive Go duration"
 	// +optional
 	Interval *metav1.Duration `json:"interval,omitempty"`
 	// IPSources can be configured to get an IP from an external source (e.g. an API or public IP echo service)

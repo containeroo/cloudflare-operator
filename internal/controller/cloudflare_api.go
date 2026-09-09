@@ -28,16 +28,20 @@ import (
 	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 )
 
-func cloudflareAPIFromDNSRecord(ctx context.Context, kubeClient client.Client, dnsRecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) (*cloudflareClient, error) {
+func accountNameForDNSRecord(ctx context.Context, kubeClient client.Client, dnsRecord *cloudflareoperatoriov1.DNSRecord, zone *cloudflareoperatoriov1.Zone) (string, error) {
 	accountName := dnsRecord.Spec.AccountRef.Name
 	if zone != nil && zone.Spec.AccountRef.Name != "" {
 		if accountName != "" && accountName != zone.Spec.AccountRef.Name {
-			return nil, fmt.Errorf("DNSRecord %q references Account %q but Zone %q references Account %q", dnsRecord.Name, accountName, zone.Name, zone.Spec.AccountRef.Name)
+			return "", fmt.Errorf("DNSRecord %q references Account %q but Zone %q references Account %q", dnsRecord.Name, accountName, zone.Name, zone.Spec.AccountRef.Name)
 		}
 		accountName = zone.Spec.AccountRef.Name
 	}
 
-	return cloudflareAPIForAccountName(ctx, kubeClient, accountName)
+	account, err := accountForName(ctx, kubeClient, accountName)
+	if err != nil {
+		return "", err
+	}
+	return account.Name, nil
 }
 
 func cloudflareAPIForAccountName(ctx context.Context, kubeClient client.Client, accountName string) (*cloudflareClient, error) {

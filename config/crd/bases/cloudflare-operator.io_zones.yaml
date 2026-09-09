@@ -76,7 +76,11 @@ spec:
               interval:
                 default: 5m
                 description: Interval to check zone status
+                pattern: ^([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*$
                 type: string
+                x-kubernetes-validations:
+                - message: interval must be a valid positive Go duration
+                  rule: duration(self) > duration('0s')
               name:
                 description: Name of the zone
                 type: string

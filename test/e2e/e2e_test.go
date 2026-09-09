@@ -235,7 +235,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
-			WithArguments("dnsrecord", "ingress-containeroo-test-org").Should(Succeed())
+			WithArguments("dnsrecord", "ingress-containeroo-test-org-3449ea82b5ef05d2").Should(Succeed())
 	})
 
 	It("should update dnsrecord when ingress annotations change", func() {
@@ -246,16 +246,17 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
-			WithArguments("ingress-containeroo-test-org", "145.145.145.145").Should(Succeed())
+			WithArguments("ingress-containeroo-test-org-3449ea82b5ef05d2", "145.145.145.145").Should(Succeed())
 	})
 
 	It("should recreate dnsrecord when it gets deleted", func() {
-		cmd := exec.Command("kubectl", "-n", namespace, "delete", "dnsrecord", "ingress-containeroo-test-org")
+		cmd := exec.Command("kubectl", "-n", namespace, "delete", "dnsrecord",
+			"ingress-containeroo-test-org-3449ea82b5ef05d2")
 		_, err := utils.Run(cmd)
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
-			WithArguments("dnsrecord", "ingress-containeroo-test-org").Should(Succeed())
+			WithArguments("dnsrecord", "ingress-containeroo-test-org-3449ea82b5ef05d2").Should(Succeed())
 	})
 
 	It("should delete dnsrecord when ingress annotations are absent", func() {
@@ -266,7 +267,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
-			WithArguments("ingress-containeroo-test-org").Should(Succeed())
+			WithArguments("ingress-containeroo-test-org-3449ea82b5ef05d2").Should(Succeed())
 	})
 
 	It("should create dnsrecord from an httproute", func() {
@@ -275,7 +276,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
-			WithArguments("dnsrecord", "sample-containeroo-test-org").Should(Succeed())
+			WithArguments("dnsrecord", "sample-containeroo-test-org-318e73bfadc7384e").Should(Succeed())
 	})
 
 	It("should update dnsrecord when httproute annotations change", func() {
@@ -286,7 +287,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
-			WithArguments("sample-containeroo-test-org", "155.155.155.155").Should(Succeed())
+			WithArguments("sample-containeroo-test-org-318e73bfadc7384e", "155.155.155.155").Should(Succeed())
 	})
 
 	It("should delete dnsrecord when httproute annotations are absent", func() {
@@ -297,7 +298,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
-			WithArguments("sample-containeroo-test-org").Should(Succeed())
+			WithArguments("sample-containeroo-test-org-318e73bfadc7384e").Should(Succeed())
 	})
 
 	It("should create dnsrecord from a tlsroute", func() {
@@ -306,7 +307,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
-			WithArguments("dnsrecord", "tls-containeroo-test-org").Should(Succeed())
+			WithArguments("dnsrecord", "tls-containeroo-test-org-3f63503d27daba08").Should(Succeed())
 	})
 
 	It("should update dnsrecord when tlsroute annotations change", func() {
@@ -317,7 +318,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
-			WithArguments("tls-containeroo-test-org", "166.166.166.166").Should(Succeed())
+			WithArguments("tls-containeroo-test-org-3f63503d27daba08", "166.166.166.166").Should(Succeed())
 	})
 
 	It("should delete dnsrecord when tlsroute annotations are absent", func() {
@@ -328,7 +329,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
-			WithArguments("tls-containeroo-test-org").Should(Succeed())
+			WithArguments("tls-containeroo-test-org-3f63503d27daba08").Should(Succeed())
 	})
 
 	It("should create dnsrecord from a grpcroute", func() {
@@ -337,7 +338,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyObjectReady, time.Minute, time.Second).
-			WithArguments("dnsrecord", "grpc-containeroo-test-org").Should(Succeed())
+			WithArguments("dnsrecord", "grpc-containeroo-test-org-8284ab5a8a398795").Should(Succeed())
 	})
 
 	It("should update dnsrecord when grpcroute annotations change", func() {
@@ -348,7 +349,7 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyDNSRecordContent, time.Minute, time.Second).
-			WithArguments("grpc-containeroo-test-org", "177.177.177.177").Should(Succeed())
+			WithArguments("grpc-containeroo-test-org-8284ab5a8a398795", "177.177.177.177").Should(Succeed())
 	})
 
 	It("should delete dnsrecord when grpcroute annotations are absent", func() {
@@ -359,6 +360,6 @@ var _ = Describe("controller", Ordered, func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		Eventually(utils.VerifyDNSRecordAbsent, time.Minute, time.Second).
-			WithArguments("grpc-containeroo-test-org").Should(Succeed())
+			WithArguments("grpc-containeroo-test-org-8284ab5a8a398795").Should(Succeed())
 	})
 })

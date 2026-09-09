@@ -60,7 +60,7 @@ type DNSRecordSpec struct {
 	// Data holds arbitrary key-value pairs used to further configure the DNS record
 	// +optional
 	Data *apiextensionsv1.JSON `json:"data,omitempty"`
-	// Required for MX, SRV and URI records; unused by other record types. Records with lower priorities are preferred.
+	// Priority for MX and URI records, defaulting to zero when omitted. Other record types ignore this field; use data.priority for SRV.
 	// +kubebuilder:validation:Minimum=0
 	// +kubebuilder:validation:Maximum=65535
 	// +optional
@@ -71,6 +71,9 @@ type DNSRecordSpec struct {
 	Comment string `json:"comment,omitempty"`
 	// Interval to check DNSRecord
 	// +kubebuilder:default="5m"
+	// +kubebuilder:validation:Type=string
+	// +kubebuilder:validation:Pattern=`^([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h)(([0-9]+(\.[0-9]*)?|\.[0-9]+)(ns|us|µs|μs|ms|s|m|h))*$`
+	// +kubebuilder:validation:XValidation:rule="duration(self) > duration('0s')",message="interval must be a valid positive Go duration"
 	// +optional
 	Interval metav1.Duration `json:"interval,omitempty"`
 }
@@ -83,6 +86,12 @@ type DNSRecordStatus struct {
 	// Cloudflare DNS record ID
 	// +optional
 	RecordID string `json:"recordID,omitempty"`
+	// ZoneID is the remote zone containing RecordID, retained for cleanup after spec changes.
+	// +optional
+	ZoneID string `json:"zoneID,omitempty"`
+	// AccountName is the Account used to manage RecordID.
+	// +optional
+	AccountName string `json:"accountName,omitempty"`
 }
 
 const (

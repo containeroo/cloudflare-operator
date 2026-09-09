@@ -45,3 +45,12 @@ func TestParseDNSAnnotations(t *testing.T) {
 	g.Expect(parsedSpec).To(HaveField("Type", Equal("A")))
 	g.Expect(parsedSpec.Interval.Duration).To(Equal(10 * time.Second))
 }
+
+func TestNonPositiveDNSAnnotationIntervalsUseDefault(t *testing.T) {
+	for _, interval := range []string{"0s", "-1s", "not-a-duration"} {
+		spec := parseDNSAnnotations(map[string]string{"cloudflare-operator.io/interval": interval}, time.Minute)
+		if spec.Interval.Duration != time.Minute {
+			t.Errorf("interval %q disabled polling: %v", interval, spec.Interval)
+		}
+	}
+}

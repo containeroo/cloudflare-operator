@@ -93,6 +93,10 @@ func main() {
 	}
 	opts.BindFlags(flag.CommandLine)
 	flag.Parse()
+	if retryInterval <= 0 || defaultReconcileInterval <= 0 || ipReconcilerHTTPClientTimeout <= 0 {
+		setupLog.Error(errors.New("intervals and IP HTTP timeout must be positive"), "Invalid configuration")
+		os.Exit(1)
+	}
 
 	ctrl.SetLogger(zap.New(zap.UseFlagOptions(&opts)))
 

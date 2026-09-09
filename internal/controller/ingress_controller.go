@@ -27,7 +27,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // IngressReconciler reconciles an Ingress object
@@ -43,7 +42,7 @@ type IngressReconciler struct {
 func (r *IngressReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&networkingv1.Ingress{}, builder.WithPredicates(intpredicates.DNSFromIngressPredicate{})).
-		Owns(&cloudflareoperatoriov1.DNSRecord{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		Owns(&cloudflareoperatoriov1.DNSRecord{}, builder.MatchEveryOwner).
 		Complete(r)
 }
 

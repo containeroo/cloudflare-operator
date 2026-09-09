@@ -53,8 +53,8 @@ func parseDNSAnnotations(annotations map[string]string, defaultReconcileInterval
 	}
 
 	intervalDuration, err := time.ParseDuration(annotations["cloudflare-operator.io/interval"])
-	if err != nil {
-		intervalDuration = defaultReconcileInterval
+	if err != nil || intervalDuration <= 0 {
+		intervalDuration = positiveInterval(defaultReconcileInterval)
 	}
 	dnsRecordSpec.Interval = metav1.Duration{Duration: intervalDuration}
 

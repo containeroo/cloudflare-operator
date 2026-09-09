@@ -27,6 +27,48 @@ Features:
 - Add, update and delete Cloudflare DNS records
 - Update Cloudflare DNS records if your external IP address changes
 
+## Record ownership and reconciliation
+
+A Cloudflare record belongs to one DNSRecord resource. Adoption requires an exact
+name, type, content or structured data, and priority match. Records already claimed
+by another DNSRecord are excluded. Different addresses for the same name and type
+create separate remote records. Ambiguous identical records must be resolved before
+adoption; the operator reports the conflict instead of choosing one.
+
+Ingress and Gateway API resources in the same namespace can share a generated
+DNSRecord when their DNS annotations produce identical specifications. Removing one
+owner preserves the record for the others. Shared changes take effect once all
+remaining owners agree. Generated names include a hostname hash to avoid collisions;
+existing generated resources keep their names.
+
+DNSRecord status retains the remote zone ID and Account name. Moving a record to a
+new zone or Account removes the previous binding before creating the replacement.
+Deleting the Zone resource does not prevent cleanup of records with this stored
+identity. Keep the original Account and its token Secret available until cleanup is
+complete.
+
+On upgrade, existing records acquire this identity during reconciliation. Allow a
+successful sync before changing their zone or account configuration. For an older
+record whose original Zone was already removed or changed, restore that Zone or
+populate the verified `status.zoneID` and `status.accountName` before deletion. The
+operator cannot reconstruct historical identity from a record ID alone.
+
+Intervals must be positive Go durations such as `30s`, `5m`, or `1h30m`. Invalid
+annotation intervals fall back to the configured default. An invalid pruning
+exclusion stops the entire pruning pass without deleting records. Once a record is
+bound, pruning protects its exact remote ID rather than every record with the same
+name and type.
+
+The status metrics use `0` for Ready, `1` for Failed, and `2` for Unknown. The supplied
+dashboard displays all three states and counts only Failed resources as errors.
+
+## Development checks
+
+Run `make test` for local tests and `make test-integration` for CRD admission and
+informer/finalizer checks against a temporary Kubernetes API server. The integration
+target downloads pinned local test binaries and needs no cluster or Cloudflare
+credentials. Live Cloudflare and Kind end-to-end checks remain separate.
+
 ## Disclaimer
 
 This is not an official Cloudflare project. Use at your own risk.

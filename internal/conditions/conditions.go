@@ -38,6 +38,9 @@ func SetCondition(to conditions.Setter, status metav1.ConditionStatus, reason, m
 // updateMetrics handles updating the failure counters for each type
 func updateMetrics(to conditions.Setter, status metav1.ConditionStatus) {
 	value := 0.0
+	if status == metav1.ConditionUnknown {
+		value = 2.0
+	}
 	if status == metav1.ConditionFalse {
 		value = 1.0
 	}
