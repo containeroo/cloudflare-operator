@@ -58,21 +58,11 @@ func (r *HTTPRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	return r.reconcileHTTPRoute(ctx, httpRoute)
-}
-
-// reconcileHTTPRoute reconciles the HTTPRoute
-func (r *HTTPRouteReconciler) reconcileHTTPRoute(ctx context.Context, httpRoute *gatewayv1.HTTPRoute) (ctrl.Result, error) {
 	hostReconciler := DNSHostReconciler{
 		Client:                   r.Client,
 		Scheme:                   r.Scheme,
 		RetryInterval:            r.RetryInterval,
 		DefaultReconcileInterval: r.DefaultReconcileInterval,
 	}
-	return hostReconciler.Reconcile(ctx, httpRoute, httpRoute.GetAnnotations(), r.getRouteHosts(httpRoute))
-}
-
-// getRouteHosts returns a map of hosts from the HTTPRoute hostnames
-func (r *HTTPRouteReconciler) getRouteHosts(httpRoute *gatewayv1.HTTPRoute) map[string]struct{} {
-	return gatewayHostnamesToHosts(httpRoute.Spec.Hostnames)
+	return hostReconciler.Reconcile(ctx, httpRoute, httpRoute.GetAnnotations(), gatewayHostnamesToHosts(httpRoute.Spec.Hostnames))
 }

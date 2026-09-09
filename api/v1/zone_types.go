@@ -55,11 +55,6 @@ type ZoneStatus struct {
 	Conditions []metav1.Condition `json:"conditions"`
 }
 
-const (
-	ZoneNameIndexKey       string = ".spec.name"
-	ZoneAccountRefIndexKey string = ".spec.accountRef.name"
-)
-
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 // +kubebuilder:resource:scope=Cluster

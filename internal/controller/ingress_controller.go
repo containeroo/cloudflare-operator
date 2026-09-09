@@ -58,11 +58,6 @@ func (r *IngressReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ct
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	return r.reconcileIngress(ctx, ingress)
-}
-
-// reconcileIngress reconciles the ingress
-func (r *IngressReconciler) reconcileIngress(ctx context.Context, ingress *networkingv1.Ingress) (ctrl.Result, error) {
 	hostReconciler := DNSHostReconciler{
 		Client:                   r.Client,
 		Scheme:                   r.Scheme,

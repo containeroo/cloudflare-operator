@@ -18,100 +18,28 @@ package controller
 
 import (
 	"context"
-	"os"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
+	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
 	"github.com/fluxcd/pkg/runtime/conditions"
 	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
-
-	"k8s.io/apimachinery/pkg/runtime"
-	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	gatewayv1 "sigs.k8s.io/gateway-api/apis/v1"
-
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
-	cloudflareoperatoriov1 "github.com/containeroo/cloudflare-operator/api/v1"
-	networkingv1 "k8s.io/api/networking/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
-
-func NewTestScheme() *runtime.Scheme {
-	s := runtime.NewScheme()
-	utilruntime.Must(corev1.AddToScheme(s))
-	utilruntime.Must(cloudflareoperatoriov1.AddToScheme(s))
-	utilruntime.Must(networkingv1.AddToScheme(s))
-	utilruntime.Must(gatewayv1.Install(s))
-	return s
-}
-
-var (
-	cloudflareAPI      *cloudflareClient
-	cloudflareAPIToken string
-)
-
-const (
-	testAccountName           = "account"
-	testContentAnnotation     = "cloudflare-operator.io/content"
-	testDefaultNamespace      = "default"
-	testDNSRecordHost         = "dnstest.containeroo-test.org"
-	testIPv4Address           = "1.1.1.1"
-	testAlternateIPv4Address  = "2.2.2.2"
-	testRecordTypeTXT         = "TXT"
-	testSecretName            = "secret"
-	testWildcardDNSRecordName = "wildcard-containeroo-test-org"
-	testWildcardHost          = "*.containeroo-test.org"
-)
-
-func initTestCloudflareAPI(t *testing.T) {
-	t.Helper()
-
-	if cloudflareAPI != nil && cloudflareAPIToken == os.Getenv("CF_API_TOKEN") {
-		return
-	}
-
-	cloudflareAPIToken = os.Getenv("CF_API_TOKEN")
-	cloudflareAPI = newCloudflareClient(cloudflareAPIToken)
-}
-
-func NewTestAccountObjects() (*corev1.Secret, *cloudflareoperatoriov1.Account) {
-	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      testSecretName,
-			Namespace: testDefaultNamespace,
-		},
-		Data: map[string][]byte{
-			"apiToken": []byte(os.Getenv("CF_API_TOKEN")),
-		},
-	}
-
-	account := &cloudflareoperatoriov1.Account{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: testAccountName,
-		},
-		Spec: cloudflareoperatoriov1.AccountSpec{
-			ApiToken: cloudflareoperatoriov1.AccountSpecApiToken{
-				SecretRef: corev1.SecretReference{
-					Name:      secret.Name,
-					Namespace: secret.Namespace,
-				},
-			},
-		},
-	}
-
-	return secret, account
-}
 
 func TestAccountReconciler_reconcileAccount(t *testing.T) {
 	t.Run("reconcile account", func(t *testing.T) {
 		g := NewWithT(t)
-		initTestCloudflareAPI(t)
 
-		secret, account := NewTestAccountObjects()
+		secret, account := newTestAccountObjects("first-token")
 
 		r := &AccountReconciler{
 			Client: fake.NewClientBuilder().
-				WithScheme(NewTestScheme()).
+				WithScheme(newTestScheme()).
 				WithObjects(secret, account).
 				Build(),
 		}
@@ -124,7 +52,7 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 		}))
 	})
 
-	t.Run("econcile account error secret not found", func(t *testing.T) {
+	t.Run("reconcile account error secret not found", func(t *testing.T) {
 		g := NewWithT(t)
 
 		account := &cloudflareoperatoriov1.Account{
@@ -143,7 +71,7 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 
 		r := &AccountReconciler{
 			Client: fake.NewClientBuilder().
-				WithScheme(NewTestScheme()).
+				WithScheme(newTestScheme()).
 				WithObjects(account).
 				Build(),
 		}
@@ -185,7 +113,7 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 
 		r := &AccountReconciler{
 			Client: fake.NewClientBuilder().
-				WithScheme(NewTestScheme()).
+				WithScheme(newTestScheme()).
 				WithObjects(secret, account).
 				Build(),
 		}
@@ -200,20 +128,30 @@ func TestAccountReconciler_reconcileAccount(t *testing.T) {
 }
 
 func TestCloudflareAPIForAccountName(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, req *http.Request) {
+		if req.Header.Get("Authorization") != "Bearer second-token" {
+			t.Errorf("unexpected authorization: %q", req.Header.Get("Authorization"))
+		}
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.Copy(w, cloudflareZoneResponse(req).Body)
+	}))
+	t.Cleanup(server.Close)
+	t.Setenv("CLOUDFLARE_BASE_URL", server.URL)
+
 	t.Run("requires a single account resource", func(t *testing.T) {
 		g := NewWithT(t)
-		initTestCloudflareAPI(t)
 
-		secret, account := NewTestAccountObjects()
+		secret, account := newTestAccountObjects("first-token")
 		otherSecret := secret.DeepCopy()
 		otherSecret.Name = "other-secret"
+		otherSecret.Data["apiToken"] = []byte("second-token")
 
 		otherAccount := account.DeepCopy()
 		otherAccount.Name = "other-account"
 		otherAccount.Spec.ApiToken.SecretRef.Name = otherSecret.Name
 
 		kubeClient := fake.NewClientBuilder().
-			WithScheme(NewTestScheme()).
+			WithScheme(newTestScheme()).
 			WithObjects(secret, account, otherSecret, otherAccount).
 			Build()
 
@@ -223,23 +161,26 @@ func TestCloudflareAPIForAccountName(t *testing.T) {
 
 	t.Run("uses explicit account reference when provided", func(t *testing.T) {
 		g := NewWithT(t)
-		initTestCloudflareAPI(t)
 
-		secret, account := NewTestAccountObjects()
+		secret, account := newTestAccountObjects("first-token")
 		otherSecret := secret.DeepCopy()
 		otherSecret.Name = "other-secret"
+		otherSecret.Data["apiToken"] = []byte("second-token")
 
 		otherAccount := account.DeepCopy()
 		otherAccount.Name = "other-account"
 		otherAccount.Spec.ApiToken.SecretRef.Name = otherSecret.Name
 
 		kubeClient := fake.NewClientBuilder().
-			WithScheme(NewTestScheme()).
+			WithScheme(newTestScheme()).
 			WithObjects(secret, account, otherSecret, otherAccount).
 			Build()
 
 		api, err := cloudflareAPIForAccountName(context.TODO(), kubeClient, otherAccount.Name)
 		g.Expect(err).ToNot(HaveOccurred())
 		g.Expect(api).ToNot(BeNil())
+		zoneID, err := cloudflareZoneIDByName(t.Context(), api, "example.com")
+		g.Expect(err).NotTo(HaveOccurred())
+		g.Expect(zoneID).To(Equal("zone-id"))
 	})
 }

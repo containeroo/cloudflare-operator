@@ -30,7 +30,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -44,7 +43,6 @@ import (
 // AccountReconciler reconciles an Account object
 type AccountReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
 
 	RetryInterval time.Duration
 }
@@ -121,8 +119,6 @@ func (r *AccountReconciler) reconcileAccount(ctx context.Context, account *cloud
 		intconditions.MarkFalse(account, errors.New("secret has no key named \"apiToken\""))
 		return ctrl.Result{RequeueAfter: r.RetryInterval}, nil
 	}
-
-	_ = newCloudflareClient(cloudflareAPIToken)
 
 	intconditions.MarkTrue(account, "Account is ready")
 

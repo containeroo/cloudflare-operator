@@ -34,7 +34,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
@@ -48,7 +47,6 @@ import (
 // ZoneReconciler reconciles a Zone object
 type ZoneReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
 
 	RetryInterval time.Duration
 }
@@ -56,25 +54,7 @@ type ZoneReconciler struct {
 var errWaitForZone = errors.New("must wait for zone")
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *ZoneReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Manager) error {
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.Zone{}, cloudflareoperatoriov1.ZoneNameIndexKey,
-		func(rawObj client.Object) []string {
-			zone := rawObj.(*cloudflareoperatoriov1.Zone)
-			return []string{zone.Spec.Name}
-		}); err != nil {
-		return err
-	}
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.Zone{}, cloudflareoperatoriov1.ZoneAccountRefIndexKey,
-		func(rawObj client.Object) []string {
-			zone := rawObj.(*cloudflareoperatoriov1.Zone)
-			if zone.Spec.AccountRef.Name == "" {
-				return nil
-			}
-			return []string{zone.Spec.AccountRef.Name}
-		}); err != nil {
-		return err
-	}
-
+func (r *ZoneReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&cloudflareoperatoriov1.Zone{}, builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Watches(&cloudflareoperatoriov1.Account{}, handler.EnqueueRequestsFromMapFunc(r.requestsForAccountChange)).
@@ -133,7 +113,7 @@ func (r *ZoneReconciler) Reconcile(ctx context.Context, req ctrl.Request) (resul
 
 // reconcileZone reconciles the zone
 func (r *ZoneReconciler) reconcileZone(ctx context.Context, zone *cloudflareoperatoriov1.Zone) (ctrl.Result, error) {
-	cloudflareAPI, err := cloudflareAPIFromZone(ctx, r.Client, zone)
+	cloudflareAPI, err := cloudflareAPIForAccountName(ctx, r.Client, zone.Spec.AccountRef.Name)
 	if err != nil {
 		if errors.Is(err, errWaitForAccount) {
 			intconditions.MarkUnknown(zone, "Cloudflare account is not ready")

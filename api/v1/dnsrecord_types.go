@@ -86,9 +86,8 @@ type DNSRecordStatus struct {
 }
 
 const (
-	IPRefIndexKey               string = ".spec.ipRef.name"
-	OwnerRefUIDIndexKey         string = ".metadata.ownerReferences.uid"
-	DNSRecordAccountRefIndexKey string = ".spec.accountRef.name"
+	IPRefIndexKey       string = ".spec.ipRef.name"
+	OwnerRefUIDIndexKey string = ".metadata.ownerReferences.uid"
 )
 
 // +kubebuilder:object:root=true

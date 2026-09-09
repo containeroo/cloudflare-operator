@@ -67,24 +67,16 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 		},
 	}
 
-	ip := &cloudflareoperatoriov1.IP{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: "ip",
-		},
-		Spec: cloudflareoperatoriov1.IPSpec{
-			Type: "dynamic",
-		},
-	}
-
 	r := &IPReconciler{
 		Client: fake.NewClientBuilder().
-			WithScheme(NewTestScheme()).
+			WithScheme(newTestScheme()).
 			WithObjects(secret).
 			Build(),
 	}
 
 	t.Run("reconcile dynamic ip plain text", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL: server.URL + "/plain",
 		}}
@@ -102,6 +94,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile dynamic ip plain text error invalid ip", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL: server.URL + "/invalid",
 		}}
@@ -115,6 +108,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile dynamic ip error invalid source URL", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL: "/plain",
 		}}
@@ -128,6 +122,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile dynamic ip jq filter", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL:              server.URL + "/json",
 			ResponseJQFilter: ".ip",
@@ -145,6 +140,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile dynamic ip regex", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL:                 server.URL + "/json",
 			PostProcessingRegex: "([0-9]+\\.[0-9]+\\.[0-9]+\\.[0-9]+)",
@@ -162,6 +158,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile dynamic ip with header", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL: server.URL + "/header",
 			RequestHeaders: &apiextensionsv1.JSON{
@@ -182,6 +179,7 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile dynamic ip with header from secret", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
 		ip.Spec.IPSources = []cloudflareoperatoriov1.IPSpecIPSources{{
 			URL: server.URL + "/header",
 			RequestHeadersSecretRef: corev1.SecretReference{
@@ -203,7 +201,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile static ip", func(t *testing.T) {
 		g := NewWithT(t)
-		ip.Spec.Type = "static"
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
+		ip.Spec.Type = testIPTypeStatic
 		ip.Spec.Address = testIPv4Address
 
 		_ = r.reconcileIP(context.TODO(), ip)
@@ -217,6 +216,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile static ip error no address", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
+		ip.Spec.Type = testIPTypeStatic
 		ip.Spec.Address = ""
 
 		_ = r.reconcileIP(context.TODO(), ip)
@@ -228,6 +229,8 @@ func TestIPReconciler_reconcileIP(t *testing.T) {
 
 	t.Run("reconcile static ip error invalid address", func(t *testing.T) {
 		g := NewWithT(t)
+		ip := &cloudflareoperatoriov1.IP{Spec: cloudflareoperatoriov1.IPSpec{Type: testIPTypeDynamic}}
+		ip.Spec.Type = testIPTypeStatic
 		ip.Spec.Address = "invalid"
 
 		_ = r.reconcileIP(context.TODO(), ip)

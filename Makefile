@@ -62,7 +62,6 @@ $(LOCALBIN):
 KUBECTL ?= kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
-ENVTEST ?= $(LOCALBIN)/setup-envtest
 CRD_REF_DOCS ?= $(LOCALBIN)/crd-ref-docs
 CRD_REF_DOCS_VERSION ?= v0.3.0
 
@@ -70,8 +69,6 @@ CRD_REF_DOCS_VERSION ?= v0.3.0
 KUSTOMIZE_VERSION ?= v5.7.1
 CONTROLLER_TOOLS_VERSION ?= v0.22.0
 
-# ENVTEST_K8S_VERSION refers to the version of kubebuilder assets to be downloaded by envtest binary.
-ENVTEST_K8S_VERSION = 1.34.1
 UNAME := $(shell uname -s | tr '[:upper:]' '[:lower:]')
 KIND_BINARY := kind-$(UNAME)-amd64
 KIND = $(LOCALBIN)/kind
@@ -134,8 +131,8 @@ vet: ## Run go vet against code.
 	go vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
+test: manifests generate fmt vet ## Run tests.
+	go test $$(go list ./... | grep -v /e2e) -coverprofile cover.out
 
 # Utilize Kind or modify the e2e tests to load the image locally, enabling compatibility with other vendors.
 .PHONY: test-e2e  # Run the e2e tests against a Kind k8s instance that is spun up.
@@ -259,11 +256,6 @@ $(CONTROLLER_GEN): $(LOCALBIN)
 crd-ref-docs: ## Download crd-ref-docs locally if necessary
 	test -s $(CRD_REF_DOCS) && $(CRD_REF_DOCS) --version | grep -q $(CRD_REF_DOCS_VERSION) || \
 	GOBIN=$(LOCALBIN) go install github.com/elastic/crd-ref-docs@$(CRD_REF_DOCS_VERSION)
-
-.PHONY: envtest
-envtest: $(ENVTEST) ## Download envtest-setup locally if necessary.
-$(ENVTEST): $(LOCALBIN)
-	test -s $(LOCALBIN)/setup-envtest || GOBIN=$(LOCALBIN) go install sigs.k8s.io/controller-runtime/tools/setup-envtest@latest
 
 .PHONY: operator-sdk
 OPERATOR_SDK ?= $(LOCALBIN)/operator-sdk

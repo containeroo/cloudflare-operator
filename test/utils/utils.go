@@ -135,32 +135,8 @@ func VerifyObjectReady(objType, objName string) error {
 
 func VerifyDNSRecordContent(objName, expectedContent string) error {
 	cmd := exec.Command(
-		"kubectl",
-		"get",
-		"dnsrecord",
-		objName,
-		"-n",
-		"cloudflare-operator-system",
-		"-o",
-		"jsonpath={.spec.content}",
-	)
-	ip, err := Run(cmd)
-	if err != nil {
-		return err
-	}
-	if string(ip) == expectedContent {
-		return nil
-	}
-
-	cmd = exec.Command(
-		"kubectl",
-		"get",
-		"dnsrecord",
-		objName,
-		"-n",
-		"cloudflare-operator-system",
-		"-o",
-		"jsonpath={.spec.name}",
+		"kubectl", "get", "dnsrecord", objName,
+		"-n", "cloudflare-operator-system", "-o", "jsonpath={.spec.name}",
 	)
 	recordName, err := Run(cmd)
 	if err != nil {
@@ -182,7 +158,7 @@ func VerifyDNSRecordContent(objName, expectedContent string) error {
 		return err
 	}
 	if string(recordID) == "" {
-		return fmt.Errorf("dnsrecord has unexpected content: %s", ip)
+		return fmt.Errorf("dnsrecord %s has no Cloudflare record ID yet", objName)
 	}
 
 	api := cloudflare.NewClient(option.WithAPIToken(os.Getenv("CF_API_TOKEN")))

@@ -136,7 +136,6 @@ func main() {
 
 	if err = (&controller.AccountReconciler{
 		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
 		RetryInterval: retryInterval,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Account")
@@ -144,15 +143,13 @@ func main() {
 	}
 	if err = (&controller.ZoneReconciler{
 		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
 		RetryInterval: retryInterval,
-	}).SetupWithManager(ctx, mgr); err != nil {
+	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "Zone")
 		os.Exit(1)
 	}
 	if err = (&controller.IPReconciler{
 		Client:                   mgr.GetClient(),
-		Scheme:                   mgr.GetScheme(),
 		HTTPClientTimeout:        ipReconcilerHTTPClientTimeout,
 		RetryInterval:            retryInterval,
 		DefaultReconcileInterval: defaultReconcileInterval,
@@ -226,7 +223,6 @@ func main() {
 	}
 	if err = (&controller.DNSRecordReconciler{
 		Client:        mgr.GetClient(),
-		Scheme:        mgr.GetScheme(),
 		RetryInterval: retryInterval,
 	}).SetupWithManager(ctx, mgr); err != nil {
 		setupLog.Error(err, "unable to create controller", "controller", "DNSRecord")

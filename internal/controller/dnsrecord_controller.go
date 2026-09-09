@@ -30,7 +30,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apiextensionsv1 "k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -51,7 +50,6 @@ import (
 // DNSRecordReconciler reconciles a DNSRecord object
 type DNSRecordReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
 
 	RetryInterval time.Duration
 }
@@ -62,16 +60,6 @@ func (r *DNSRecordReconciler) SetupWithManager(ctx context.Context, mgr ctrl.Man
 		func(o client.Object) []string {
 			dnsRecord := o.(*cloudflareoperatoriov1.DNSRecord)
 			return []string{dnsRecord.Spec.IPRef.Name}
-		}); err != nil {
-		return err
-	}
-	if err := mgr.GetFieldIndexer().IndexField(ctx, &cloudflareoperatoriov1.DNSRecord{}, cloudflareoperatoriov1.DNSRecordAccountRefIndexKey,
-		func(o client.Object) []string {
-			dnsRecord := o.(*cloudflareoperatoriov1.DNSRecord)
-			if dnsRecord.Spec.AccountRef.Name == "" {
-				return nil
-			}
-			return []string{dnsRecord.Spec.AccountRef.Name}
 		}); err != nil {
 		return err
 	}
@@ -152,7 +140,7 @@ func (r *DNSRecordReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	}
 
 	if !dnsrecord.DeletionTimestamp.IsZero() {
-		if err := r.reconcileDelete(ctx, zone.Status.ID, dnsrecord); err != nil {
+		if err := r.reconcileDelete(ctx, zone, dnsrecord); err != nil {
 			log.Error(err, "Failed to delete DNS record in Cloudflare, record may still exist in Cloudflare")
 			return ctrl.Result{}, err
 		}
@@ -318,10 +306,6 @@ func proxiedEnabled(proxied *bool) bool {
 	return *proxied
 }
 
-func proxiedPtr(proxied bool) *bool {
-	return &proxied
-}
-
 func findExistingRecordForAdoption(desiredRecord cloudflareoperatoriov1.DNSRecordSpec, existingRecords []dns.RecordResponse) (dns.RecordResponse, error) {
 	switch len(existingRecords) {
 	case 0:
@@ -469,19 +453,13 @@ func (r *DNSRecordReconciler) requestsForAccountNames(ctx context.Context, accou
 }
 
 // reconcileDelete reconciles the deletion of the dnsrecord
-func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zoneID string, dnsrecord *cloudflareoperatoriov1.DNSRecord) error {
-	zones := &cloudflareoperatoriov1.ZoneList{}
-	if err := r.List(ctx, zones); err != nil {
-		return err
-	}
-
-	zone := findZoneForDNSRecord(dnsrecord.Spec.Name, zones.Items)
+func (r *DNSRecordReconciler) reconcileDelete(ctx context.Context, zone *cloudflareoperatoriov1.Zone, dnsrecord *cloudflareoperatoriov1.DNSRecord) error {
 	cloudflareAPI, err := cloudflareAPIFromDNSRecord(ctx, r.Client, dnsrecord, zone)
 	if err != nil {
 		return err
 	}
 
-	if err := deleteCloudflareDNSRecord(ctx, cloudflareAPI, zoneID, dnsrecord.Status.RecordID); err != nil && !isCloudflareDNSRecordNotFound(err) {
+	if err := deleteCloudflareDNSRecord(ctx, cloudflareAPI, zone.Status.ID, dnsrecord.Status.RecordID); err != nil && !isCloudflareDNSRecordNotFound(err) {
 		return err
 	}
 	metrics.DnsRecordFailureCounter.DeleteLabelValues(dnsrecord.Namespace, dnsrecord.Name, dnsrecord.Spec.Name)

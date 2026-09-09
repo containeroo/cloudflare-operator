@@ -39,7 +39,6 @@ import (
 	"github.com/itchyny/gojq"
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/runtime"
 	apierrutil "k8s.io/apimachinery/pkg/util/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -52,7 +51,6 @@ import (
 // IPReconciler reconciles a IP object
 type IPReconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
 
 	HTTPClientTimeout        time.Duration
 	DefaultReconcileInterval time.Duration

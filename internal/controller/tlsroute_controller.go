@@ -58,21 +58,11 @@ func (r *TLSRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	return r.reconcileTLSRoute(ctx, tlsRoute)
-}
-
-// reconcileTLSRoute reconciles the TLSRoute
-func (r *TLSRouteReconciler) reconcileTLSRoute(ctx context.Context, tlsRoute *gatewayv1.TLSRoute) (ctrl.Result, error) {
 	hostReconciler := DNSHostReconciler{
 		Client:                   r.Client,
 		Scheme:                   r.Scheme,
 		RetryInterval:            r.RetryInterval,
 		DefaultReconcileInterval: r.DefaultReconcileInterval,
 	}
-	return hostReconciler.Reconcile(ctx, tlsRoute, tlsRoute.GetAnnotations(), r.getRouteHosts(tlsRoute))
-}
-
-// getRouteHosts returns a map of hosts from the TLSRoute hostnames
-func (r *TLSRouteReconciler) getRouteHosts(tlsRoute *gatewayv1.TLSRoute) map[string]struct{} {
-	return gatewayHostnamesToHosts(tlsRoute.Spec.Hostnames)
+	return hostReconciler.Reconcile(ctx, tlsRoute, tlsRoute.GetAnnotations(), gatewayHostnamesToHosts(tlsRoute.Spec.Hostnames))
 }

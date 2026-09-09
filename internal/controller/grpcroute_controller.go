@@ -58,21 +58,11 @@ func (r *GRPCRouteReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, client.IgnoreNotFound(err)
 	}
 
-	return r.reconcileGRPCRoute(ctx, grpcRoute)
-}
-
-// reconcileGRPCRoute reconciles the GRPCRoute
-func (r *GRPCRouteReconciler) reconcileGRPCRoute(ctx context.Context, grpcRoute *gatewayv1.GRPCRoute) (ctrl.Result, error) {
 	hostReconciler := DNSHostReconciler{
 		Client:                   r.Client,
 		Scheme:                   r.Scheme,
 		RetryInterval:            r.RetryInterval,
 		DefaultReconcileInterval: r.DefaultReconcileInterval,
 	}
-	return hostReconciler.Reconcile(ctx, grpcRoute, grpcRoute.GetAnnotations(), r.getRouteHosts(grpcRoute))
-}
-
-// getRouteHosts returns a map of hosts from the GRPCRoute hostnames
-func (r *GRPCRouteReconciler) getRouteHosts(grpcRoute *gatewayv1.GRPCRoute) map[string]struct{} {
-	return gatewayHostnamesToHosts(grpcRoute.Spec.Hostnames)
+	return hostReconciler.Reconcile(ctx, grpcRoute, grpcRoute.GetAnnotations(), gatewayHostnamesToHosts(grpcRoute.Spec.Hostnames))
 }
