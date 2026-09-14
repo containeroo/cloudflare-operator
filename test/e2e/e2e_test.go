@@ -39,6 +39,24 @@ var _ = Describe("controller", Ordered, func() {
 		_, _ = utils.Run(cmd)
 	})
 
+	AfterEach(func() {
+		if !CurrentSpecReport().Failed() {
+			return
+		}
+		By("collecting controller diagnostics before cleanup")
+		for _, args := range [][]string{
+			{
+				"logs", "-n", namespace, "-l", "control-plane=controller-manager",
+				"--all-containers=true", "--tail=200", "--prefix=true",
+			},
+			{"get", "ips,dnsrecords,zones", "--all-namespaces", "-o", "yaml"},
+			{"get", "events", "-n", namespace, "--sort-by=.lastTimestamp"},
+		} {
+			output, err := utils.Run(exec.Command("kubectl", append([]string{"--request-timeout=15s"}, args...)...))
+			_, _ = fmt.Fprintf(GinkgoWriter, "%s\nDiagnostic command error: %v\n", output, err)
+		}
+	})
+
 	AfterAll(func() {
 		By("uninstalling the Prometheus manager bundle")
 		utils.UninstallPrometheusOperator()

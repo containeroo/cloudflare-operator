@@ -18,7 +18,7 @@ metadata:
   name: dnsrecord-ip-ref-sample
   namespace: cloudflare-operator-system
 spec:
-  name: containeroo-test.org
+  name: ip-ref.containeroo-test.org
   type: A
   ipRef:
     name: ip-sample
