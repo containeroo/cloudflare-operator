@@ -67,7 +67,7 @@ CRD_REF_DOCS_VERSION ?= v0.3.0
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.7.1
-CONTROLLER_TOOLS_VERSION ?= v0.22.0
+CONTROLLER_TOOLS_VERSION ?= v0.23.0
 
 UNAME := $(shell uname -s | tr '[:upper:]' '[:lower:]')
 KIND_BINARY := kind-$(UNAME)-amd64
