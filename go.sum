@@ -18,10 +18,10 @@ github.com/evanphx/json-patch v0.5.2 h1:xVCHIVMUu1wtM/VkR9jVZ45N3FhZfYMMYGorLCR8
 github.com/evanphx/json-patch v0.5.2/go.mod h1:ZWS5hhDbVDyob71nXKNL0+PWn6ToqBHMikGIFbs31qQ=
 github.com/evanphx/json-patch/v5 v5.9.11 h1:/8HVnzMq13/3x9TPvjG08wUGqBTmZBsCWzjTM0wiaDU=
 github.com/evanphx/json-patch/v5 v5.9.11/go.mod h1:3j+LviiESTElxA4p3EMKAB9HXj3/XEtnUf6OZxqIQTM=
-github.com/fluxcd/pkg/apis/meta v1.36.0 h1:sgT0N/tXPTLYPzYjO3WHt3LKaRBOlQIP+/dTrJRzvDQ=
-github.com/fluxcd/pkg/apis/meta v1.36.0/go.mod h1:1MLvK2Xu3UdTKBzg+Q1Oj7H9PHeiKsUB1UW3uwxAwiM=
-github.com/fluxcd/pkg/runtime v0.120.0 h1:FEeTLB5tnhMVbpjAC9l2LUZr9T0Dl+Z3r16ERqLcVXc=
-github.com/fluxcd/pkg/runtime v0.120.0/go.mod h1:Cw0CQ/tVKS9lgJoyKVouZr1qVnoJcYnSHw3QDzIOOjA=
+github.com/fluxcd/pkg/apis/meta v1.37.0 h1:gVwadRI8BrRrl4Rw0ZBJ/VSWh7qNpf7ShmTjDhcVf30=
+github.com/fluxcd/pkg/apis/meta v1.37.0/go.mod h1:1MLvK2Xu3UdTKBzg+Q1Oj7H9PHeiKsUB1UW3uwxAwiM=
+github.com/fluxcd/pkg/runtime v0.121.0 h1:xFBJ+8To7YEaenBvFZ843MmKST0fQTaALsA+qH0ZzVE=
+github.com/fluxcd/pkg/runtime v0.121.0/go.mod h1:8JWIvsBXvHzSOYfuiPNDB6cmHTjWF5m2WyCB1Tiy8Ek=
 github.com/fsnotify/fsnotify v1.10.1 h1:b0/UzAf9yR5rhf3RPm9gf3ehBPpf0oZKIjtpKrx59Ho=
 github.com/fsnotify/fsnotify v1.10.1/go.mod h1:TLheqan6HD6GBK6PrDWyDPBaEV8LspOxvPSjC+bVfgo=
 github.com/fxamacker/cbor/v2 v2.9.3 h1:oQBnFATpNdY8gJHTndDDv5Xl4QqNaz51G5LLEPhng3Q=
